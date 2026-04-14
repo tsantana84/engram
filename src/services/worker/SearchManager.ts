@@ -31,10 +31,12 @@ import {
   SEARCH_CONSTANTS
 } from './search/index.js';
 import type { TimelineData } from './search/index.js';
+import type { SyncClient } from '../sync/SyncClient.js';
 
 export class SearchManager {
   private orchestrator: SearchOrchestrator;
   private timelineBuilder: TimelineBuilder;
+  private syncClient: SyncClient | null = null;
 
   constructor(
     private sessionSearch: SessionSearch,
@@ -50,6 +52,10 @@ export class SearchManager {
       chromaSync
     );
     this.timelineBuilder = new TimelineBuilder();
+  }
+
+  setSyncClient(client: SyncClient | null): void {
+    this.syncClient = client;
   }
 
   /**
@@ -262,6 +268,41 @@ export class SearchManager {
       prompts = [];
     }
 
+    // Merge team search results if syncClient is configured
+    if (this.syncClient && query) {
+      try {
+        const teamResults = await this.syncClient.searchTeam(query, options);
+        if (teamResults && teamResults.observations) {
+          const localObsHashes = new Set(observations.map(o => o.content_hash));
+          const localSessHashes = new Set(sessions.map(s => s.content_hash));
+          const localPromptHashes = new Set(prompts.map(p => p.content_hash));
+
+          for (const obs of teamResults.observations) {
+            if (!localObsHashes.has(obs.content_hash)) {
+              observations.push({ ...obs, source: 'team', agent_name: teamResults.agent_name });
+            }
+          }
+          for (const sess of teamResults.sessions || []) {
+            if (!localSessHashes.has(sess.content_hash)) {
+              sessions.push({ ...sess, source: 'team', agent_name: teamResults.agent_name });
+            }
+          }
+          for (const prompt of teamResults.prompts || []) {
+            if (!localPromptHashes.has(prompt.content_hash)) {
+              prompts.push({ ...prompt, source: 'team', agent_name: teamResults.agent_name });
+            }
+          }
+        }
+      } catch (teamError) {
+        logger.debug('SEARCH', 'Team search failed, continuing with local results only', {}, teamError as Error);
+      }
+    }
+
+    // Mark local results with source
+    observations = observations.map(o => ({ ...o, source: 'local' }));
+    sessions = sessions.map(s => ({ ...s, source: 'local' }));
+    prompts = prompts.map(p => ({ ...p, source: 'local' }));
+
     const totalResults = observations.length + sessions.length + prompts.length;
 
     // JSON format: return raw data for programmatic access (e.g., export scripts)
@@ -298,6 +339,8 @@ export class SearchManager {
       data: any;
       epoch: number;
       created_at: string;
+      source: 'local' | 'team';
+      agent_name?: string;
     }
 
     const allResults: CombinedResult[] = [
@@ -305,19 +348,25 @@ export class SearchManager {
         type: 'observation' as const,
         data: obs,
         epoch: obs.created_at_epoch,
-        created_at: obs.created_at
+        created_at: obs.created_at,
+        source: (obs as any).source || 'local',
+        agent_name: (obs as any).agent_name
       })),
       ...sessions.map(sess => ({
         type: 'session' as const,
         data: sess,
         epoch: sess.created_at_epoch,
-        created_at: sess.created_at
+        created_at: sess.created_at,
+        source: (sess as any).source || 'local',
+        agent_name: (sess as any).agent_name
       })),
       ...prompts.map(prompt => ({
         type: 'prompt' as const,
         data: prompt,
         epoch: prompt.created_at_epoch,
-        created_at: prompt.created_at
+        created_at: prompt.created_at,
+        source: (prompt as any).source || 'local',
+        agent_name: (prompt as any).agent_name
       }))
     ];
 
@@ -526,11 +575,40 @@ export class SearchManager {
       };
     }
 
+    // Merge team timeline results if syncClient is configured
+    if (this.syncClient && query) {
+      try {
+        const teamTimeline = await this.syncClient.timelineTeam({ query, depth_before: String(depth_before), depth_after: String(depth_after), project });
+        if (teamTimeline && teamTimeline.observations) {
+          const localObsIds = new Set((timelineData.observations || []).map((o: any) => o.content_hash));
+          for (const obs of teamTimeline.observations) {
+            if (!localObsIds.has(obs.content_hash)) {
+              timelineData.observations.push({ ...obs, source: 'team', agent_name: teamTimeline.agent_name });
+            }
+          }
+          const localSessIds = new Set((timelineData.sessions || []).map((s: any) => s.content_hash));
+          for (const sess of teamTimeline.sessions || []) {
+            if (!localSessIds.has(sess.content_hash)) {
+              timelineData.sessions.push({ ...sess, source: 'team', agent_name: teamTimeline.agent_name });
+            }
+          }
+          const localPromptIds = new Set((timelineData.prompts || []).map((p: any) => p.content_hash));
+          for (const prompt of teamTimeline.prompts || []) {
+            if (!localPromptIds.has(prompt.content_hash)) {
+              timelineData.prompts.push({ ...prompt, source: 'team', agent_name: teamTimeline.agent_name });
+            }
+          }
+        }
+      } catch (teamError) {
+        logger.debug('SEARCH', 'Team timeline failed, continuing with local results only', {}, teamError as Error);
+      }
+    }
+
     // Combine, sort, and filter timeline items
     const items: TimelineItem[] = [
-      ...(timelineData.observations || []).map((obs: any) => ({ type: 'observation' as const, data: obs, epoch: obs.created_at_epoch })),
-      ...(timelineData.sessions || []).map((sess: any) => ({ type: 'session' as const, data: sess, epoch: sess.created_at_epoch })),
-      ...(timelineData.prompts || []).map((prompt: any) => ({ type: 'prompt' as const, data: prompt, epoch: prompt.created_at_epoch }))
+      ...(timelineData.observations || []).map((obs: any) => ({ type: 'observation' as const, data: obs, epoch: obs.created_at_epoch, source: obs.source || 'local', agent_name: obs.agent_name })),
+      ...(timelineData.sessions || []).map((sess: any) => ({ type: 'session' as const, data: sess, epoch: sess.created_at_epoch, source: sess.source || 'local', agent_name: sess.agent_name })),
+      ...(timelineData.prompts || []).map((prompt: any) => ({ type: 'prompt' as const, data: prompt, epoch: prompt.created_at_epoch, source: prompt.source || 'local', agent_name: prompt.agent_name }))
     ];
     items.sort((a, b) => a.epoch - b.epoch);
     const filteredItems = this.timelineService.filterByDepth(items, anchorId, anchorEpoch, depth_before, depth_after);

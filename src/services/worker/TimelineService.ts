@@ -14,6 +14,8 @@ export interface TimelineItem {
   type: 'observation' | 'session' | 'prompt';
   data: ObservationSearchResult | SessionSummarySearchResult | UserPromptSearchResult;
   epoch: number;
+  source?: 'local' | 'team';
+  agent_name?: string;
 }
 
 export interface TimelineData {
