@@ -27,7 +27,8 @@
   },
   "type": "module",
   "bin": {
-    "claude-mem": "./dist/npx-cli/index.js"
+    "claude-mem": "./dist/npx-cli/index.js",
+    "engram": "./dist/npx-cli/index.js"
   },
   "exports": {
     ".": {

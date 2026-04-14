@@ -1422,6 +1422,17 @@ export class SessionStore {
   }
 
   /**
+   * Get summary by ID
+   */
+  getSummaryById(id: number): SessionSummaryRecord | null {
+    const stmt = this.db.prepare(`
+      SELECT * FROM session_summaries WHERE id = ?
+    `);
+
+    return stmt.get(id) as SessionSummaryRecord | undefined || null;
+  }
+
+  /**
    * Get summary for a specific session
    */
   getSummaryForSession(memorySessionId: string): {

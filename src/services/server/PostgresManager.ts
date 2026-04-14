@@ -1,4 +1,4 @@
-import pg from 'pg';
+import postgres from 'postgres';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -90,167 +90,145 @@ export interface ObservationSearchResult {
 }
 
 export class PostgresManager {
-  private pool: pg.Pool;
+  private sql: ReturnType<typeof postgres>;
 
   constructor(databaseUrl: string) {
-    this.pool = new pg.Pool({ connectionString: databaseUrl });
+    this.sql = postgres(databaseUrl);
   }
 
   async connect(): Promise<void> {
-    const client = await this.pool.connect();
-    client.release();
+    await this.sql`SELECT 1`;
   }
 
   async close(): Promise<void> {
-    await this.pool.end();
+    await this.sql.end();
   }
 
-  async query(text: string, params?: any[]): Promise<pg.QueryResult> {
-    return this.pool.query(text, params);
+  async query(text: string, params?: any[]): Promise<any> {
+    return this.sql.unsafe(text, params);
   }
 
   async runMigrations(): Promise<void> {
     const sqlPath = join(__dirname, 'migrations', '001-initial-schema.sql');
     const sql = readFileSync(sqlPath, 'utf-8');
-    await this.pool.query(sql);
+    await this.sql.unsafe(sql);
   }
 
   async createAgent(name: string, apiKeyHash: string): Promise<AgentRecord> {
-    const result = await this.pool.query(
-      `INSERT INTO agents (name, api_key_hash) VALUES ($1, $2) RETURNING *`,
-      [name, apiKeyHash]
-    );
-    return result.rows[0];
+    const [result] = await this.sql`
+      INSERT INTO agents (name, api_key_hash) 
+      VALUES (${name}, ${apiKeyHash}) 
+      RETURNING *
+    `;
+    return result;
   }
 
   async getActiveAgents(): Promise<AgentRecord[]> {
-    const result = await this.pool.query(
-      `SELECT * FROM agents WHERE status = 'active' ORDER BY name`
-    );
-    return result.rows;
+    return await this.sql`
+      SELECT * FROM agents WHERE status = 'active' ORDER BY name
+    `;
   }
 
   async getAgentByName(name: string): Promise<AgentRecord | null> {
-    const result = await this.pool.query(
-      `SELECT * FROM agents WHERE name = $1`,
-      [name]
-    );
-    return result.rows[0] || null;
+    const [result] = await this.sql`
+      SELECT * FROM agents WHERE name = ${name}
+    `;
+    return result || null;
   }
 
   async revokeAgent(name: string): Promise<void> {
-    await this.pool.query(
-      `UPDATE agents SET status = 'revoked' WHERE name = $1`,
-      [name]
-    );
+    await this.sql`
+      UPDATE agents SET status = 'revoked' WHERE name = ${name}
+    `;
   }
 
   async insertObservation(obs: ObservationInsert): Promise<{ inserted: boolean }> {
-    const result = await this.pool.query(
-      `INSERT INTO observations (
+    const result = await this.sql`
+      INSERT INTO observations (
         agent_id, local_id, content_hash, type, title, subtitle,
         facts, narrative, concepts, files_read, files_modified,
         project, created_at, created_at_epoch, prompt_number, model_used
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-      ON CONFLICT (agent_id, content_hash) DO NOTHING`,
-      [
-        obs.agent_id, obs.local_id, obs.content_hash, obs.type,
-        obs.title, obs.subtitle,
-        JSON.stringify(obs.facts), obs.narrative,
-        JSON.stringify(obs.concepts),
-        JSON.stringify(obs.files_read), JSON.stringify(obs.files_modified),
-        obs.project, obs.created_at, obs.created_at_epoch,
-        obs.prompt_number, obs.model_used,
-      ]
-    );
-    return { inserted: (result.rowCount ?? 0) > 0 };
+      ) VALUES (
+        ${obs.agent_id}, ${obs.local_id}, ${obs.content_hash}, ${obs.type},
+        ${obs.title}, ${obs.subtitle},
+        ${JSON.stringify(obs.facts)}, ${obs.narrative},
+        ${JSON.stringify(obs.concepts)},
+        ${JSON.stringify(obs.files_read)}, ${JSON.stringify(obs.files_modified)},
+        ${obs.project}, ${obs.created_at}, ${obs.created_at_epoch},
+        ${obs.prompt_number}, ${obs.model_used}
+      )
+    `;
+    return { inserted: result.count > 0 };
   }
 
   async insertSession(session: SessionInsert): Promise<{ inserted: boolean }> {
-    const result = await this.pool.query(
-      `INSERT INTO sessions (
+    const result = await this.sql`
+      INSERT INTO sessions (
         agent_id, local_session_id, content_session_id, project,
         platform_source, user_prompt, custom_title,
         started_at, started_at_epoch, completed_at, completed_at_epoch, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      ON CONFLICT (agent_id, local_session_id) DO NOTHING`,
-      [
-        session.agent_id, session.local_session_id, session.content_session_id,
-        session.project, session.platform_source, session.user_prompt,
-        session.custom_title, session.started_at, session.started_at_epoch,
-        session.completed_at, session.completed_at_epoch, session.status,
-      ]
-    );
-    return { inserted: (result.rowCount ?? 0) > 0 };
+      ) VALUES (
+        ${session.agent_id}, ${session.local_session_id}, ${session.content_session_id},
+        ${session.project}, ${session.platform_source}, ${session.user_prompt},
+        ${session.custom_title}, ${session.started_at}, ${session.started_at_epoch},
+        ${session.completed_at}, ${session.completed_at_epoch}, ${session.status}
+      )
+    `;
+    return { inserted: result.count > 0 };
   }
 
   async insertSummary(summary: SummaryInsert): Promise<{ inserted: boolean }> {
-    const result = await this.pool.query(
-      `INSERT INTO session_summaries (
+    const result = await this.sql`
+      INSERT INTO session_summaries (
         agent_id, local_summary_id, local_session_id, project,
         request, investigated, learned, completed, next_steps,
         files_read, files_edited, notes, created_at, created_at_epoch
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      ON CONFLICT (agent_id, local_summary_id) DO NOTHING`,
-      [
-        summary.agent_id, summary.local_summary_id, summary.local_session_id,
-        summary.project, summary.request, summary.investigated,
-        summary.learned, summary.completed, summary.next_steps,
-        summary.files_read, summary.files_edited, summary.notes,
-        summary.created_at, summary.created_at_epoch,
-      ]
-    );
-    return { inserted: (result.rowCount ?? 0) > 0 };
+      ) VALUES (
+        ${summary.agent_id}, ${summary.local_summary_id}, ${summary.local_session_id},
+        ${summary.project}, ${summary.request}, ${summary.investigated},
+        ${summary.learned}, ${summary.completed}, ${summary.next_steps},
+        ${summary.files_read}, ${summary.files_edited}, ${summary.notes},
+        ${summary.created_at}, ${summary.created_at_epoch}
+      )
+    `;
+    return { inserted: result.count > 0 };
   }
 
   async searchObservations(query: string, options: SearchOptions = {}): Promise<ObservationSearchResult[]> {
     const limit = options.limit || 20;
     const offset = options.offset || 0;
-    
+
     let whereClause = `WHERE 1=1`;
-    const params: any[] = [];
-    let paramIndex = 1;
 
     if (query) {
-      whereClause += ` AND o.title ILIKE $${paramIndex} OR o.narrative ILIKE $${paramIndex}`;
-      params.push(`%${query}%`);
-      paramIndex++;
+      whereClause += ` AND (o.title ILIKE ${'%' + query + '%'} OR o.narrative ILIKE ${'%' + query + '%'})`;
     }
 
     if (options.project) {
-      whereClause += ` AND o.project = $${paramIndex}`;
-      params.push(options.project);
-      paramIndex++;
+      whereClause += ` AND o.project = ${options.project}`;
     }
 
     if (options.type) {
-      whereClause += ` AND o.type = $${paramIndex}`;
-      params.push(options.type);
-      paramIndex++;
+      whereClause += ` AND o.type = ${options.type}`;
     }
 
     if (options.agent) {
-      whereClause += ` AND a.name = $${paramIndex}`;
-      params.push(options.agent);
-      paramIndex++;
+      whereClause += ` AND a.name = ${options.agent}`;
     }
 
-    params.push(limit, offset);
-
-    const result = await this.pool.query(
-      `SELECT o.id, a.name as agent_name, 'team' as source,
+    const rows = await this.sql`
+      SELECT o.id, a.name as agent_name, 'team' as source,
               o.type, o.title, o.subtitle, o.facts, o.narrative,
               o.concepts, o.files_read, o.files_modified,
               o.project, o.created_at, o.created_at_epoch
        FROM observations o
        JOIN agents a ON o.agent_id = a.id
-       ${whereClause}
+       ${this.sql.unsafe(whereClause)}
        ORDER BY o.created_at DESC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      params
-    );
+       LIMIT ${limit} OFFSET ${offset}
+    `;
 
-    return result.rows.map((row: any) => ({
+    return rows.map((row: any) => ({
       ...row,
       facts: row.facts || [],
       concepts: row.concepts || [],
@@ -264,37 +242,28 @@ export class PostgresManager {
     const offset = options.offset || 0;
 
     let whereClause = 'WHERE 1=1';
-    const params: any[] = [];
-    let paramIndex = 1;
 
     if (options.project) {
-      whereClause += ` AND o.project = $${paramIndex}`;
-      params.push(options.project);
-      paramIndex++;
+      whereClause += ` AND o.project = ${options.project}`;
     }
 
     if (options.agent) {
-      whereClause += ` AND a.name = $${paramIndex}`;
-      params.push(options.agent);
-      paramIndex++;
+      whereClause += ` AND a.name = ${options.agent}`;
     }
 
-    params.push(limit, offset);
-
-    const result = await this.pool.query(
-      `SELECT o.id, a.name as agent_name, 'team' as source,
+    const rows = await this.sql`
+      SELECT o.id, a.name as agent_name, 'team' as source,
               o.type, o.title, o.subtitle, o.facts, o.narrative,
               o.concepts, o.files_read, o.files_modified,
               o.project, o.created_at, o.created_at_epoch
        FROM observations o
        JOIN agents a ON o.agent_id = a.id
-       ${whereClause}
+       ${this.sql.unsafe(whereClause)}
        ORDER BY o.created_at DESC
-       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-      params
-    );
+       LIMIT ${limit} OFFSET ${offset}
+    `;
 
-    return result.rows;
+    return rows;
   }
 
   async getAgentSyncStatus(agentId: string): Promise<{
@@ -302,20 +271,18 @@ export class PostgresManager {
     observation_count: number;
     session_count: number;
   }> {
-    const obsResult = await this.pool.query(
-      `SELECT COUNT(*) as count, MAX(synced_at) as last_sync
-       FROM observations WHERE agent_id = $1`,
-      [agentId]
-    );
-    const sessResult = await this.pool.query(
-      `SELECT COUNT(*) as count FROM sessions WHERE agent_id = $1`,
-      [agentId]
-    );
+    const [obsResult] = await this.sql`
+      SELECT COUNT(*) as count, MAX(synced_at) as last_sync
+       FROM observations WHERE agent_id = ${agentId}
+    `;
+    const [sessResult] = await this.sql`
+      SELECT COUNT(*) as count FROM sessions WHERE agent_id = ${agentId}
+    `;
 
     return {
-      last_sync_at: obsResult.rows[0]?.last_sync || null,
-      observation_count: parseInt(obsResult.rows[0]?.count || '0'),
-      session_count: parseInt(sessResult.rows[0]?.count || '0'),
+      last_sync_at: obsResult?.last_sync || null,
+      observation_count: parseInt(obsResult?.count || '0'),
+      session_count: parseInt(sessResult?.count || '0'),
     };
   }
 }

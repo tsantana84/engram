@@ -138,6 +138,20 @@ async function main(): Promise<void> {
       break;
     }
 
+    // -- Server -----------------------------------------------------------
+    case 'server': {
+      const { runServerCommand } = await import('./commands/server.js');
+      await runServerCommand(args.slice(1));
+      break;
+    }
+
+    // -- Sync -------------------------------------------------------------
+    case 'sync': {
+      const { runSyncCommand } = await import('./commands/sync.js');
+      await runSyncCommand(args.slice(1));
+      break;
+    }
+
     // -- Search ------------------------------------------------------------
     case 'search': {
       const { runSearchCommand } = await import('./commands/runtime.js');

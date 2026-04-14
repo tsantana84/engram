@@ -1,0 +1,99 @@
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { Database } from 'bun:sqlite';
+import { MigrationRunner } from '../../../src/services/sqlite/migrations/runner.js';
+import { SyncQueue } from '../../../src/services/sync/SyncQueue.js';
+import { SyncWorker } from '../../../src/services/sync/SyncWorker.js';
+
+describe('SyncWorker', () => {
+  let db: Database;
+  let queue: SyncQueue;
+
+  beforeEach(() => {
+    db = new Database(':memory:');
+    const runner = new MigrationRunner(db);
+    runner.runAllMigrations();
+    queue = new SyncQueue(db);
+  });
+
+  afterEach(() => {
+    db.close();
+  });
+
+  it('should not run when sync is disabled', async () => {
+    const worker = new SyncWorker({
+      enabled: false,
+      queue,
+      sessionStore: {},
+      serverUrl: 'http://localhost:9999',
+      apiKey: 'cmem_ak_test',
+      agentName: 'Test',
+      intervalMs: 1000,
+      timeoutMs: 3000,
+      maxRetries: 5,
+      batchSize: 100,
+    });
+
+    await worker.tick();
+    expect(queue.getStatus().pending).toBe(0);
+  });
+
+  it('should skip tick when queue is empty', async () => {
+    const worker = new SyncWorker({
+      enabled: true,
+      queue,
+      sessionStore: {},
+      serverUrl: 'http://localhost:9999',
+      apiKey: 'cmem_ak_test',
+      agentName: 'Test',
+      intervalMs: 1000,
+      timeoutMs: 3000,
+      maxRetries: 5,
+      batchSize: 100,
+    });
+
+    await worker.tick();
+    expect(queue.getStatus().pending).toBe(0);
+  });
+
+  it('should be pausable and resumable', () => {
+    const worker = new SyncWorker({
+      enabled: true,
+      queue,
+      sessionStore: {},
+      serverUrl: 'http://localhost:9999',
+      apiKey: 'cmem_ak_test',
+      agentName: 'Test',
+      intervalMs: 1000,
+      timeoutMs: 3000,
+      maxRetries: 5,
+      batchSize: 100,
+    });
+
+    expect(worker.isPaused()).toBe(false);
+    worker.pause();
+    expect(worker.isPaused()).toBe(true);
+    worker.resume();
+    expect(worker.isPaused()).toBe(false);
+  });
+
+  it('should not drain when paused', async () => {
+    const worker = new SyncWorker({
+      enabled: true,
+      queue,
+      sessionStore: {},
+      serverUrl: 'http://localhost:9999',
+      apiKey: 'cmem_ak_test',
+      agentName: 'Test',
+      intervalMs: 1000,
+      timeoutMs: 3000,
+      maxRetries: 5,
+      batchSize: 100,
+    });
+
+    queue.enqueue('observation', 42);
+    worker.pause();
+    await worker.tick();
+
+    expect(queue.getStatus().pending).toBe(1);
+  });
+});
