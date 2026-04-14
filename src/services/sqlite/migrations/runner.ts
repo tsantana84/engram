@@ -37,18 +37,14 @@ export class MigrationRunner {
     this.addSessionCustomTitleColumn();
     this.createObservationFeedbackTable();
     this.addSessionPlatformSourceColumn();
+    this.createSyncQueueTable();
   }
 
   /**
-   * Initialize database schema (migration004)
-   *
-   * ALWAYS creates core tables using CREATE TABLE IF NOT EXISTS — safe to run
-   * regardless of schema_versions state.  This fixes issue #979 where the old
-   * DatabaseManager migration system (versions 1-7) shared the schema_versions
-   * table, causing maxApplied > 0 and skipping core table creation entirely.
+   * Initialize core database schema
+   * Creates schema_versions and all core tables if they don't exist
    */
   private initializeSchema(): void {
-    // Create schema_versions table if it doesn't exist
     this.db.run(`
       CREATE TABLE IF NOT EXISTS schema_versions (
         id INTEGER PRIMARY KEY,
@@ -57,7 +53,6 @@ export class MigrationRunner {
       )
     `);
 
-    // Always create core tables — IF NOT EXISTS makes this idempotent
     this.db.run(`
       CREATE TABLE IF NOT EXISTS sdk_sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,34 +65,53 @@ export class MigrationRunner {
         started_at_epoch INTEGER NOT NULL,
         completed_at TEXT,
         completed_at_epoch INTEGER,
-        status TEXT CHECK(status IN ('active', 'completed', 'failed')) NOT NULL DEFAULT 'active'
-      );
+        status TEXT CHECK(status IN ('active', 'completed', 'failed')) NOT NULL DEFAULT 'active',
+        worker_port INTEGER,
+        prompt_counter INTEGER DEFAULT 0,
+        custom_title TEXT
+      )
+    `);
 
-      CREATE INDEX IF NOT EXISTS idx_sdk_sessions_claude_id ON sdk_sessions(content_session_id);
-      CREATE INDEX IF NOT EXISTS idx_sdk_sessions_sdk_id ON sdk_sessions(memory_session_id);
-      CREATE INDEX IF NOT EXISTS idx_sdk_sessions_project ON sdk_sessions(project);
-      CREATE INDEX IF NOT EXISTS idx_sdk_sessions_status ON sdk_sessions(status);
-      CREATE INDEX IF NOT EXISTS idx_sdk_sessions_started ON sdk_sessions(started_at_epoch DESC);
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_claude_id ON sdk_sessions(content_session_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_sdk_id ON sdk_sessions(memory_session_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_project ON sdk_sessions(project)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_status ON sdk_sessions(status)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_started ON sdk_sessions(started_at_epoch DESC)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_platform_source ON sdk_sessions(platform_source)');
 
+    this.db.run(`
       CREATE TABLE IF NOT EXISTS observations (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         memory_session_id TEXT NOT NULL,
         project TEXT NOT NULL,
-        text TEXT NOT NULL,
+        text TEXT,
         type TEXT NOT NULL,
+        title TEXT,
+        subtitle TEXT,
+        facts TEXT,
+        narrative TEXT,
+        concepts TEXT,
+        files_read TEXT,
+        files_modified TEXT,
+        prompt_number INTEGER,
         created_at TEXT NOT NULL,
         created_at_epoch INTEGER NOT NULL,
+        content_hash TEXT,
+        model_used TEXT,
         FOREIGN KEY(memory_session_id) REFERENCES sdk_sessions(memory_session_id) ON DELETE CASCADE ON UPDATE CASCADE
-      );
+      )
+    `);
 
-      CREATE INDEX IF NOT EXISTS idx_observations_sdk_session ON observations(memory_session_id);
-      CREATE INDEX IF NOT EXISTS idx_observations_project ON observations(project);
-      CREATE INDEX IF NOT EXISTS idx_observations_type ON observations(type);
-      CREATE INDEX IF NOT EXISTS idx_observations_created ON observations(created_at_epoch DESC);
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_observations_sdk_session ON observations(memory_session_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_observations_project ON observations(project)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_observations_type ON observations(type)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_observations_created ON observations(created_at_epoch DESC)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_observations_content_hash ON observations(content_hash)');
 
+    this.db.run(`
       CREATE TABLE IF NOT EXISTS session_summaries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        memory_session_id TEXT UNIQUE NOT NULL,
+        memory_session_id TEXT NOT NULL,
         project TEXT NOT NULL,
         request TEXT,
         investigated TEXT,
@@ -107,18 +121,63 @@ export class MigrationRunner {
         files_read TEXT,
         files_edited TEXT,
         notes TEXT,
+        prompt_number INTEGER,
         created_at TEXT NOT NULL,
         created_at_epoch INTEGER NOT NULL,
-        FOREIGN KEY(memory_session_id) REFERENCES sdk_sessions(memory_session_id) ON DELETE CASCADE ON UPDATE CASCADE
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_session_summaries_sdk_session ON session_summaries(memory_session_id);
-      CREATE INDEX IF NOT EXISTS idx_session_summaries_project ON session_summaries(project);
-      CREATE INDEX IF NOT EXISTS idx_session_summaries_created ON session_summaries(created_at_epoch DESC);
+        FOREIGN KEY(memory_session_id) REFERENCES sdk_sessions(memory_session_id) ON DELETE CASCADE
+      )
     `);
 
-    // Record migration004 as applied (OR IGNORE handles re-runs safely)
-    this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(4, new Date().toISOString());
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_session_summaries_sdk_session ON session_summaries(memory_session_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_session_summaries_project ON session_summaries(project)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_session_summaries_created ON session_summaries(created_at_epoch DESC)');
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS user_prompts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        content_session_id TEXT NOT NULL,
+        memory_session_id TEXT,
+        role TEXT NOT NULL,
+        text TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        created_at_epoch INTEGER NOT NULL,
+        model_used TEXT
+      )
+    `);
+
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_user_prompts_session ON user_prompts(content_session_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_user_prompts_created ON user_prompts(created_at_epoch DESC)');
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS pending_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        memory_session_id TEXT NOT NULL,
+        session_db_id INTEGER,
+        message TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        created_at_epoch INTEGER NOT NULL,
+        failed_at_epoch INTEGER,
+        FOREIGN KEY(memory_session_id) REFERENCES sdk_sessions(memory_session_id) ON DELETE CASCADE
+      )
+    `);
+
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_pending_messages_session ON pending_messages(memory_session_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_pending_messages_failed ON pending_messages(failed_at_epoch)');
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS observation_feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        observation_id INTEGER NOT NULL,
+        signal_type TEXT NOT NULL,
+        session_db_id INTEGER,
+        created_at_epoch INTEGER NOT NULL,
+        metadata TEXT,
+        FOREIGN KEY (observation_id) REFERENCES observations(id) ON DELETE CASCADE
+      )
+    `);
+
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_feedback_observation ON observation_feedback(observation_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_feedback_signal ON observation_feedback(signal_type)');
   }
 
   /**
@@ -921,5 +980,33 @@ export class MigrationRunner {
     }
 
     this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(25, new Date().toISOString());
+  }
+
+  /**
+   * Create sync_queue table for multi-agent sync (migration 26)
+   */
+  private createSyncQueueTable(): void {
+    const applied = this.db.prepare('SELECT version FROM schema_versions WHERE version = ?').get(26) as SchemaVersion | undefined;
+    if (applied) return;
+
+    logger.debug('DB', 'Migration 26: Creating sync_queue table');
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS sync_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL CHECK(entity_type IN ('observation', 'session', 'summary')),
+        entity_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'synced', 'failed')),
+        attempts INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        synced_at TEXT
+      )
+    `);
+
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+
+    this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(26, new Date().toISOString());
+    logger.debug('DB', 'Successfully created sync_queue table');
   }
 }
