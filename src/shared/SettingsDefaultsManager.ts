@@ -76,6 +76,14 @@ export interface SettingsDefaults {
   CLAUDE_MEM_CHROMA_API_KEY: string;
   CLAUDE_MEM_CHROMA_TENANT: string;
   CLAUDE_MEM_CHROMA_DATABASE: string;
+  // Multi-Agent Sync Configuration
+  CLAUDE_MEM_SYNC_ENABLED: string;
+  CLAUDE_MEM_SYNC_SERVER_URL: string;
+  CLAUDE_MEM_SYNC_API_KEY: string;
+  CLAUDE_MEM_SYNC_AGENT_NAME: string;
+  CLAUDE_MEM_SYNC_INTERVAL_MS: string;
+  CLAUDE_MEM_SYNC_TIMEOUT_MS: string;
+  CLAUDE_MEM_SYNC_MAX_RETRIES: string;
 }
 
 export class SettingsDefaultsManager {
@@ -147,6 +155,14 @@ export class SettingsDefaultsManager {
     CLAUDE_MEM_CHROMA_API_KEY: '',
     CLAUDE_MEM_CHROMA_TENANT: 'default_tenant',
     CLAUDE_MEM_CHROMA_DATABASE: 'default_database',
+    // Multi-Agent Sync Configuration
+    CLAUDE_MEM_SYNC_ENABLED: 'false',
+    CLAUDE_MEM_SYNC_SERVER_URL: '',
+    CLAUDE_MEM_SYNC_API_KEY: '',
+    CLAUDE_MEM_SYNC_AGENT_NAME: '',
+    CLAUDE_MEM_SYNC_INTERVAL_MS: '30000',
+    CLAUDE_MEM_SYNC_TIMEOUT_MS: '3000',
+    CLAUDE_MEM_SYNC_MAX_RETRIES: '5',
   };
 
   /**
