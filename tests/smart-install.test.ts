@@ -211,7 +211,7 @@ describe('smart-install stdout JSON output (#1253)', () => {
     const settingsFile = join(settingsDir, 'settings.json');
     mkdirSync(settingsDir, { recursive: true });
     writeFileSync(settingsFile, JSON.stringify({
-      enabledPlugins: { 'claude-mem@thedotmack': false }
+      enabledPlugins: { 'engram@thedotmack': false }
     }));
 
     try {
