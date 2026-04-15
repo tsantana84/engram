@@ -58,8 +58,10 @@ describe('SyncClient', () => {
   });
 
   it('should handle timeout', async () => {
+    // Use a port that immediately refuses connection (localhost:1) rather than
+    // an unroutable IP, so the test doesn't depend on OS-level TCP timeout behavior
     const slowClient = new SyncClient({
-      serverUrl: 'http://10.255.255.1',
+      serverUrl: 'http://localhost:1',
       apiKey: 'cmem_ak_testkey123',
       agentName: 'TestAgent',
       timeoutMs: 100,
