@@ -141,7 +141,30 @@
 </nav>
 
 <!-- Slides injected in Tasks 2–7 -->
-<div id="slide-1" class="slide active"></div>
+<div id="slide-1" class="slide active">
+  <div class="eyebrow">Engram · Developer Talk</div>
+  <h1>Fork of <span class="gradient">claude-mem</span><br>with multi-agent sync</h1>
+  <p class="lead">Everything claude-mem does locally — observations, summaries, FTS5 search — plus a sync pipeline that shares memory across machines.</p>
+
+  <table>
+    <thead>
+      <tr><th>Feature</th><th>claude-mem</th><th>engram</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Local memory (SQLite)</td><td class="check">✓</td><td class="check">✓</td></tr>
+      <tr><td>Chroma vector search</td><td class="check">✓</td><td class="check">✓</td></tr>
+      <tr><td>MCP search tools + skills</td><td class="check">✓</td><td class="check">✓</td></tr>
+      <tr><td>Multi-agent sync</td><td class="dash">—</td><td class="check">✓</td></tr>
+      <tr><td>Shared team memory</td><td class="dash">—</td><td class="check">✓</td></tr>
+      <tr><td>Data directory</td><td><code>~/.claude-mem/</code></td><td><code>~/.engram/</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout info">
+    <div class="callout-icon">ℹ️</div>
+    <div>Plugin identity: <code>engram@thedotmack</code> — installs alongside claude-mem without conflicts. All hooks, worker, and MCP tools are inherited from upstream.</div>
+  </div>
+</div>
 <div id="slide-2" class="slide"></div>
 <div id="slide-3" class="slide"></div>
 <div id="slide-4" class="slide"></div>
