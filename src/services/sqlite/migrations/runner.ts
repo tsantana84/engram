@@ -983,13 +983,13 @@ export class MigrationRunner {
   }
 
   /**
-   * Create sync_queue table for multi-agent sync (migration 26)
+   * Create sync_queue table for multi-agent sync (migration 27)
    */
   private createSyncQueueTable(): void {
-    const applied = this.db.prepare('SELECT version FROM schema_versions WHERE version = ?').get(26) as SchemaVersion | undefined;
+    const applied = this.db.prepare('SELECT version FROM schema_versions WHERE version = ?').get(27) as SchemaVersion | undefined;
     if (applied) return;
 
-    logger.debug('DB', 'Migration 26: Creating sync_queue table');
+    logger.debug('DB', 'Migration 27: Creating sync_queue table');
 
     this.db.run(`
       CREATE TABLE IF NOT EXISTS sync_queue (
@@ -1006,7 +1006,7 @@ export class MigrationRunner {
     this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status)');
     this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
 
-    this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(26, new Date().toISOString());
+    this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(27, new Date().toISOString());
     logger.debug('DB', 'Successfully created sync_queue table');
   }
 }
