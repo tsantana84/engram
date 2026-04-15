@@ -25,17 +25,20 @@ Everything else (hooks, worker, MCP tools, skills) is identical to the upstream.
 
 ## End-user install
 
-1. Install via git URL:
+```bash
+claude plugin marketplace add tsantana84/engram
+claude plugin install engram
+```
 
-   ```bash
-   claude plugin install https://github.com/tsantana84/engram
-   ```
+Then in Claude Code, run `/login` to connect this machine to the shared brain:
 
-2. Claude Code runs the setup wizard automatically on install. When prompted:
-   - Enter your API key (contact Thiago to get one)
-   - Enter an agent name (e.g. `thiago-macbook` — identifies this machine in shared memory)
+```
+/login
+```
 
-3. Done. Observations sync to the shared server after each session.
+It will prompt for an agent name (e.g. `macbook-work`), register the machine, and configure sync automatically.
+
+That's it. Observations sync to the shared server after each session.
 
 ---
 
