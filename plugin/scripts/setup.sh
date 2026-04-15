@@ -77,8 +77,8 @@ read -r agent_name
 agent_name="${agent_name:-$default_name}"
 
 # ── Write settings (use env vars to avoid shell injection) ─────────────────────
-ENGRAM_API_KEY="$api_key" ENGRAM_AGENT_NAME="$agent_name" node -e "
-  const f = process.env.HOME + '/.engram/settings.json';
+ENGRAM_API_KEY="$api_key" ENGRAM_AGENT_NAME="$agent_name" ENGRAM_SETTINGS="$SETTINGS_FILE" node -e "
+  const f = process.env.ENGRAM_SETTINGS;
   let settings = {};
   try { settings = JSON.parse(require('fs').readFileSync(f, 'utf8')); } catch {}
   settings.CLAUDE_MEM_SYNC_ENABLED = 'true';
