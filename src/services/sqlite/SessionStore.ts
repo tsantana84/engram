@@ -1788,10 +1788,9 @@ export class SessionStore {
       generatedByModel || null
     );
 
-    return {
-      id: Number(result.lastInsertRowid),
-      createdAtEpoch: timestampEpoch
-    };
+    const id = Number(result.lastInsertRowid);
+    this.syncQueue?.enqueue('observation', id);
+    return { id, createdAtEpoch: timestampEpoch };
   }
 
   /**
@@ -1839,10 +1838,9 @@ export class SessionStore {
       timestampEpoch
     );
 
-    return {
-      id: Number(result.lastInsertRowid),
-      createdAtEpoch: timestampEpoch
-    };
+    const id = Number(result.lastInsertRowid);
+    this.syncQueue?.enqueue('summary', id);
+    return { id, createdAtEpoch: timestampEpoch };
   }
 
   /**
