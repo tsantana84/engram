@@ -1,4 +1,3 @@
-import { ServerService } from '../../services/server/ServerService.js';
 import { generateApiKey, hashApiKey } from '../../services/server/auth/key-generator.js';
 import { PostgresManager } from '../../services/server/PostgresManager.js';
 
@@ -6,30 +5,6 @@ export async function runServerCommand(args: string[]): Promise<void> {
   const subcommand = args[0];
 
   switch (subcommand) {
-    case 'start': {
-      const port = parseInt(getFlag(args, '--port') || '8888');
-      const databaseUrl = getFlag(args, '--database-url') || process.env.DATABASE_URL;
-
-      if (!databaseUrl) {
-        console.error('Error: --database-url or DATABASE_URL env var is required');
-        process.exit(1);
-      }
-
-      const server = new ServerService({ port, databaseUrl });
-      await server.start();
-      
-      process.on('SIGINT', async () => {
-        console.log('\nShutting down...');
-        await server.stop();
-        process.exit(0);
-      });
-      process.on('SIGTERM', async () => {
-        await server.stop();
-        process.exit(0);
-      });
-      break;
-    }
-
     case 'create-agent': {
       const name = getFlag(args, '--name');
       const databaseUrl = getFlag(args, '--database-url') || process.env.DATABASE_URL;
@@ -57,7 +32,7 @@ export async function runServerCommand(args: string[]): Promise<void> {
         console.log(`\nSave this key — it cannot be retrieved again.`);
         console.log(`\nAdd to ~/.claude-mem/settings.json:`);
         console.log(JSON.stringify({
-          CLAUDE_MEM_SYNC_ENABLED: true,
+          CLAUDE_MEM_SYNC_ENABLED: "true",
           CLAUDE_MEM_SYNC_SERVER_URL: 'http://your-server:8888',
           CLAUDE_MEM_SYNC_API_KEY: apiKey,
           CLAUDE_MEM_SYNC_AGENT_NAME: name,
@@ -132,17 +107,18 @@ export async function runServerCommand(args: string[]): Promise<void> {
       console.log(`Usage: engram server <command>
 
 Commands:
-  start              Start the sync server
-    --port           Port (default: 8888)
-    --database-url   Postgres connection string
-
   create-agent       Register a new agent
     --name           Agent display name
+    --database-url   Supabase connection string (or DATABASE_URL env)
 
   list-agents        List all active agents
+    --database-url   Supabase connection string (or DATABASE_URL env)
 
   revoke-agent       Revoke an agent's access
     --name           Agent name to revoke
+    --database-url   Supabase connection string (or DATABASE_URL env)
+
+Note: The sync server is hosted at https://your-project.vercel.app
 `);
   }
 }
