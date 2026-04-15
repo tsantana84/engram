@@ -311,7 +311,11 @@ Expected: no errors
 git add src/shared/EnvManager.ts src/shared/SettingsDefaultsManager.ts \
   src/services/transcripts/config.ts src/cli/claude-md-commands.ts \
   src/utils/logger.ts src/services/infrastructure/ProcessManager.ts \
-  src/supervisor/shutdown.ts src/supervisor/index.ts
+  src/supervisor/shutdown.ts src/supervisor/index.ts \
+  src/shared/paths.ts src/npx-cli/utils/paths.ts \
+  src/utils/claude-md-utils.ts src/services/context/ContextConfigLoader.ts \
+  src/services/sync/ChromaMcpManager.ts \
+  src/services/integrations/CodexCliInstaller.ts
 git commit -m "fix: rename data directory from .claude-mem to .engram across all source files"
 ```
 
@@ -532,11 +536,11 @@ if [ ! -d "$ENGRAM_DIR" ] && [ -d "$HOME/.claude-mem" ]; then
   if [[ "$migrate_answer" =~ ^[Yy]$ ]]; then
     cp -r "$HOME/.claude-mem" "$ENGRAM_DIR"
     # Patch CLAUDE_MEM_DATA_DIR in the copied settings to point to ~/.engram
-    node -e "
-      const f = '$SETTINGS_FILE';
+    ENGRAM_SETTINGS="$SETTINGS_FILE" ENGRAM_DATA_DIR="$ENGRAM_DIR" node -e "
+      const f = process.env.ENGRAM_SETTINGS;
       try {
         const d = JSON.parse(require('fs').readFileSync(f, 'utf8'));
-        d.CLAUDE_MEM_DATA_DIR = '$ENGRAM_DIR';
+        d.CLAUDE_MEM_DATA_DIR = process.env.ENGRAM_DATA_DIR;
         require('fs').writeFileSync(f, JSON.stringify(d, null, 2));
       } catch {}
     " 2>/dev/null || true
