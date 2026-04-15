@@ -42,12 +42,12 @@ The most critical fix. Eight hook commands contain `cache/thedotmack/claude-mem/
 **Files:**
 - Modify: `plugin/hooks/hooks.json`
 
-- [ ] **Step 1: Verify the current state**
+- [ ] **Step 1: Verify the current state (scope to the cache path pattern)**
 
 ```bash
-grep -c "claude-mem" plugin/hooks/hooks.json
+grep -c "cache/thedotmack/claude-mem/" plugin/hooks/hooks.json
 ```
-Expected: `26` (or similar non-zero count)
+Expected: `8`
 
 - [ ] **Step 2: Replace all cache fallback paths**
 
@@ -55,10 +55,10 @@ Expected: `26` (or similar non-zero count)
 sed -i '' 's|cache/thedotmack/claude-mem/|cache/thedotmack/engram/|g' plugin/hooks/hooks.json
 ```
 
-- [ ] **Step 3: Verify — no more claude-mem in fallback paths**
+- [ ] **Step 3: Verify — no more cache fallback paths to claude-mem**
 
 ```bash
-grep "claude-mem" plugin/hooks/hooks.json
+grep "cache/thedotmack/claude-mem/" plugin/hooks/hooks.json
 ```
 Expected: zero matches
 
@@ -145,6 +145,12 @@ Change every hardcoded `~/.claude-mem/` path to `~/.engram/` across 8 source fil
 - Modify: `src/services/infrastructure/ProcessManager.ts` (line 24)
 - Modify: `src/supervisor/shutdown.ts` (line 11)
 - Modify: `src/supervisor/index.ts` (line 9/24)
+- Modify: `src/shared/paths.ts` (line 54 — cache path; line 59 — data dir)
+- Modify: `src/npx-cli/utils/paths.ts` (line 59)
+- Modify: `src/utils/claude-md-utils.ts` (line 21)
+- Modify: `src/services/context/ContextConfigLoader.ts` (line 18)
+- Modify: `src/services/sync/ChromaMcpManager.ts` (lines 31, 370)
+- Modify: `src/services/integrations/CodexCliInstaller.ts` (line 35)
 
 - [ ] **Step 1: Verify all current hardcoded paths**
 
@@ -247,12 +253,50 @@ const DATA_DIR = path.join(homedir(), '.claude-mem');
 const DATA_DIR = path.join(homedir(), '.engram');
 ```
 
-- [ ] **Step 10: Verify no .claude-mem remains in critical source paths**
+- [ ] **Step 10: Replace in 6 additional files**
+
+`src/shared/paths.ts` line 54 (cache path) and line 59 (data dir):
+```typescript
+// line 54 — cache lookup path for plugin fallback
+return join(pluginsDirectory(), 'cache', 'thedotmack', 'engram', version);
+// line 59 — data dir
+return join(homedir(), '.engram');
+```
+
+`src/npx-cli/utils/paths.ts` line 59:
+```typescript
+return join(homedir(), '.engram');
+```
+
+`src/utils/claude-md-utils.ts` line 21:
+```typescript
+const SETTINGS_PATH = path.join(os.homedir(), '.engram', 'settings.json');
+```
+
+`src/services/context/ContextConfigLoader.ts` line 18:
+```typescript
+const settingsPath = path.join(homedir(), '.engram', 'settings.json');
+```
+
+`src/services/sync/ChromaMcpManager.ts` lines 31 and 370:
+```typescript
+// line 31
+const DEFAULT_CHROMA_DATA_DIR = path.join(os.homedir(), '.engram', 'chroma');
+// line 370
+const combinedCertPath = path.join(os.homedir(), '.engram', 'combined_certs.pem');
+```
+
+`src/services/integrations/CodexCliInstaller.ts` line 35:
+```typescript
+const CLAUDE_MEM_DIR = path.join(homedir(), '.engram');
+```
+
+- [ ] **Step 11: Verify no .claude-mem directory-path references remain**
 
 ```bash
-grep -rn "\.claude-mem" src/ --include="*.ts" | grep -v "// \|comment\|claude-mem.db\|claude-mem-"
+grep -rn "homedir.*claude-mem\|\.claude-mem'" src/ --include="*.ts"
 ```
-Expected: zero matches (`.claude-mem` only valid inside strings like `claude-mem.db` filename or log filename, not as a directory path)
+Expected: zero matches
 
 - [ ] **Step 11: TypeScript compile check**
 
@@ -364,8 +408,13 @@ case 'force-restart': {
       logger.info('SYSTEM', 'Worker process not found (already stopped)', { pid: pidInfo.pid });
     }
   }
+  // Wait for port to free BEFORE removing PID file (mirrors existing restart case)
+  const forceRestartFreed = await waitForPortFree(port, getPlatformTimeout(15000));
+  if (!forceRestartFreed) {
+    logger.error('SYSTEM', 'Port did not free up after kill, aborting force-restart', { port });
+    process.exit(0);
+  }
   removePidFile();
-  await waitForPortFree(port, getPlatformTimeout(3000));
 
   const pid = spawnDaemon(__filename, port);
   if (pid === undefined) {
@@ -577,6 +626,28 @@ Expected: one match in the Setup hook command
 git add plugin/scripts/setup.sh
 git commit -m "feat: add setup.sh wizard for first-run sync configuration"
 ```
+
+> **Note on shell injection fix:** The setup.sh script above must pass `api_key` and `agent_name` to node via environment variables — NOT via shell string interpolation. Replace the final `node -e "..."` write block in setup.sh with:
+>
+> ```bash
+> ENGRAM_API_KEY="$api_key" ENGRAM_AGENT_NAME="$agent_name" node -e "
+>   const f = process.env.HOME + '/.engram/settings.json';
+>   let settings = {};
+>   try { settings = JSON.parse(require('fs').readFileSync(f, 'utf8')); } catch {}
+>   settings.CLAUDE_MEM_SYNC_ENABLED = 'true';
+>   settings.CLAUDE_MEM_SYNC_SERVER_URL = 'https://engram-ashy.vercel.app';
+>   settings.CLAUDE_MEM_SYNC_API_KEY = process.env.ENGRAM_API_KEY;
+>   settings.CLAUDE_MEM_SYNC_AGENT_NAME = process.env.ENGRAM_AGENT_NAME;
+>   require('fs').writeFileSync(f, JSON.stringify(settings, null, 2));
+>   console.log('');
+>   console.log('✓ Engram configured successfully!');
+>   console.log('  Agent:', process.env.ENGRAM_AGENT_NAME);
+>   console.log('  Server: https://engram-ashy.vercel.app');
+>   console.log('  Observations will sync after each session.');
+> "
+> ```
+>
+> Apply the same env-var approach to the migration patch block — pass `$ENGRAM_DIR` via `ENGRAM_DIR="$ENGRAM_DIR" node -e "...process.env.ENGRAM_DIR..."` instead of inline `'$ENGRAM_DIR'`.
 
 ---
 
