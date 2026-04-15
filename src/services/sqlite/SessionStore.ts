@@ -16,6 +16,7 @@ import type { PendingMessageStore } from './PendingMessageStore.js';
 import { computeObservationContentHash, findDuplicateObservation } from './observations/store.js';
 import { parseFileList } from './observations/files.js';
 import { DEFAULT_PLATFORM_SOURCE, normalizePlatformSource, sortPlatformSources } from '../../shared/platform-source.js';
+import type { SyncQueue } from '../sync/SyncQueue.js';
 
 function resolveCreateSessionArgs(
   customTitle?: string,
@@ -33,6 +34,11 @@ function resolveCreateSessionArgs(
  */
 export class SessionStore {
   public db: Database;
+  private syncQueue: SyncQueue | null = null;
+
+  setSyncQueue(queue: SyncQueue): void {
+    this.syncQueue = queue;
+  }
 
   constructor(dbPath: string = DB_PATH) {
     if (dbPath !== ':memory:') {
@@ -65,6 +71,7 @@ export class SessionStore {
     this.addSessionCustomTitleColumn();
     this.addSessionPlatformSourceColumn();
     this.addObservationModelColumns();
+    this.createSyncQueueTable();
   }
 
   /**
@@ -942,6 +949,31 @@ export class SessionStore {
     }
 
     this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(26, new Date().toISOString());
+  }
+
+  /**
+   * Create sync_queue table for multi-agent sync (migration 27)
+   */
+  private createSyncQueueTable(): void {
+    const applied = this.db.prepare('SELECT version FROM schema_versions WHERE version = ?').get(27) as SchemaVersion | undefined;
+    if (applied) return;
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS sync_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL CHECK(entity_type IN ('observation', 'session', 'summary')),
+        entity_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'synced', 'failed')),
+        attempts INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        synced_at TEXT
+      )
+    `);
+
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+
+    this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(27, new Date().toISOString());
   }
 
   /**
