@@ -272,24 +272,12 @@ export class SearchManager {
     if (this.syncClient && query) {
       try {
         const teamResults = await this.syncClient.searchTeam(query, options);
-        if (teamResults && teamResults.observations) {
+        const remoteObs = teamResults?.results || teamResults?.observations || [];
+        if (remoteObs.length > 0) {
           const localObsHashes = new Set(observations.map(o => o.content_hash));
-          const localSessHashes = new Set(sessions.map(s => s.content_hash));
-          const localPromptHashes = new Set(prompts.map(p => p.content_hash));
-
-          for (const obs of teamResults.observations) {
+          for (const obs of remoteObs) {
             if (!localObsHashes.has(obs.content_hash)) {
-              observations.push({ ...obs, source: 'team', agent_name: teamResults.agent_name });
-            }
-          }
-          for (const sess of teamResults.sessions || []) {
-            if (!localSessHashes.has(sess.content_hash)) {
-              sessions.push({ ...sess, source: 'team', agent_name: teamResults.agent_name });
-            }
-          }
-          for (const prompt of teamResults.prompts || []) {
-            if (!localPromptHashes.has(prompt.content_hash)) {
-              prompts.push({ ...prompt, source: 'team', agent_name: teamResults.agent_name });
+              observations.push({ ...obs, source: 'team', agent_name: obs.agent_name || (teamResults as any).agent_name });
             }
           }
         }
@@ -298,10 +286,10 @@ export class SearchManager {
       }
     }
 
-    // Mark local results with source
-    observations = observations.map(o => ({ ...o, source: 'local' }));
-    sessions = sessions.map(s => ({ ...s, source: 'local' }));
-    prompts = prompts.map(p => ({ ...p, source: 'local' }));
+    // Mark local results with source (preserve 'team' source on merged results)
+    observations = observations.map(o => ({ ...o, source: (o as any).source || 'local' }));
+    sessions = sessions.map(s => ({ ...s, source: (s as any).source || 'local' }));
+    prompts = prompts.map(p => ({ ...p, source: (p as any).source || 'local' }));
 
     const totalResults = observations.length + sessions.length + prompts.length;
 

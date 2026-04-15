@@ -165,7 +165,7 @@ export class SyncClient {
 
     try {
       const url = new URL(this.buildUrl('/api/search'));
-      url.searchParams.set('query', query);
+      url.searchParams.set('q', query);
       for (const [key, value] of Object.entries(params)) {
         url.searchParams.set(key, value);
       }
