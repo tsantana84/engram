@@ -1791,8 +1791,8 @@ export class SessionStore {
 
     let gitBranch: string | null = null;
     try {
-      const gitResult = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' });
-      if (gitResult.status === 0) gitBranch = gitResult.stdout.trim() || null;
+      const gitResult = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8', timeout: 2000 });
+      if (gitResult.status === 0 && !gitResult.error) gitBranch = gitResult.stdout.trim() || null;
     } catch { /* not in a git repo */ }
 
     const stmt = this.db.prepare(`

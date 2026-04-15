@@ -588,10 +588,9 @@ export const migration010: Migration = {
     db.run(`ALTER TABLE observations ADD COLUMN validation_status TEXT DEFAULT 'unvalidated'`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_observations_validation ON observations(validation_status)`);
     db.run(`CREATE INDEX IF NOT EXISTS idx_observations_invalidated ON observations(invalidated_at)`);
-    console.log('✅ Added git_branch, invalidated_at, validation_status to observations');
   },
   down: (_db: Database) => {
-    // SQLite doesn't support DROP COLUMN in older versions — no-op
+    // Rollback intentionally not implemented
   }
 };
 
