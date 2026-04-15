@@ -54,7 +54,7 @@ export function pluginCacheDirectory(version: string): string {
   return join(pluginsDirectory(), 'cache', 'thedotmack', 'claude-mem', version);
 }
 
-/** claude-mem data directory (default `~/.claude-mem`). */
+/** claude-mem data directory (default `~/.engram`). */
 export function claudeMemDataDirectory(): string {
   return join(homedir(), '.engram');
 }

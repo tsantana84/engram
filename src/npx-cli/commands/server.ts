@@ -30,7 +30,7 @@ export async function runServerCommand(args: string[]): Promise<void> {
         console.log(`\nAgent created: ${agent.name}`);
         console.log(`API Key: ${apiKey}`);
         console.log(`\nSave this key — it cannot be retrieved again.`);
-        console.log(`\nAdd to ~/.claude-mem/settings.json:`);
+        console.log(`\nAdd to ~/.engram/settings.json:`);
         console.log(JSON.stringify({
           CLAUDE_MEM_SYNC_ENABLED: "true",
           CLAUDE_MEM_SYNC_SERVER_URL: 'http://your-server:8888',

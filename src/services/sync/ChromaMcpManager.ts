@@ -362,7 +362,7 @@ export class ChromaMcpManager {
   /**
    * Get or create a combined SSL certificate bundle for Zscaler/corporate proxy environments.
    * On macOS, combines the Python certifi CA bundle with any Zscaler certificates from
-   * the system keychain. Caches the result for 24 hours at ~/.claude-mem/combined_certs.pem.
+   * the system keychain. Caches the result for 24 hours at ~/.engram/combined_certs.pem.
    *
    * Returns the path to the combined cert file, or undefined if not needed/available.
    */

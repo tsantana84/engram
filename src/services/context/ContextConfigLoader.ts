@@ -12,7 +12,7 @@ import type { ContextConfig } from './types.js';
 
 /**
  * Load all context configuration settings
- * Priority: ~/.claude-mem/settings.json > env var > defaults
+ * Priority: ~/.engram/settings.json > env var > defaults
  */
 export function loadContextConfig(): ContextConfig {
   const settingsPath = path.join(homedir(), '.engram', 'settings.json');

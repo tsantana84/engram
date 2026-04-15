@@ -436,13 +436,13 @@ export class OpenRouterAgent {
 
   /**
    * Get OpenRouter configuration from settings or environment
-   * Issue #733: Uses centralized ~/.claude-mem/.env for credentials, not random project .env files
+   * Issue #733: Uses centralized ~/.engram/.env for credentials, not random project .env files
    */
   private getOpenRouterConfig(): { apiKey: string; model: string; siteUrl?: string; appName?: string } {
     const settingsPath = USER_SETTINGS_PATH;
     const settings = SettingsDefaultsManager.loadFromFile(settingsPath);
 
-    // API key: check settings first, then centralized claude-mem .env (NOT process.env)
+    // API key: check settings first, then centralized engram .env (NOT process.env)
     // This prevents Issue #733 where random project .env files could interfere
     const apiKey = settings.CLAUDE_MEM_OPENROUTER_API_KEY || getCredential('OPENROUTER_API_KEY') || '';
 
@@ -459,7 +459,7 @@ export class OpenRouterAgent {
 
 /**
  * Check if OpenRouter is available (has API key configured)
- * Issue #733: Uses centralized ~/.claude-mem/.env, not random project .env files
+ * Issue #733: Uses centralized ~/.engram/.env, not random project .env files
  */
 export function isOpenRouterAvailable(): boolean {
   const settingsPath = USER_SETTINGS_PATH;

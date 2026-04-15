@@ -4,7 +4,7 @@
  * Uses transcript-only watching (no notify hook). The watcher infrastructure
  * already exists in src/services/transcripts/. This installer:
  *
- * 1. Writes/merges transcript-watch config to ~/.claude-mem/transcript-watch.json
+ * 1. Writes/merges transcript-watch config to ~/.engram/transcript-watch.json
  * 2. Sets up watch for ~/.codex/sessions/**\/*.jsonl using existing watcher
  * 3. Injects context via ~/.codex/AGENTS.md (Codex reads this natively)
  *
@@ -205,7 +205,7 @@ function removeCodexAgentsMdContext(): void {
 /**
  * Install Codex CLI integration for claude-mem.
  *
- * 1. Merges Codex transcript-watch config into ~/.claude-mem/transcript-watch.json
+ * 1. Merges Codex transcript-watch config into ~/.engram/transcript-watch.json
  * 2. Injects context placeholder into ~/.codex/AGENTS.md
  *
  * @returns 0 on success, 1 on failure

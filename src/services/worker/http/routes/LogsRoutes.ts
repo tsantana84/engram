@@ -1,7 +1,7 @@
 /**
  * Logs Routes
  *
- * Handles fetching and clearing log files from ~/.claude-mem/logs/
+ * Handles fetching and clearing log files from ~/.engram/logs/
  */
 
 import express, { Request, Response } from 'express';

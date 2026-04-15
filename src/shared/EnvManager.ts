@@ -1,7 +1,7 @@
 /**
  * EnvManager - Centralized environment variable management for claude-mem
  *
- * Provides isolated credential storage in ~/.claude-mem/.env
+ * Provides isolated credential storage in ~/.engram/.env
  * This ensures claude-mem uses its own configured credentials,
  * not random ANTHROPIC_API_KEY values from project .env files.
  *
@@ -101,7 +101,7 @@ function serializeEnvFile(env: Record<string, string>): string {
 }
 
 /**
- * Load credentials from ~/.claude-mem/.env
+ * Load credentials from ~/.engram/.env
  * Returns empty object if file doesn't exist (means use CLI billing)
  */
 export function loadClaudeMemEnv(): ClaudeMemEnv {
@@ -128,7 +128,7 @@ export function loadClaudeMemEnv(): ClaudeMemEnv {
 }
 
 /**
- * Save credentials to ~/.claude-mem/.env
+ * Save credentials to ~/.engram/.env
  */
 export function saveClaudeMemEnv(env: ClaudeMemEnv): void {
   try {
@@ -193,10 +193,10 @@ export function saveClaudeMemEnv(env: ClaudeMemEnv): void {
  * - ANTHROPIC_BASE_URL (custom proxy endpoints)
  * - Platform-specific vars (USERPROFILE, XDG_*, etc.)
  *
- * If claude-mem has an explicit ANTHROPIC_API_KEY in ~/.claude-mem/.env, it's re-injected
+ * If claude-mem has an explicit ANTHROPIC_API_KEY in ~/.engram/.env, it's re-injected
  * after stripping, so the managed credential takes precedence over any ambient value.
  *
- * @param includeCredentials - Whether to include API keys from ~/.claude-mem/.env (default: true)
+ * @param includeCredentials - Whether to include API keys from ~/.engram/.env (default: true)
  */
 export function buildIsolatedEnv(includeCredentials: boolean = true): Record<string, string> {
   // 1. Start with full process environment
@@ -279,7 +279,7 @@ export function hasAnthropicApiKey(): boolean {
  */
 export function getAuthMethodDescription(): string {
   if (hasAnthropicApiKey()) {
-    return 'API key (from ~/.claude-mem/.env)';
+    return 'API key (from ~/.engram/.env)';
   }
   if (process.env.CLAUDE_CODE_OAUTH_TOKEN) {
     return 'Claude Code OAuth token (from parent process)';

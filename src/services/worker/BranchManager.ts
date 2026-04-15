@@ -192,7 +192,7 @@ export async function switchBranch(targetBranch: string): Promise<SwitchResult> 
       to: targetBranch
     });
 
-    // 1. Discard local changes (safe - user data is at ~/.claude-mem/)
+    // 1. Discard local changes (safe - user data is at ~/.engram/)
     logger.debug('BRANCH', 'Discarding local changes');
     execGit(['checkout', '--', '.']);
     execGit(['clean', '-fd']); // Remove untracked files too

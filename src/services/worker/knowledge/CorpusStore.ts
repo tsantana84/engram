@@ -2,7 +2,7 @@
  * CorpusStore - File I/O for corpus JSON files
  *
  * Manages reading, writing, listing, and deleting corpus files
- * stored in ~/.claude-mem/corpora/
+ * stored in ~/.engram/corpora/
  */
 
 import * as fs from 'node:fs';

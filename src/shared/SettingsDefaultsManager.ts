@@ -222,7 +222,7 @@ export class SettingsDefaultsManager {
    *
    * Configuration Priority:
    *   1. Environment variables (highest priority)
-   *   2. Settings file (~/.claude-mem/settings.json)
+   *   2. Settings file (~/.engram/settings.json)
    *   3. Default values (lowest priority)
    */
   static loadFromFile(settingsPath: string): SettingsDefaults {

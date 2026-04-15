@@ -649,7 +649,7 @@ const CHROMA_MIGRATION_MARKER_FILENAME = '.chroma-cleaned-v10.3';
  * worker bugs that could corrupt chroma data. Since chroma is always rebuildable
  * from SQLite (via backfillAllProjects), this is safe.
  *
- * Checks for a marker file. If absent, wipes ~/.claude-mem/chroma/ and writes
+ * Checks for a marker file. If absent, wipes ~/.engram/chroma/ and writes
  * the marker. If present, skips. Idempotent.
  *
  * @param dataDirectory - Override for DATA_DIR (used in tests)

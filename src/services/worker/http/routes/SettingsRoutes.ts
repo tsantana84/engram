@@ -2,7 +2,7 @@
  * Settings Routes
  *
  * Handles settings management, MCP toggle, and branch switching.
- * Settings are stored in ~/.claude-mem/settings.json
+ * Settings are stored in ~/.engram/settings.json
  */
 
 import express, { Request, Response } from 'express';
@@ -41,7 +41,7 @@ export class SettingsRoutes extends BaseRouteHandler {
   }
 
   /**
-   * Get environment settings (from ~/.claude-mem/settings.json)
+   * Get environment settings (from ~/.engram/settings.json)
    */
   private handleGetSettings = this.wrapHandler((req: Request, res: Response): void => {
     const settingsPath = path.join(homedir(), '.engram', 'settings.json');
@@ -51,7 +51,7 @@ export class SettingsRoutes extends BaseRouteHandler {
   });
 
   /**
-   * Update environment settings (in ~/.claude-mem/settings.json) with validation
+   * Update environment settings (in ~/.engram/settings.json) with validation
    */
   private handleUpdateSettings = this.wrapHandler((req: Request, res: Response): void => {
     // Validate all settings
@@ -77,7 +77,7 @@ export class SettingsRoutes extends BaseRouteHandler {
         logger.error('SETTINGS', 'Failed to parse settings file', { settingsPath }, parseError as Error);
         res.status(500).json({
           success: false,
-          error: 'Settings file is corrupted. Delete ~/.claude-mem/settings.json to reset.'
+          error: 'Settings file is corrupted. Delete ~/.engram/settings.json to reset.'
         });
         return;
       }
