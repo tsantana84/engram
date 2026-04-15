@@ -372,6 +372,48 @@ npm test
   </div>
 </div>
 <div id="slide-6" class="slide">
+  <div class="eyebrow">Scaling</div>
+  <h2>Limits &amp; scaling</h2>
+  <p class="lead">Two separate limits — storage and context injection. They hit at very different scales.</p>
+
+  <div class="grid-2" style="margin-bottom:1.5rem">
+    <div>
+      <h3>Storage — not your bottleneck</h3>
+      <table style="font-size:.85rem">
+        <thead><tr><th>Layer</th><th>Limit</th></tr></thead>
+        <tbody>
+          <tr><td>SQLite (local)</td><td>Billions of rows. Practically unlimited.</td></tr>
+          <tr><td>Supabase free tier</td><td>500MB ≈ ~250k observations</td></tr>
+          <tr><td>Supabase paid</td><td>Scales to TB</td></tr>
+          <tr><td>Chroma (vector)</td><td>Memory-bound. Slow rebuild at 50k+ obs</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div>
+      <h3>Context injection — the real limit</h3>
+      <div class="card" style="margin-bottom:.75rem">
+        <div style="font-size:.83rem;font-weight:600;color:var(--accent);margin-bottom:.25rem">How it works</div>
+        <div style="font-size:.83rem;color:var(--text-muted)">Every session start, engram injects past observations into Claude's context window. That window is finite.</div>
+      </div>
+      <div class="card" style="margin-bottom:.75rem">
+        <div style="font-size:.83rem;font-weight:600;color:var(--accent);margin-bottom:.25rem">Current scale</div>
+        <div style="font-size:.83rem;color:var(--text-muted)">50 observations ≈ 16K tokens injected. At that rate, 300–400 obs consumes a 100K context window entirely.</div>
+      </div>
+      <div class="card">
+        <div style="font-size:.83rem;font-weight:600;color:var(--accent);margin-bottom:.25rem">The knob</div>
+        <code style="font-size:.8rem">CLAUDE_MEM_OBSERVATION_LIMIT</code>
+        <div style="font-size:.8rem;color:var(--text-muted);margin-top:.25rem">in <code>~/.engram/settings.json</code> — tune as corpus grows</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-icon">ℹ️</div>
+    <div>Compression (session summaries) already stretches the injection budget. Storage will never be the problem — context window is the binding constraint.</div>
+  </div>
+</div>
+<div id="slide-7" class="slide">
   <div class="eyebrow">Discussion</div>
   <h2>Q&A</h2>
   <p class="lead">Questions? Press <kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:.1rem .4rem;font-family:monospace">F</kbd> to open the FAQ panel.</p>
@@ -435,6 +477,7 @@ const SLIDE_TITLES = [
   'ConflictDetector',
   'Demo walkthrough',
   'Dev workflow',
+  'Limits & scaling',
   'Q&A'
 ];
 
@@ -466,7 +509,7 @@ document.addEventListener('keydown', e => {
     goTo(current + 1);
   }
   if (e.key === 'ArrowLeft') goTo(current - 1);
-  if ((e.key === 'f' || e.key === 'F') && current === 5) openFaq();
+  if ((e.key === 'f' || e.key === 'F') && current === 6) openFaq();
 });
 
 // Flow animation (Slide 2) — populated in Task 3
