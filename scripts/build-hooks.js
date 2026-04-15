@@ -317,7 +317,7 @@ async function buildHooks() {
       target: 'node18',
       format: 'esm',
       outfile: `${npxCliOutDir}/index.js`,
-      banner: { js: '#!/usr/bin/env node' },
+      banner: { js: '#!/usr/bin/env bun' },
       minify: true,
       logLevel: 'error',
       external: [

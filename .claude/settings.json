@@ -1,5 +1,8 @@
 {
   "env": {},
+  "enabledPlugins": {
+    "claude-mem@thedotmack": false
+  },
   "permissions": {
     "deny": [
       "Read(./package-lock.json)",

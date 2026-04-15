@@ -1,0 +1,335 @@
+import { createClient } from '@supabase/supabase-js';
+
+export interface AgentRecord {
+  id: string;
+  name: string;
+  api_key_hash: string;
+  status: string;
+  created_at: string;
+}
+
+export interface ObservationInsert {
+  agent_id: string;
+  local_id: number;
+  content_hash: string;
+  type: string;
+  title: string | null;
+  subtitle: string | null;
+  facts: string[];
+  narrative: string | null;
+  concepts: string[];
+  files_read: string[];
+  files_modified: string[];
+  project: string;
+  created_at: string;
+  created_at_epoch: number;
+  prompt_number: number | null;
+  model_used: string | null;
+}
+
+export interface SessionInsert {
+  agent_id: string;
+  local_session_id: number;
+  content_session_id: string;
+  project: string;
+  platform_source: string;
+  user_prompt: string | null;
+  custom_title: string | null;
+  started_at: string;
+  started_at_epoch: number;
+  completed_at: string | null;
+  completed_at_epoch: number | null;
+  status: string;
+}
+
+export interface SummaryInsert {
+  agent_id: string;
+  local_summary_id: number;
+  local_session_id: number;
+  project: string;
+  request: string | null;
+  investigated: string | null;
+  learned: string | null;
+  completed: string | null;
+  next_steps: string | null;
+  files_read: string | null;
+  files_edited: string | null;
+  notes: string | null;
+  created_at: string;
+  created_at_epoch: number;
+}
+
+export interface SearchOptions {
+  limit?: number;
+  offset?: number;
+  project?: string;
+  type?: string;
+  agent?: string;
+}
+
+export interface ObservationSearchResult {
+  id: number;
+  agent_name: string;
+  source: 'team';
+  type: string;
+  title: string | null;
+  subtitle: string | null;
+  facts: string[];
+  narrative: string | null;
+  concepts: string[];
+  files_read: string[];
+  files_modified: string[];
+  project: string;
+  created_at: string;
+  created_at_epoch: number;
+}
+
+let _instance: SupabaseManager | null = null;
+let _pendingInit: Promise<SupabaseManager> | null = null;
+
+export function getSupabaseInstance(url?: string, anonKey?: string): SupabaseManager {
+  if (_instance) return _instance;
+  if (!url || !anonKey) throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY are required');
+  _instance = new SupabaseManager(url, anonKey);
+  return _instance;
+}
+
+export async function initSupabase(url: string, anonKey: string): Promise<SupabaseManager> {
+  if (_instance) return _instance;
+  if (_pendingInit) return _pendingInit;
+  _pendingInit = (async () => {
+    const mgr = new SupabaseManager(url, anonKey);
+    _instance = mgr;
+    return mgr;
+  })();
+  return _pendingInit;
+}
+
+export function resetSupabase(): void {
+  _instance = null;
+  _pendingInit = null;
+}
+
+export class SupabaseManager {
+  private supabase;
+
+  constructor(private url: string, private anonKey: string) {
+    this.supabase = createClient(url, anonKey);
+  }
+
+  async createAgent(name: string, apiKeyHash: string): Promise<AgentRecord> {
+    const { data, error } = await this.supabase
+      .from('agents')
+      .insert({ name, api_key_hash: apiKeyHash })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
+
+  async getActiveAgents(): Promise<AgentRecord[]> {
+    const { data, error } = await this.supabase
+      .from('agents')
+      .select('*')
+      .eq('status', 'active')
+      .order('name');
+    if (error) throw error;
+    return data || [];
+  }
+
+  async getAgentByName(name: string): Promise<AgentRecord | null> {
+    const { data, error } = await this.supabase
+      .from('agents')
+      .select('*')
+      .eq('name', name)
+      .single();
+    if (error && error.code !== 'PGRST116') throw error;
+    return data || null;
+  }
+
+  async revokeAgent(name: string): Promise<void> {
+    const { error } = await this.supabase
+      .from('agents')
+      .update({ status: 'revoked' })
+      .eq('name', name);
+    if (error) throw error;
+  }
+
+  async insertObservation(obs: ObservationInsert): Promise<{ inserted: boolean }> {
+    const { error } = await this.supabase
+      .from('observations')
+      .insert({
+        agent_id: obs.agent_id,
+        local_id: obs.local_id,
+        content_hash: obs.content_hash,
+        type: obs.type,
+        title: obs.title,
+        subtitle: obs.subtitle,
+        facts: obs.facts,
+        narrative: obs.narrative,
+        concepts: obs.concepts,
+        files_read: obs.files_read,
+        files_modified: obs.files_modified,
+        project: obs.project,
+        created_at: obs.created_at,
+        created_at_epoch: obs.created_at_epoch,
+        prompt_number: obs.prompt_number,
+        model_used: obs.model_used,
+      });
+    if (error) {
+      if (error.code === '23505') return { inserted: false };
+      throw error;
+    }
+    return { inserted: true };
+  }
+
+  async insertSession(session: SessionInsert): Promise<{ inserted: boolean }> {
+    const { error } = await this.supabase
+      .from('sessions')
+      .insert({
+        agent_id: session.agent_id,
+        local_session_id: session.local_session_id,
+        content_session_id: session.content_session_id,
+        project: session.project,
+        platform_source: session.platform_source,
+        user_prompt: session.user_prompt,
+        custom_title: session.custom_title,
+        started_at: session.started_at,
+        started_at_epoch: session.started_at_epoch,
+        completed_at: session.completed_at,
+        completed_at_epoch: session.completed_at_epoch,
+        status: session.status,
+      });
+    if (error) {
+      if (error.code === '23505') return { inserted: false };
+      throw error;
+    }
+    return { inserted: true };
+  }
+
+  async insertSummary(summary: SummaryInsert): Promise<{ inserted: boolean }> {
+    const { error } = await this.supabase
+      .from('session_summaries')
+      .insert({
+        agent_id: summary.agent_id,
+        local_summary_id: summary.local_summary_id,
+        local_session_id: summary.local_session_id,
+        project: summary.project,
+        request: summary.request,
+        investigated: summary.investigated,
+        learned: summary.learned,
+        completed: summary.completed,
+        next_steps: summary.next_steps,
+        files_read: summary.files_read,
+        files_edited: summary.files_edited,
+        notes: summary.notes,
+        created_at: summary.created_at,
+        created_at_epoch: summary.created_at_epoch,
+      });
+    if (error) {
+      if (error.code === '23505') return { inserted: false };
+      throw error;
+    }
+    return { inserted: true };
+  }
+
+  async searchObservations(query: string, options: SearchOptions = {}): Promise<ObservationSearchResult[]> {
+    const limit = options.limit || 20;
+    const offset = options.offset || 0;
+
+    let q = this.supabase
+      .from('observations')
+      .select(`
+        id, type, title, subtitle, facts, narrative, concepts,
+        files_read, files_modified, project, created_at, created_at_epoch,
+        agents(name)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (options.project) q = q.eq('project', options.project);
+    if (options.type) q = q.eq('type', options.type);
+    if (query) q = q.or(`title.ilike.%${query}%,narrative.ilike.%${query}%`);
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      agent_name: row.agents?.name || '',
+      source: 'team' as const,
+      type: row.type,
+      title: row.title,
+      subtitle: row.subtitle,
+      facts: row.facts || [],
+      narrative: row.narrative,
+      concepts: row.concepts || [],
+      files_read: row.files_read || [],
+      files_modified: row.files_modified || [],
+      project: row.project,
+      created_at: row.created_at,
+      created_at_epoch: row.created_at_epoch,
+    }));
+  }
+
+  async getTimeline(options: SearchOptions = {}): Promise<ObservationSearchResult[]> {
+    const limit = options.limit || 50;
+    const offset = options.offset || 0;
+
+    let q = this.supabase
+      .from('observations')
+      .select(`
+        id, type, title, subtitle, facts, narrative, concepts,
+        files_read, files_modified, project, created_at, created_at_epoch,
+        agents(name)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (options.project) q = q.eq('project', options.project);
+
+    const { data, error } = await q;
+    if (error) throw error;
+
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      agent_name: row.agents?.name || '',
+      source: 'team' as const,
+      type: row.type,
+      title: row.title,
+      subtitle: row.subtitle,
+      facts: row.facts || [],
+      narrative: row.narrative,
+      concepts: row.concepts || [],
+      files_read: row.files_read || [],
+      files_modified: row.files_modified || [],
+      project: row.project,
+      created_at: row.created_at,
+      created_at_epoch: row.created_at_epoch,
+    }));
+  }
+
+  async getAgentSyncStatus(agentId: string): Promise<{
+    last_sync_at: string | null;
+    observation_count: number;
+    session_count: number;
+  }> {
+    const [{ count: obsCount }, { count: sessCount }] = await Promise.all([
+      this.supabase.from('observations').select('id', { count: 'exact', head: true }).eq('agent_id', agentId),
+      this.supabase.from('sessions').select('id', { count: 'exact', head: true }).eq('agent_id', agentId),
+    ]);
+
+    const { data: lastSyncData } = await this.supabase
+      .from('observations')
+      .select('synced_at')
+      .eq('agent_id', agentId)
+      .order('synced_at', { ascending: false })
+      .limit(1);
+
+    return {
+      last_sync_at: lastSyncData?.[0]?.synced_at || null,
+      observation_count: obsCount || 0,
+      session_count: sessCount || 0,
+    };
+  }
+}
