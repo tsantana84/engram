@@ -125,6 +125,37 @@
 
 ---
 
+## Install
+
+1. Install the plugin:
+
+   ```bash
+   claude plugin install https://github.com/thedotmack/engram
+   ```
+
+2. Claude Code runs the setup wizard automatically on install.
+   When prompted:
+   - Enter your API key (contact Thiago to get one)
+   - Enter an agent name (e.g. `thiago-macbook` — identifies this machine in shared memory)
+
+3. Done. Observations sync to the shared server after each session.
+
+## Update
+
+```bash
+npm run build-and-sync
+```
+
+## Force-restart the worker
+
+Use this after changing settings manually:
+
+```bash
+npm run worker:force-restart
+```
+
+---
+
 ## Quick Start
 
 Install with a single command:
