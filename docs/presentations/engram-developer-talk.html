@@ -316,7 +316,61 @@ claude plugin install engram
     </div>
   </div>
 </div>
-<div id="slide-5" class="slide"></div>
+<div id="slide-5" class="slide">
+  <div class="eyebrow">Contributing</div>
+  <h2>Dev workflow</h2>
+
+  <div class="grid-2" style="margin-bottom:1.5rem">
+    <div>
+      <h3>Edit cycle</h3>
+      <div class="codeblock">
+        <div class="codeblock-header"><span>After editing src/</span></div>
+        <pre>npm run build-and-sync
+<span class="c-comment"># compile → sync to installed plugin → restart worker</span>
+
+npm test
+<span class="c-comment"># run test suite</span></pre>
+      </div>
+
+      <h3 style="margin-top:1rem">Backend deploy</h3>
+      <div class="codeblock">
+        <div class="codeblock-header"><span>Vercel</span></div>
+        <pre>vercel --prod</pre>
+      </div>
+    </div>
+
+    <div>
+      <h3>Key files</h3>
+      <table style="font-size:.82rem">
+        <thead><tr><th>File</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td><code>SessionStore.ts</code></td><td>SQLite layer, sync_queue enqueue</td></tr>
+          <tr><td><code>SyncWorker.ts</code></td><td>30s sync loop</td></tr>
+          <tr><td><code>ConflictDetector.ts</code></td><td>LLM-based classification</td></tr>
+          <tr><td><code>SyncClient.ts</code></td><td>Vercel API client</td></tr>
+          <tr><td><code>api/sync.ts</code></td><td>Vercel serverless function</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Upstream merge — divergence points</h3>
+  <div class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <div style="font-size:.88rem">
+      Any upstream claude-mem commit touching these files requires manual conflict resolution:<br><br>
+      <code>src/shared/EnvManager.ts</code> · <code>src/services/sqlite/SessionStore.ts</code> ·
+      <code>src/services/worker-service.ts</code> · <code>plugin/scripts/bun-runner.js</code>
+      <br><br>
+      Cherry-picks are safe on any other file.
+    </div>
+  </div>
+
+  <div class="callout info" style="margin-top:.75rem">
+    <div class="callout-icon">🔑</div>
+    <div>API keys and team access: contact Thiago (@thedotmack)</div>
+  </div>
+</div>
 <div id="slide-6" class="slide"></div>
 
 <!-- FAQ overlay (Task 7) -->
