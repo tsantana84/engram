@@ -58,16 +58,27 @@ describe('SyncClient', () => {
   });
 
   it('should handle timeout', async () => {
-    // Use a port that immediately refuses connection (localhost:1) rather than
-    // an unroutable IP, so the test doesn't depend on OS-level TCP timeout behavior
-    const slowClient = new SyncClient({
-      serverUrl: 'http://localhost:1',
-      apiKey: 'cmem_ak_testkey123',
-      agentName: 'TestAgent',
-      timeoutMs: 100,
-    });
+    // Mock fetch to hang but respect the abort signal so the AbortController fires
+    const originalFetch = globalThis.fetch;
+    (globalThis as any).fetch = (_url: string, options?: RequestInit) =>
+      new Promise((_, reject) => {
+        options?.signal?.addEventListener('abort', () => {
+          reject(new DOMException('The operation was aborted', 'AbortError'));
+        });
+      });
 
-    const payload: SyncPushPayload = { observations: [], sessions: [], summaries: [] };
-    await expect(slowClient.push(payload)).rejects.toThrow();
+    try {
+      const slowClient = new SyncClient({
+        serverUrl: 'http://example.com',
+        apiKey: 'cmem_ak_testkey123',
+        agentName: 'TestAgent',
+        timeoutMs: 50,
+      });
+
+      const payload: SyncPushPayload = { observations: [], sessions: [], summaries: [] };
+      await expect(slowClient.push(payload)).rejects.toThrow();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
