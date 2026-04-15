@@ -28,7 +28,7 @@ Everything else (hooks, worker, MCP tools, skills) is identical to the upstream.
 1. Install via git URL:
 
    ```bash
-   claude plugin install https://github.com/thedotmack/engram
+   claude plugin install https://github.com/tsantana84/engram
    ```
 
 2. Claude Code runs the setup wizard automatically on install. When prompted:
@@ -50,7 +50,7 @@ Everything else (hooks, worker, MCP tools, skills) is identical to the upstream.
 ### Clone and install
 
 ```bash
-git clone https://github.com/thedotmack/engram
+git clone https://github.com/tsantana84/engram
 cd engram
 npm install
 ```
