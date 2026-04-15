@@ -1,4 +1,5 @@
 import { Database } from 'bun:sqlite';
+import { spawnSync } from 'child_process';
 import { DATA_DIR, DB_PATH, ensureDir } from '../../shared/paths.js';
 import { logger } from '../../utils/logger.js';
 import {
@@ -72,6 +73,7 @@ export class SessionStore {
     this.addSessionPlatformSourceColumn();
     this.addObservationModelColumns();
     this.createSyncQueueTable();
+    this.addProvenanceColumns();
   }
 
   /**
@@ -977,6 +979,32 @@ export class SessionStore {
   }
 
   /**
+   * Add provenance and temporal retention columns to observations (migration 28)
+   */
+  private addProvenanceColumns(): void {
+    const applied = this.db.prepare('SELECT version FROM schema_versions WHERE version = ?').get(28) as SchemaVersion | undefined;
+    if (applied) return;
+
+    const columns = this.db.prepare('PRAGMA table_info(observations)').all() as TableColumnInfo[];
+    const names = columns.map((c) => c.name);
+
+    if (!names.includes('git_branch')) {
+      this.db.run(`ALTER TABLE observations ADD COLUMN git_branch TEXT`);
+    }
+    if (!names.includes('invalidated_at')) {
+      this.db.run(`ALTER TABLE observations ADD COLUMN invalidated_at INTEGER`);
+    }
+    if (!names.includes('validation_status')) {
+      this.db.run(`ALTER TABLE observations ADD COLUMN validation_status TEXT DEFAULT 'unvalidated'`);
+    }
+
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_observations_validation ON observations(validation_status)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_observations_invalidated ON observations(invalidated_at)`);
+
+    this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(28, new Date().toISOString());
+  }
+
+  /**
    * Update the memory session ID for a session
    * Called by SDKAgent when it captures the session ID from the first SDK message
    * Also used to RESET to null on stale resume failures (worker-service.ts)
@@ -1761,12 +1789,18 @@ export class SessionStore {
       return { id: existing.id, createdAtEpoch: existing.created_at_epoch };
     }
 
+    let gitBranch: string | null = null;
+    try {
+      const gitResult = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' });
+      if (gitResult.status === 0) gitBranch = gitResult.stdout.trim() || null;
+    } catch { /* not in a git repo */ }
+
     const stmt = this.db.prepare(`
       INSERT INTO observations
       (memory_session_id, project, type, title, subtitle, facts, narrative, concepts,
        files_read, files_modified, prompt_number, discovery_tokens, content_hash, created_at, created_at_epoch,
-       generated_by_model)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       generated_by_model, git_branch)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -1785,12 +1819,31 @@ export class SessionStore {
       contentHash,
       timestampIso,
       timestampEpoch,
-      generatedByModel || null
+      generatedByModel || null,
+      gitBranch
     );
 
     const id = Number(result.lastInsertRowid);
     this.syncQueue?.enqueue('observation', id);
     return { id, createdAtEpoch: timestampEpoch };
+  }
+
+  invalidateObservation(id: number, reason?: string): void {
+    const now = Date.now();
+    this.db.prepare(`
+      UPDATE observations
+      SET invalidated_at = ?, validation_status = 'invalidated'
+      WHERE id = ?
+    `).run(now, id);
+    if (reason) {
+      logger.info('MEMORY', `Observation #${id} invalidated: ${reason}`);
+    }
+  }
+
+  validateObservation(id: number): void {
+    this.db.prepare(`
+      UPDATE observations SET validation_status = 'validated' WHERE id = ?
+    `).run(id);
   }
 
   /**
@@ -1963,7 +2016,17 @@ export class SessionStore {
     });
 
     // Execute the transaction and return results
-    return storeTx();
+    const result = storeTx();
+
+    // Enqueue new observations and summary for multi-agent sync (outside transaction)
+    for (const id of result.observationIds) {
+      this.syncQueue?.enqueue('observation', id);
+    }
+    if (result.summaryId !== null) {
+      this.syncQueue?.enqueue('summary', result.summaryId);
+    }
+
+    return result;
   }
 
   /**
