@@ -371,10 +371,62 @@ npm test
     <div>API keys and team access: contact Thiago (@thedotmack)</div>
   </div>
 </div>
-<div id="slide-6" class="slide"></div>
+<div id="slide-6" class="slide">
+  <div class="eyebrow">Discussion</div>
+  <h2>Q&A</h2>
+  <p class="lead">Questions? Press <kbd style="background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:.1rem .4rem;font-family:monospace">F</kbd> to open the FAQ panel.</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h3>Privacy</h3>
+      <p style="font-size:.88rem;color:var(--text-muted)">Wrap content in <code>&lt;private&gt;</code> tags — stripped before storage, never reaches SQLite or Supabase.</p>
+    </div>
+    <div class="card">
+      <h3>Offline / outage</h3>
+      <p style="font-size:.88rem;color:var(--text-muted)">Sync queue retries 5×. Local memory is unaffected. Works fully offline; syncs when Supabase is reachable.</p>
+    </div>
+    <div class="card">
+      <h3>Data isolation</h3>
+      <p style="font-size:.88rem;color:var(--text-muted)">Scoped per API key. Your key = your team's data only. No cross-team reads.</p>
+    </div>
+  </div>
+
+  <div class="callout success" style="margin-top:1.5rem">
+    <div class="callout-icon">✓</div>
+    <div>Repo: <strong>github.com/tsantana84/engram</strong> · Backend: <strong>engram-ashy.vercel.app</strong></div>
+  </div>
+</div>
 
 <!-- FAQ overlay (Task 7) -->
-<div id="faq-overlay"></div>
+<div id="faq-overlay">
+  <button class="faq-close" onclick="closeFaq()">✕ close (Esc)</button>
+  <h2>FAQ</h2>
+
+  <div class="faq-item">
+    <div class="faq-q">What about private/sensitive content?</div>
+    <div class="faq-a">Wrap content in <code>&lt;private&gt;&lt;/private&gt;</code> tags. The hook strips these before the observation reaches the worker — nothing sensitive enters SQLite or Supabase.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">What if Supabase is down?</div>
+    <div class="faq-a">The sync_queue retries up to 5 times with backoff, then marks the entry as failed. Local memory in SQLite is completely unaffected. Engram continues working fully offline.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">Migrating from claude-mem?</div>
+    <div class="faq-a">The setup wizard offers to migrate on first run. Or manually: <code>cp -r ~/.claude-mem ~/.engram</code>, then update <code>CLAUDE_MEM_DATA_DIR</code> in <code>~/.engram/settings.json</code>.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">How do I disable sync?</div>
+    <div class="faq-a">Set <code>"CLAUDE_MEM_SYNC_ENABLED": "false"</code> in <code>~/.engram/settings.json</code>, then run <code>npm run worker:force-restart</code>.</div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q">Who can see my observations?</div>
+    <div class="faq-a">Only agents using the same API key. Keys are per-team. Supabase Row-Level Security enforces this at the database level.</div>
+  </div>
+</div>
 
 <script>
 const SLIDE_TITLES = [
