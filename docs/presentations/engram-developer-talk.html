@@ -165,7 +165,63 @@
     <div>Plugin identity: <code>engram@thedotmack</code> — installs alongside claude-mem without conflicts. All hooks, worker, and MCP tools are inherited from upstream.</div>
   </div>
 </div>
-<div id="slide-2" class="slide"></div>
+<div id="slide-2" class="slide">
+  <div class="eyebrow">Architecture</div>
+  <h2>Full data flow</h2>
+  <p class="lead">Every observation travels this pipeline. Press → to step through each stage.</p>
+
+  <div style="margin: 1.5rem 0;">
+    <div class="flow-row">
+      <div class="flow-node highlight">PostToolUse hook</div>
+      <div class="flow-note">fires after every tool execution in Claude Code</div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node highlight">Worker (port 37777)</div>
+      <div class="flow-note"><code>SessionStore.ts</code> — <code>storeObservations()</code></div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node">SQLite <code>~/.engram/claude-mem.db</code></div>
+      <div class="flow-note">git_branch · invalidated_at · validation_status captured here</div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-arrow">↓ enqueue</div>
+      <div class="flow-node">sync_queue</div>
+      <div class="flow-note">non-blocking — retries up to 5×, then marks failed</div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-arrow">↓ every 30s</div>
+      <div class="flow-node highlight">SyncWorker</div>
+      <div class="flow-note"><code>SyncWorker.ts</code></div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node highlight">ConflictDetector</div>
+      <div class="flow-note"><code>ConflictDetector.ts</code> — opt-in (disabled if no LLM provider set)</div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-arrow">↓ ADD / UPDATE / INVALIDATE / NOOP</div>
+      <div class="flow-node">SyncClient.push()</div>
+      <div class="flow-note"><code>SyncClient.ts</code></div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node">Vercel API</div>
+      <div class="flow-note"><code>api/sync.ts</code> at engram-ashy.vercel.app</div>
+    </div>
+    <div class="flow-row">
+      <div class="flow-arrow">↓</div>
+      <div class="flow-node">Supabase</div>
+      <div class="flow-note">shared team DB — scoped per API key, no cross-team access</div>
+    </div>
+  </div>
+
+  <div class="callout info" style="opacity:0;transition:opacity .3s" id="flow-done-callout">
+    <div class="callout-icon">→</div>
+    <div>Full pipeline visible. Press → again to continue to ConflictDetector deep-dive.</div>
+  </div>
+</div>
 <div id="slide-3" class="slide"></div>
 <div id="slide-4" class="slide"></div>
 <div id="slide-5" class="slide"></div>
@@ -219,7 +275,19 @@ document.addEventListener('keydown', e => {
 let flowStep = 0;
 let flowRows = [];
 function resetFlow() { flowStep = 0; flowRows = Array.from(document.querySelectorAll('.flow-row')); flowRows.forEach(r => r.classList.remove('visible')); const c = document.getElementById('flow-done-callout'); if (c) c.style.opacity = '0'; }
-function advanceFlow() { if (!flowRows.length) flowRows = Array.from(document.querySelectorAll('.flow-row')); if (flowStep < flowRows.length) { flowRows[flowStep].classList.add('visible'); flowStep++; return true; } return false; }
+function advanceFlow() {
+  if (!flowRows.length) flowRows = Array.from(document.querySelectorAll('.flow-row'));
+  if (flowStep < flowRows.length) {
+    flowRows[flowStep].classList.add('visible');
+    flowStep++;
+    if (flowStep === flowRows.length) {
+      const callout = document.getElementById('flow-done-callout');
+      if (callout) callout.style.opacity = '1';
+    }
+    return true;
+  }
+  return false;
+}
 
 function openFaq() { document.getElementById('faq-overlay').classList.add('visible'); }
 function closeFaq() { document.getElementById('faq-overlay').classList.remove('visible'); }
