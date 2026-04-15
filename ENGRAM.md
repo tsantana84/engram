@@ -40,6 +40,15 @@ It will prompt for an agent name (e.g. `macbook-work`), register the machine, an
 
 That's it. Observations sync to the shared server after each session.
 
+## Updating
+
+```bash
+claude plugin marketplace refresh
+claude plugin install engram
+```
+
+This pulls the latest version from the marketplace and reinstalls. Your data (`~/.engram/`) is untouched — settings, database, and logs persist across updates.
+
 ---
 
 ## Developer setup
