@@ -222,7 +222,51 @@
     <div>Full pipeline visible. Press → again to continue to ConflictDetector deep-dive.</div>
   </div>
 </div>
-<div id="slide-3" class="slide"></div>
+<div id="slide-3" class="slide">
+  <div class="eyebrow">Memory Quality</div>
+  <h2>ConflictDetector</h2>
+  <p class="lead">Stale observations pollute the shared brain. ConflictDetector classifies every outgoing observation before it reaches Supabase.</p>
+
+  <div class="callout warn" style="margin-bottom:1.5rem">
+    <div class="callout-icon">⚠️</div>
+    <div><strong>The problem:</strong> An observation written while debugging a wrong hypothesis can mislead every agent on the team. Unmerged-branch observations are even worse — they may contradict main.</div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:1.5rem">
+    <div>
+      <h3>Pipeline (when CLAUDE_MEM_PROVIDER is set)</h3>
+      <ol style="padding-left:1.2rem;line-height:2;color:var(--text-muted);font-size:.9rem">
+        <li>Fetch top-5 similar obs from Supabase</li>
+        <li>Pass to LLM with structured classification prompt</li>
+        <li>Receive action → execute</li>
+      </ol>
+    </div>
+    <div>
+      <h3>Four actions</h3>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <div><span class="badge badge-green">ADD</span> <span style="font-size:.88rem;color:var(--text-muted)">New info — store normally</span></div>
+        <div><span class="badge badge-yellow">UPDATE</span> <span style="font-size:.88rem;color:var(--text-muted)">Supersedes existing — invalidate old</span></div>
+        <div><span class="badge badge-red">INVALIDATE</span> <span style="font-size:.88rem;color:var(--text-muted)">Old obs appears wrong — remove it</span></div>
+        <div><span class="badge badge-purple">NOOP</span> <span style="font-size:.88rem;color:var(--text-muted)">Duplicate — drop silently</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="margin-bottom:.75rem">Provenance columns</h3>
+  <table>
+    <thead><tr><th>Column</th><th>Type</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>git_branch</code></td><td>TEXT</td><td>Branch at write time — flags unmerged observations</td></tr>
+      <tr><td><code>invalidated_at</code></td><td>INTEGER</td><td>Epoch when superseded (NULL = still valid)</td></tr>
+      <tr><td><code>validation_status</code></td><td>TEXT</td><td><code>unvalidated</code> / <code>validated</code> / <code>invalidated</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout success">
+    <div class="callout-icon">✓</div>
+    <div><strong>Safe default:</strong> <code>CLAUDE_MEM_PROVIDER</code> not set → ConflictDetector disabled, all observations pass as ADD. Set it in <code>~/.engram/settings.json</code> to enable classification.</div>
+  </div>
+</div>
 <div id="slide-4" class="slide"></div>
 <div id="slide-5" class="slide"></div>
 <div id="slide-6" class="slide"></div>
