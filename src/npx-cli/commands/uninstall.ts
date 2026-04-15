@@ -208,8 +208,8 @@ export async function runUninstallCommand(): Promise<void> {
 
   p.note(
     [
-      `Your data directory at ${pc.cyan('~/.claude-mem')} was preserved.`,
-      'To remove it manually: rm -rf ~/.claude-mem',
+      `Your data directory at ${pc.cyan('~/.engram')} was preserved.`,
+      'To remove it manually: rm -rf ~/.engram',
     ].join('\n'),
     'Note',
   );
