@@ -1101,7 +1101,7 @@ async function main() {
 
   // Early exit if plugin is disabled in Claude Code settings (#781).
   // Only gate hook-initiated commands; CLI management (stop/status) still works.
-  const hookInitiatedCommands = ['start', 'hook', 'restart', '--daemon'];
+  const hookInitiatedCommands = ['start', 'hook', 'restart', 'force-restart', '--daemon'];
   if ((hookInitiatedCommands.includes(command) || command === undefined) && isPluginDisabledInClaudeSettings()) {
     process.exit(0);
   }
@@ -1170,6 +1170,53 @@ async function main() {
       }
 
       logger.info('SYSTEM', 'Worker restarted successfully');
+      process.exit(0);
+      break;
+    }
+
+    case 'force-restart': {
+      logger.info('SYSTEM', 'Force-restarting worker (kill by PID)');
+      // Try to kill by PID first
+      const pidInfo = readPidFile();
+      if (pidInfo?.pid) {
+        try {
+          process.kill(pidInfo.pid, 'SIGTERM');
+          logger.info('SYSTEM', 'Sent SIGTERM to worker', { pid: pidInfo.pid });
+          // Wait up to 2s for process to exit
+          const deadline = Date.now() + 2000;
+          while (Date.now() < deadline) {
+            try {
+              process.kill(pidInfo.pid, 0); // probe: throws if process is gone
+              await new Promise(resolve => setTimeout(resolve, 100));
+            } catch {
+              break; // process is gone
+            }
+          }
+        } catch (err) {
+          logger.info('SYSTEM', 'Worker process not found (already stopped)', { pid: pidInfo.pid });
+        }
+      }
+      // Wait for port to free BEFORE removing PID file (mirrors existing restart case)
+      const forceRestartFreed = await waitForPortFree(port, getPlatformTimeout(15000));
+      if (!forceRestartFreed) {
+        logger.error('SYSTEM', 'Port did not free up after kill, aborting force-restart', { port });
+        process.exit(0);
+      }
+      removePidFile();
+
+      const pid = spawnDaemon(__filename, port);
+      if (pid === undefined) {
+        logger.error('SYSTEM', 'Failed to spawn worker daemon during force-restart');
+        process.exit(0);
+      }
+
+      const healthy = await waitForHealth(port, getPlatformTimeout(HOOK_TIMEOUTS.POST_SPAWN_WAIT));
+      if (!healthy) {
+        removePidFile();
+        logger.error('SYSTEM', 'Worker did not become healthy after force-restart');
+        process.exit(0);
+      }
+      logger.info('SYSTEM', 'Worker force-restarted successfully', { pid });
       process.exit(0);
       break;
     }
