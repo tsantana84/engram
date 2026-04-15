@@ -277,7 +277,7 @@ export class SearchManager {
           const localObsHashes = new Set(observations.map(o => o.content_hash));
           for (const obs of remoteObs) {
             if (!localObsHashes.has(obs.content_hash)) {
-              observations.push({ ...obs, source: 'team', agent_name: obs.agent_name || (teamResults as any).agent_name });
+              observations.push({ ...obs, source: 'team' as const, agent_name: obs.agent_name || (teamResults as any).agent_name, unvalidated: obs.validation_status === 'unvalidated' });
             }
           }
         }
@@ -329,6 +329,7 @@ export class SearchManager {
       created_at: string;
       source: 'local' | 'team';
       agent_name?: string;
+      unvalidated?: boolean;
     }
 
     const allResults: CombinedResult[] = [
