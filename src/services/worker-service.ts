@@ -167,6 +167,9 @@ export class WorkerService {
   // Orphan reaper cleanup function (Issue #737)
   private stopOrphanReaper: (() => void) | null = null;
 
+  // Multi-agent sync worker
+  private syncWorker: import('./sync/SyncWorker.js').SyncWorker | null = null;
+
   // Stale session reaper interval (Issue #1168)
   private staleSessionReaperInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -395,6 +398,57 @@ export class WorkerService {
       this.searchRoutes = new SearchRoutes(searchManager);
       this.server.registerRoutes(this.searchRoutes);
       logger.info('WORKER', 'SearchManager initialized and search routes registered');
+
+      // Initialize multi-agent sync (non-blocking — disabled when settings not configured)
+      const syncEnabled = settings.CLAUDE_MEM_SYNC_ENABLED === true || settings.CLAUDE_MEM_SYNC_ENABLED === 'true';
+      const syncUrl = settings.CLAUDE_MEM_SYNC_SERVER_URL;
+      const syncApiKey = settings.CLAUDE_MEM_SYNC_API_KEY;
+      const syncAgentName = settings.CLAUDE_MEM_SYNC_AGENT_NAME;
+
+      if (syncEnabled && syncUrl && syncApiKey && syncAgentName) {
+        try {
+          const { SyncQueue } = await import('./sync/SyncQueue.js');
+          const { SyncClient } = await import('./sync/SyncClient.js');
+          const { SyncWorker } = await import('./sync/SyncWorker.js');
+
+          const sessionStore = this.dbManager.getSessionStore();
+          const syncQueue = new SyncQueue(sessionStore.db);
+          sessionStore.setSyncQueue(syncQueue);
+
+          const intervalMs = parseInt(settings.CLAUDE_MEM_SYNC_INTERVAL_MS || '30000', 10);
+          const timeoutMs = parseInt(settings.CLAUDE_MEM_SYNC_TIMEOUT_MS || '3000', 10);
+          const maxRetries = parseInt(settings.CLAUDE_MEM_SYNC_MAX_RETRIES || '5', 10);
+
+          const syncClient = new SyncClient({
+            serverUrl: syncUrl,
+            apiKey: syncApiKey,
+            agentName: syncAgentName,
+            timeoutMs,
+          });
+
+          searchManager.setSyncClient(syncClient);
+
+          this.syncWorker = new SyncWorker({
+            enabled: true,
+            queue: syncQueue,
+            sessionStore,
+            serverUrl: syncUrl,
+            apiKey: syncApiKey,
+            agentName: syncAgentName,
+            intervalMs,
+            timeoutMs,
+            maxRetries,
+            batchSize: 50,
+          });
+
+          this.syncWorker.start();
+          logger.info('SYNC', 'Multi-agent sync started', { agentName: syncAgentName, serverUrl: syncUrl, intervalMs });
+        } catch (error) {
+          logger.error('SYNC', 'Failed to initialize sync (non-blocking)', {}, error as Error);
+        }
+      } else {
+        logger.info('SYNC', 'Multi-agent sync disabled or not configured');
+      }
 
       // Register corpus routes (knowledge agents) — needs SearchOrchestrator from search module
       const { SearchOrchestrator } = await import('./worker/search/SearchOrchestrator.js');
@@ -963,6 +1017,12 @@ export class WorkerService {
       this.transcriptWatcher.stop();
       this.transcriptWatcher = null;
       logger.info('TRANSCRIPT', 'Transcript watcher stopped');
+    }
+
+    if (this.syncWorker) {
+      this.syncWorker.stop();
+      this.syncWorker = null;
+      logger.info('SYNC', 'Sync worker stopped');
     }
 
     // Stop orphan reaper before shutdown (Issue #737)
