@@ -3,6 +3,10 @@
 > **Fork of [claude-mem](https://github.com/thedotmack/claude-mem) (v12.1.0)**
 > Adds multi-agent sync — pushes local memories to a shared Supabase/Vercel backend so multiple Claude Code instances can share context.
 
+## Why "Engram"
+
+An engram is the physical trace a memory leaves in the brain — a structural change in neural tissue first theorized by Richard Semon in 1904. Every experience encodes itself; every recall reactivates that encoding. The name fits this project at two levels: locally, every Claude Code session leaves an engram in a SQLite database — observations and summaries that future sessions reactivate. At the team level, this fork adds a shared engram: memory traces propagate across machines so multiple agents draw from the same encoded history. The original claude-mem names itself after its mechanism. Engram names itself after the thing being formed.
+
 ---
 
 ## What's different from claude-mem
