@@ -18,7 +18,7 @@ import { formatDate, groupByDate } from '../shared/timeline-formatting.js';
 import { SettingsDefaultsManager } from '../shared/SettingsDefaultsManager.js';
 import { workerHttpRequest } from '../shared/worker-utils.js';
 
-const SETTINGS_PATH = path.join(os.homedir(), '.claude-mem', 'settings.json');
+const SETTINGS_PATH = path.join(os.homedir(), '.engram', 'settings.json');
 
 /** Default target filename */
 const CLAUDE_MD_FILENAME = 'CLAUDE.md';

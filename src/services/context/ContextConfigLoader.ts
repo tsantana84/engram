@@ -15,7 +15,7 @@ import type { ContextConfig } from './types.js';
  * Priority: ~/.claude-mem/settings.json > env var > defaults
  */
 export function loadContextConfig(): ContextConfig {
-  const settingsPath = path.join(homedir(), '.claude-mem', 'settings.json');
+  const settingsPath = path.join(homedir(), '.engram', 'settings.json');
   const settings = SettingsDefaultsManager.loadFromFile(settingsPath);
 
   // Always read types/concepts from the active mode definition

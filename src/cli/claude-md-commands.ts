@@ -27,8 +27,8 @@ import { formatTime, groupByDate } from '../shared/timeline-formatting.js';
 import { isDirectChild } from '../shared/path-utils.js';
 import { logger } from '../utils/logger.js';
 
-const DB_PATH = path.join(os.homedir(), '.claude-mem', 'claude-mem.db');
-const SETTINGS_PATH = path.join(os.homedir(), '.claude-mem', 'settings.json');
+const DB_PATH = path.join(os.homedir(), '.engram', 'claude-mem.db');
+const SETTINGS_PATH = path.join(os.homedir(), '.engram', 'settings.json');
 
 interface ObservationRow {
   id: number;

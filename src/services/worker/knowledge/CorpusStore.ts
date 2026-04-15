@@ -11,7 +11,7 @@ import * as os from 'node:os';
 import { logger } from '../../../utils/logger.js';
 import type { CorpusFile, CorpusStats } from './types.js';
 
-const CORPORA_DIR = path.join(os.homedir(), '.claude-mem', 'corpora');
+const CORPORA_DIR = path.join(os.homedir(), '.engram', 'corpora');
 
 export class CorpusStore {
   private readonly corporaDir: string;

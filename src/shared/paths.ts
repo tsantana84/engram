@@ -35,7 +35,7 @@ function resolveDataDir(): string {
   }
 
   // 2. Settings file at the default location
-  const defaultDataDir = join(homedir(), '.claude-mem');
+  const defaultDataDir = join(homedir(), '.engram');
   const settingsPath = join(defaultDataDir, 'settings.json');
   try {
     if (existsSync(settingsPath)) {

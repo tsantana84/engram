@@ -7,7 +7,7 @@ import { logger } from '../utils/logger.js';
 const REAP_SESSION_SIGTERM_TIMEOUT_MS = 5_000;
 const REAP_SESSION_SIGKILL_TIMEOUT_MS = 1_000;
 
-const DATA_DIR = path.join(homedir(), '.claude-mem');
+const DATA_DIR = path.join(homedir(), '.engram');
 const DEFAULT_REGISTRY_PATH = path.join(DATA_DIR, 'supervisor.json');
 
 export interface ManagedProcessInfo {

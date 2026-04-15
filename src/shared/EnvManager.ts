@@ -15,7 +15,7 @@ import { homedir } from 'os';
 import { logger } from '../utils/logger.js';
 
 // Path to claude-mem's centralized .env file
-const DATA_DIR = join(homedir(), '.claude-mem');
+const DATA_DIR = join(homedir(), '.engram');
 export const ENV_FILE_PATH = join(DATA_DIR, '.env');
 
 // Environment variables to STRIP from subprocess environment (blocklist approach)

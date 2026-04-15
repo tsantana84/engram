@@ -32,7 +32,7 @@ import type { TranscriptWatchConfig, WatchTarget } from '../transcripts/types.js
 
 const CODEX_DIR = path.join(homedir(), '.codex');
 const CODEX_AGENTS_MD_PATH = path.join(CODEX_DIR, 'AGENTS.md');
-const CLAUDE_MEM_DIR = path.join(homedir(), '.claude-mem');
+const CLAUDE_MEM_DIR = path.join(homedir(), '.engram');
 
 /**
  * The watch name used to identify the Codex CLI entry in transcript-watch.json.

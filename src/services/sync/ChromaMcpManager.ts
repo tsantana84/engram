@@ -28,7 +28,7 @@ const CHROMA_MCP_CLIENT_NAME = 'claude-mem-chroma';
 const CHROMA_MCP_CLIENT_VERSION = '1.0.0';
 const MCP_CONNECTION_TIMEOUT_MS = 30_000;
 const RECONNECT_BACKOFF_MS = 10_000; // Don't retry connections faster than this after failure
-const DEFAULT_CHROMA_DATA_DIR = path.join(os.homedir(), '.claude-mem', 'chroma');
+const DEFAULT_CHROMA_DATA_DIR = path.join(os.homedir(), '.engram', 'chroma');
 const CHROMA_SUPERVISOR_ID = 'chroma-mcp';
 
 export class ChromaMcpManager {
@@ -367,7 +367,7 @@ export class ChromaMcpManager {
    * Returns the path to the combined cert file, or undefined if not needed/available.
    */
   private getCombinedCertPath(): string | undefined {
-    const combinedCertPath = path.join(os.homedir(), '.claude-mem', 'combined_certs.pem');
+    const combinedCertPath = path.join(os.homedir(), '.engram', 'combined_certs.pem');
 
     if (fs.existsSync(combinedCertPath)) {
       const stats = fs.statSync(combinedCertPath);

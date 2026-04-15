@@ -6,7 +6,7 @@ import { getProcessRegistry, isPidAlive, type ManagedProcessInfo, type ProcessRe
 import { runShutdownCascade } from './shutdown.js';
 import { startHealthChecker, stopHealthChecker } from './health-checker.js';
 
-const DATA_DIR = path.join(homedir(), '.claude-mem');
+const DATA_DIR = path.join(homedir(), '.engram');
 const PID_FILE = path.join(DATA_DIR, 'worker.pid');
 
 interface PidInfo {

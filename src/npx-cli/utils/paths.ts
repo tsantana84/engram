@@ -56,7 +56,7 @@ export function pluginCacheDirectory(version: string): string {
 
 /** claude-mem data directory (default `~/.claude-mem`). */
 export function claudeMemDataDirectory(): string {
-  return join(homedir(), '.claude-mem');
+  return join(homedir(), '.engram');
 }
 
 // ---------------------------------------------------------------------------
