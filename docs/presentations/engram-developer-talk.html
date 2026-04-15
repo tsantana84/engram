@@ -267,7 +267,55 @@
     <div><strong>Safe default:</strong> <code>CLAUDE_MEM_PROVIDER</code> not set → ConflictDetector disabled, all observations pass as ADD. Set it in <code>~/.engram/settings.json</code> to enable classification.</div>
   </div>
 </div>
-<div id="slide-4" class="slide"></div>
+<div id="slide-4" class="slide">
+  <div class="eyebrow">Live demo</div>
+  <h2>Demo walkthrough</h2>
+  <p class="lead">Plugin pre-staged. We're narrating a running system.</p>
+
+  <div class="grid-2">
+    <div>
+      <h3>Install (pre-staged)</h3>
+      <div class="codeblock">
+        <div class="codeblock-header"><span>Terminal</span></div>
+        <pre>claude plugin marketplace add tsantana84/engram
+claude plugin install engram
+<span class="c-comment"># Restart Claude Code, then:</span>
+/login
+<span class="c-comment"># → enter agent name (e.g. "macbook-thiago")</span>
+<span class="c-comment"># → machine registered, sync configured</span></pre>
+      </div>
+
+      <h3>Verify worker running</h3>
+      <div class="codeblock">
+        <div class="codeblock-header"><span>Health check</span></div>
+        <pre>npm run worker:status
+<span class="c-comment"># → { status: "ok", version: "..." }</span></pre>
+      </div>
+    </div>
+
+    <div>
+      <h3>What to show live</h3>
+      <div class="card" style="margin-bottom:.75rem">
+        <div style="font-size:.83rem;font-weight:600;color:var(--accent);margin-bottom:.25rem">1. Worker logs</div>
+        <code style="font-size:.8rem">npm run worker:tail</code>
+        <div style="font-size:.8rem;color:var(--text-muted);margin-top:.25rem">Observations flow in during a real prompt</div>
+      </div>
+      <div class="card" style="margin-bottom:.75rem">
+        <div style="font-size:.83rem;font-weight:600;color:var(--accent);margin-bottom:.25rem">2. Viewer UI</div>
+        <code style="font-size:.8rem">http://127.0.0.1:37777</code>
+        <div style="font-size:.8rem;color:var(--text-muted);margin-top:.25rem">Real-time memory stream</div>
+      </div>
+      <div class="card" style="margin-bottom:.75rem">
+        <div style="font-size:.83rem;font-weight:600;color:var(--accent);margin-bottom:.25rem">3. Sync queue</div>
+        <code style="font-size:.78rem">sqlite3 ~/.engram/claude-mem.db<br>"SELECT * FROM sync_queue LIMIT 10"</code>
+      </div>
+      <div class="card">
+        <div style="font-size:.83rem;font-weight:600;color:var(--accent);margin-bottom:.25rem">4. ConflictDetector (optional)</div>
+        <div style="font-size:.8rem;color:var(--text-muted)">Point to a log line showing INVALIDATE action</div>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="slide-5" class="slide"></div>
 <div id="slide-6" class="slide"></div>
 
