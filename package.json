@@ -1,5 +1,5 @@
 {
-  "name": "claude-mem",
+  "name": "engram",
   "version": "12.1.0",
   "description": "Memory compression system for Claude Code - persist context across sessions",
   "keywords": [
@@ -19,15 +19,14 @@
   "license": "AGPL-3.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thedotmack/claude-mem.git"
+    "url": "https://github.com/thedotmack/engram.git"
   },
-  "homepage": "https://github.com/thedotmack/claude-mem#readme",
+  "homepage": "https://github.com/thedotmack/engram#readme",
   "bugs": {
-    "url": "https://github.com/thedotmack/claude-mem/issues"
+    "url": "https://github.com/thedotmack/engram/issues"
   },
   "type": "module",
   "bin": {
-    "claude-mem": "./dist/npx-cli/index.js",
     "engram": "./dist/npx-cli/index.js"
   },
   "exports": {
@@ -66,8 +65,8 @@
     "sync-marketplace": "node scripts/sync-marketplace.cjs",
     "sync-marketplace:force": "node scripts/sync-marketplace.cjs --force",
     "build:binaries": "node scripts/build-worker-binary.js",
-    "worker:logs": "tail -n 50 ~/.claude-mem/logs/worker-$(date +%Y-%m-%d).log",
-    "worker:tail": "tail -f 50 ~/.claude-mem/logs/worker-$(date +%Y-%m-%d).log",
+    "worker:logs": "tail -n 50 ~/.engram/logs/worker-$(date +%Y-%m-%d).log",
+    "worker:tail": "tail -f 50 ~/.engram/logs/worker-$(date +%Y-%m-%d).log",
     "changelog:generate": "node scripts/generate-changelog.js",
     "discord:notify": "node scripts/discord-release-notify.js",
     "worker:start": "bun plugin/scripts/worker-service.cjs start",
@@ -113,6 +112,7 @@
     "@anthropic-ai/claude-agent-sdk": "^0.1.76",
     "@clack/prompts": "^0.9.1",
     "@modelcontextprotocol/sdk": "^1.25.1",
+    "@supabase/supabase-js": "^2.103.0",
     "ansi-to-html": "^0.7.2",
     "dompurify": "^3.3.1",
     "express": "^4.18.2",
@@ -139,6 +139,7 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
+    "@vercel/node": "^5.7.5",
     "esbuild": "^0.27.2",
     "np": "^11.0.2",
     "tree-sitter-bash": "^0.25.1",

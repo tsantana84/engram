@@ -5,11 +5,11 @@
   },
   "metadata": {
     "description": "Plugins by Alex Newman (thedotmack)",
-    "homepage": "https://github.com/thedotmack/claude-mem"
+    "homepage": "https://github.com/thedotmack/engram"
   },
   "plugins": [
     {
-      "name": "claude-mem",
+      "name": "engram",
       "version": "12.1.0",
       "source": "./plugin",
       "description": "Persistent memory system for Claude Code - context compression across sessions"
