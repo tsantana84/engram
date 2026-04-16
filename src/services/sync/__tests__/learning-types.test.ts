@@ -11,7 +11,7 @@ describe('learning-types', () => {
     const l: ExtractedLearning = {
       claim: 'Queue retries at 5s intervals.',
       evidence: 'SyncQueue.ts sets RETRY_DELAY = 5000',
-      scope: 's',
+      scope: 'project',
       confidence: 0.9,
     };
     expect(l.confidence).toBe(0.9);

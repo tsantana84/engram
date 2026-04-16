@@ -36,7 +36,7 @@ export type LearningReviewAction =
 
 export interface LearningRecord extends LearningPayload {
   id: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: LearningTargetStatus | 'rejected';
   invalidated: boolean;
   invalidated_by: number | null;
   extracted_at: string;
