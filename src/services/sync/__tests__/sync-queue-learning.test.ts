@@ -54,4 +54,31 @@ describe('SyncQueue — learning entity type', () => {
     const pending = q.getPending(10);
     expect(pending[0].target_status).toBe('pending');
   });
+
+  test('getStatus counts permanently_failed rows separately', () => {
+    q.enqueueLearning(samplePayload(), 'approved');
+    q.enqueueLearning(samplePayload(), 'approved');
+    const pending = q.getPending(10);
+    const ids = pending.map((r) => r.id);
+
+    // Mark one permanently failed via the public API (approach b — fixes the write bug)
+    q.markFailedPermanently([ids[0]]);
+
+    const status = q.getStatus();
+    expect(status.permanently_failed).toBe(1);
+    expect(status.pending).toBe(1);
+    expect(status.failed).toBe(0);
+  });
+
+  test('payload roundtrip preserves null optional fields', () => {
+    const payload: LearningPayload = {
+      claim: 'c', evidence: null, scope: null, confidence: 0.5,
+      project: 'p', source_session: 'sess-2', content_hash: 'h2',
+    };
+    q.enqueueLearning(payload, 'approved');
+    const pending = q.getPending(10);
+    expect(pending[0].payload).toEqual(payload);
+    expect(pending[0].payload?.evidence).toBeNull();
+    expect(pending[0].payload?.scope).toBeNull();
+  });
 });

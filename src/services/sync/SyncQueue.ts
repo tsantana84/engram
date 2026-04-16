@@ -16,9 +16,14 @@ export interface SyncQueueStatus {
   pending: number;
   synced: number;
   failed: number;
+  permanently_failed: number;
 }
 
 const MAX_RETRIES = 5;
+
+// Learnings have no separate storage table; entity_id is a sentinel (0) because the
+// full LearningPayload lives in the `payload` column instead.
+const LEARNING_ENTITY_ID_SENTINEL = 0;
 
 export class SyncQueue {
   constructor(private db: Database, private maxRetries: number = MAX_RETRIES) {}
@@ -31,8 +36,8 @@ export class SyncQueue {
 
   enqueueLearning(payload: LearningPayload, targetStatus: LearningTargetStatus): void {
     this.db.run(
-      'INSERT INTO sync_queue (entity_type, entity_id, target_status, payload) VALUES (?, 0, ?, ?)',
-      ['learning', targetStatus, JSON.stringify(payload)]
+      'INSERT INTO sync_queue (entity_type, entity_id, target_status, payload) VALUES (?, ?, ?, ?)',
+      ['learning', LEARNING_ENTITY_ID_SENTINEL, targetStatus, JSON.stringify(payload)]
     );
   }
 
@@ -79,7 +84,7 @@ export class SyncQueue {
     if (ids.length === 0) return;
     const placeholders = ids.map(() => '?').join(',');
     this.db.prepare(
-      `UPDATE sync_queue SET status = 'failed', attempts = ? WHERE id IN (${placeholders})`
+      `UPDATE sync_queue SET status = 'permanently_failed', attempts = ? WHERE id IN (${placeholders})`
     ).run(this.maxRetries, ...ids);
   }
 
@@ -95,7 +100,7 @@ export class SyncQueue {
       SELECT status, COUNT(*) as count FROM sync_queue GROUP BY status
     `).all() as { status: string; count: number }[];
 
-    const result: SyncQueueStatus = { pending: 0, synced: 0, failed: 0 };
+    const result: SyncQueueStatus = { pending: 0, synced: 0, failed: 0, permanently_failed: 0 };
     for (const row of counts) {
       if (row.status in result) {
         result[row.status as keyof SyncQueueStatus] = row.count;
