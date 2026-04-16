@@ -1,13 +1,15 @@
 import { Database } from 'bun:sqlite';
+import type { LearningPayload, LearningTargetStatus } from './learning-types.js';
 
 export interface SyncQueueItem {
   id: number;
-  entity_type: 'observation' | 'session' | 'summary';
+  entity_type: 'observation' | 'session' | 'summary' | 'learning';
   entity_id: number;
-  status: 'pending' | 'synced' | 'failed';
+  target_status: LearningTargetStatus | null;
+  payload: LearningPayload | null;
+  status: 'pending' | 'synced' | 'failed' | 'permanently_failed';
   attempts: number;
-  created_at: string;
-  synced_at: string | null;
+  created_at_epoch: number;
 }
 
 export interface SyncQueueStatus {
@@ -27,10 +29,34 @@ export class SyncQueue {
     ).run(entityType, entityId);
   }
 
+  enqueueLearning(payload: LearningPayload, targetStatus: LearningTargetStatus): void {
+    this.db.run(
+      'INSERT INTO sync_queue (entity_type, entity_id, target_status, payload) VALUES (?, 0, ?, ?)',
+      ['learning', targetStatus, JSON.stringify(payload)]
+    );
+  }
+
   getPending(limit: number): SyncQueueItem[] {
-    return this.db.prepare(
-      `SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY created_at ASC LIMIT ?`
-    ).all(limit) as SyncQueueItem[];
+    const rows = this.db
+      .query<{
+        id: number; entity_type: string; entity_id: number;
+        target_status: string | null; payload: string | null;
+        attempts: number; status: string; created_at: string;
+      }, [number]>(
+        `SELECT id, entity_type, entity_id, target_status, payload, attempts, status, created_at
+         FROM sync_queue WHERE status = 'pending' ORDER BY id ASC LIMIT ?`
+      )
+      .all(limit);
+    return rows.map((r) => ({
+      id: r.id,
+      entity_type: r.entity_type as SyncQueueItem['entity_type'],
+      entity_id: r.entity_id,
+      target_status: (r.target_status as LearningTargetStatus | null) ?? null,
+      payload: r.payload ? (JSON.parse(r.payload) as LearningPayload) : null,
+      attempts: r.attempts,
+      status: r.status as SyncQueueItem['status'],
+      created_at_epoch: r.created_at ? new Date(r.created_at).getTime() : 0,
+    }));
   }
 
   markSynced(ids: number[]): void {
@@ -68,7 +94,7 @@ export class SyncQueue {
     const counts = this.db.prepare(`
       SELECT status, COUNT(*) as count FROM sync_queue GROUP BY status
     `).all() as { status: string; count: number }[];
-    
+
     const result: SyncQueueStatus = { pending: 0, synced: 0, failed: 0 };
     for (const row of counts) {
       if (row.status in result) {
