@@ -72,6 +72,7 @@ export class SessionStore {
     this.addSessionPlatformSourceColumn();
     this.addObservationModelColumns();
     this.createSyncQueueTable();
+    this.addExtractionStatusColumns();
   }
 
   /**
@@ -974,6 +975,37 @@ export class SessionStore {
     this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
 
     this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(27, new Date().toISOString());
+  }
+
+  /**
+   * Add extraction pipeline tracking columns to sdk_sessions (migration 29)
+   */
+  private addExtractionStatusColumns(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(29) as SchemaVersion | undefined;
+    if (applied) return;
+
+    const cols = this.db
+      .prepare("PRAGMA table_info('sdk_sessions')")
+      .all() as Array<{ name: string }>;
+    const names = cols.map((c) => c.name);
+
+    if (!names.includes('extraction_status')) {
+      this.db.run(
+        "ALTER TABLE sdk_sessions ADD COLUMN extraction_status TEXT NOT NULL DEFAULT 'pending'"
+      );
+    }
+    if (!names.includes('extraction_attempts')) {
+      this.db.run(
+        'ALTER TABLE sdk_sessions ADD COLUMN extraction_attempts INTEGER NOT NULL DEFAULT 0'
+      );
+    }
+
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(29, new Date().toISOString());
+    logger.debug('DB', 'Migration 29 applied: extraction_status columns on sdk_sessions');
   }
 
   /**
