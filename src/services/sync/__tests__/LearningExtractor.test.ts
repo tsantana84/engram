@@ -24,7 +24,7 @@ describe('LearningExtractor', () => {
       JSON.stringify([
         { claim: 'readiness gates on init', evidence: 'worker-service.ts', scope: 'area', confidence: 0.92 },
       ]);
-    const ex = new LearningExtractor({ enabled: true, llm: fakeLlm });
+    const ex = new LearningExtractor({ enabled: true, llm: fakeLlm, maxLearningsPerSession: 10 });
     const out = await ex.extract(session());
     expect(out.length).toBe(1);
     expect(out[0].claim).toContain('readiness');
@@ -32,12 +32,12 @@ describe('LearningExtractor', () => {
   });
 
   test('returns [] when disabled', async () => {
-    const ex = new LearningExtractor({ enabled: false, llm: async () => '[]' });
+    const ex = new LearningExtractor({ enabled: false, llm: async () => '[]', maxLearningsPerSession: 10 });
     expect(await ex.extract(session())).toEqual([]);
   });
 
   test('returns [] on malformed JSON (does not throw)', async () => {
-    const ex = new LearningExtractor({ enabled: true, llm: async () => 'totally not json' });
+    const ex = new LearningExtractor({ enabled: true, llm: async () => 'totally not json', maxLearningsPerSession: 10 });
     expect(await ex.extract(session())).toEqual([]);
   });
 
@@ -45,12 +45,13 @@ describe('LearningExtractor', () => {
     const ex = new LearningExtractor({
       enabled: true,
       llm: async () => { throw new Error('boom'); },
+      maxLearningsPerSession: 10,
     });
     expect(await ex.extract(session())).toEqual([]);
   });
 
   test('empty session input returns []', async () => {
-    const ex = new LearningExtractor({ enabled: true, llm: async () => '[]' });
+    const ex = new LearningExtractor({ enabled: true, llm: async () => '[]', maxLearningsPerSession: 10 });
     const out = await ex.extract(session({ observations: [], summary: null }));
     expect(out).toEqual([]);
   });
@@ -78,6 +79,7 @@ describe('LearningExtractor', () => {
           { claim: 'a', confidence: 1.5 },
           { claim: 'b', confidence: -0.3 },
         ]),
+      maxLearningsPerSession: 10,
     });
     const out = await ex.extract(session());
     expect(out[0].confidence).toBe(1);

@@ -10,11 +10,11 @@ export interface SessionInput {
 export interface LearningExtractorConfig {
   enabled: boolean;
   llm: (prompt: string) => Promise<string>;
-  maxLearningsPerSession?: number;
+  maxLearningsPerSession: number;
 }
 
-const DEFAULT_MAX = 10;
-
+// Prompt interpolates session fields (project/title/narrative/summary) directly.
+// Upstream data is trusted (Claude tool outputs + agent-authored summary); no escaping.
 function buildPrompt(input: SessionInput): string {
   const obsLines = input.observations
     .map(
@@ -84,7 +84,7 @@ export class LearningExtractor {
 
   constructor(config: LearningExtractorConfig) {
     this.config = config;
-    this.max = config.maxLearningsPerSession ?? DEFAULT_MAX;
+    this.max = config.maxLearningsPerSession;
   }
 
   async extract(input: SessionInput): Promise<ExtractedLearning[]> {
