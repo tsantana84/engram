@@ -84,6 +84,12 @@ export interface SettingsDefaults {
   CLAUDE_MEM_SYNC_INTERVAL_MS: string;
   CLAUDE_MEM_SYNC_TIMEOUT_MS: string;
   CLAUDE_MEM_SYNC_MAX_RETRIES: string;
+  // Learning Extraction Configuration
+  CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED: string;       // 'true' | 'false' - enable learning extraction from sessions
+  CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD: string;     // Minimum confidence score (0–1) for extracted learnings
+  CLAUDE_MEM_LEARNING_LLM_MODEL: string;                // Model used for learning extraction inference
+  CLAUDE_MEM_LEARNING_MAX_PER_SESSION: string;          // Max learnings to extract per session
+  CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES: string;   // Max retries for failed extraction attempts
 }
 
 export class SettingsDefaultsManager {
@@ -163,6 +169,12 @@ export class SettingsDefaultsManager {
     CLAUDE_MEM_SYNC_INTERVAL_MS: '30000',
     CLAUDE_MEM_SYNC_TIMEOUT_MS: '3000',
     CLAUDE_MEM_SYNC_MAX_RETRIES: '5',
+    // Learning Extraction Configuration
+    CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED: 'true',
+    CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD: '0.8',
+    CLAUDE_MEM_LEARNING_LLM_MODEL: 'claude-sonnet-4-6',
+    CLAUDE_MEM_LEARNING_MAX_PER_SESSION: '10',
+    CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES: '3',
   };
 
   /**
