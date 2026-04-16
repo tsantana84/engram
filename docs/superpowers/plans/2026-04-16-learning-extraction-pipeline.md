@@ -33,9 +33,9 @@
 | Server API | `api/learnings/index.ts` | `GET /api/learnings` (list, filter by status/project). |
 | Server API | `api/learnings/[id].ts` | `GET /api/learnings/:id` (detail). |
 | Server API | `api/learnings/[id]/review.ts` | `POST /api/learnings/:id/review` (approve / reject / edit_approve). |
-| Dashboard | `web/dashboard/index.html` | Minimal single-page app. |
-| Dashboard | `web/dashboard/app.js` | Fetch + render + review actions. **Uses DOM methods only (no innerHTML).** |
-| Dashboard | `web/dashboard/styles.css` | Minimal styling. |
+| Dashboard | `public/dashboard/index.html` | Minimal single-page app (served via Vercel zero-config `public/`). |
+| Dashboard | `public/dashboard/app.js` | Fetch + render + review actions. **Uses DOM methods only (no innerHTML).** |
+| Dashboard | `public/dashboard/styles.css` | Minimal styling. |
 | Docs | `docs/public/features/learning-extraction.mdx` | User-facing feature doc (Mintlify). |
 
 ---
@@ -296,10 +296,16 @@ git commit -m "feat(sqlite): add extraction_status columns (migration 29)"
 ## Task 3: Widen SyncQueue to carry learnings with target_status
 
 **Files:**
-- Modify: `src/services/sync/SyncQueue.ts`
+- Modify: `src/services/sqlite/SessionStore.ts` — new **migration 30** that widens the `sync_queue.entity_type` CHECK constraint and adds two columns.
+- Modify: `src/services/sync/SyncQueue.ts` — add `enqueueLearning`, include new columns in SELECT, parse `payload` JSON.
 - Test: `src/services/sync/__tests__/sync-queue-learning.test.ts`
 
-Context: `SyncQueue` currently stores `entity_type IN ('observation','session','summary')` and a FK-style `entity_id` (integer). Learnings don't have a local integer ID. Store `entity_id = 0` and keep the full `LearningPayload` JSON in a new `payload` column; also persist the `target_status` so `tick()` can route correctly.
+Context: `SyncQueue` currently stores `entity_type IN ('observation','session','summary')` with a CHECK constraint owned by `SessionStore.createSyncQueueTable()` (migration 27). Learnings don't have a local integer ID. We need:
+1. The CHECK constraint to include `'learning'` (SQLite requires table rebuild for CHECK changes).
+2. Two new columns: `target_status TEXT`, `payload TEXT` (JSON).
+3. Store `entity_id = 0` for learnings; put the `LearningPayload` JSON in `payload`.
+
+Schema ownership stays with `SessionStore` (migration 30). `SyncQueue` performs only DML, no DDL.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -312,7 +318,21 @@ import type { LearningPayload } from '../learning-types.js';
 
 function newDb(): Database {
   const db = new Database(':memory:');
-  db.run(`CREATE TABLE schema_versions (version INTEGER PRIMARY KEY)`);
+  db.run(`CREATE TABLE schema_versions (version INTEGER PRIMARY KEY, applied_at TEXT)`);
+  // Mirror the post-migration-30 shape so SyncQueue can operate without DDL.
+  db.run(`
+    CREATE TABLE sync_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      entity_type TEXT NOT NULL CHECK(entity_type IN ('observation','session','summary','learning')),
+      entity_id INTEGER NOT NULL,
+      target_status TEXT,
+      payload TEXT,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','synced','failed','permanently_failed')),
+      attempts INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      synced_at TEXT
+    )
+  `);
   return db;
 }
 
@@ -329,7 +349,7 @@ describe('SyncQueue — learning entity type', () => {
 
   beforeEach(() => {
     db = newDb();
-    q = new SyncQueue(db); // constructor auto-creates the sync_queue table
+    q = new SyncQueue(db);
   });
 
   test('enqueueLearning stores payload + target_status', () => {
@@ -355,7 +375,55 @@ describe('SyncQueue — learning entity type', () => {
 Run: `bun test src/services/sync/__tests__/sync-queue-learning.test.ts`
 Expected: FAIL — `enqueueLearning` not defined; `target_status` / `payload` columns missing.
 
-- [ ] **Step 3: Extend SyncQueue**
+- [ ] **Step 3a: Add migration 30 in SessionStore**
+
+Add method beside `createSyncQueueTable` (migration 27):
+
+```ts
+/** Widen sync_queue: add 'learning' to CHECK, add target_status + payload columns (migration 30) */
+private widenSyncQueueForLearnings(): void {
+  const applied = this.db
+    .prepare('SELECT version FROM schema_versions WHERE version = ?')
+    .get(30) as SchemaVersion | undefined;
+  if (applied) return;
+
+  // SQLite CHECK constraints can't be altered in place — rebuild the table.
+  this.db.run('BEGIN');
+  try {
+    this.db.run(`
+      CREATE TABLE sync_queue_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL CHECK(entity_type IN ('observation','session','summary','learning')),
+        entity_id INTEGER NOT NULL,
+        target_status TEXT,
+        payload TEXT,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','synced','failed','permanently_failed')),
+        attempts INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        synced_at TEXT
+      )
+    `);
+    this.db.run(`INSERT INTO sync_queue_new (id, entity_type, entity_id, status, attempts, created_at, synced_at)
+                 SELECT id, entity_type, entity_id, status, attempts, created_at, synced_at FROM sync_queue`);
+    this.db.run('DROP TABLE sync_queue');
+    this.db.run('ALTER TABLE sync_queue_new RENAME TO sync_queue');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(30, new Date().toISOString());
+    this.db.run('COMMIT');
+    logger.info('Migration 30 applied: sync_queue widened for learnings');
+  } catch (err) {
+    this.db.run('ROLLBACK');
+    throw err;
+  }
+}
+```
+
+Call it from `initializeSchema()` right after `addExtractionStatusColumns()` (migration 29).
+
+- [ ] **Step 3b: Extend SyncQueue (no DDL)**
 
 Modify `src/services/sync/SyncQueue.ts`:
 
@@ -384,27 +452,7 @@ export interface SyncQueueStatus {
 }
 
 export class SyncQueue {
-  constructor(private db: Database, private maxRetries: number = MAX_RETRIES) {
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS sync_queue (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        entity_type TEXT NOT NULL,
-        entity_id INTEGER NOT NULL,
-        target_status TEXT,
-        payload TEXT,
-        attempts INTEGER NOT NULL DEFAULT 0,
-        status TEXT NOT NULL DEFAULT 'pending',
-        created_at_epoch INTEGER NOT NULL DEFAULT (CAST(strftime('%s','now') AS INTEGER) * 1000)
-      )
-    `);
-    // Additive columns if pre-existing table lacks them
-    const cols = this.db
-      .query<{ name: string }, []>("PRAGMA table_info('sync_queue')")
-      .all()
-      .map((c) => c.name);
-    if (!cols.includes('target_status')) this.db.run('ALTER TABLE sync_queue ADD COLUMN target_status TEXT');
-    if (!cols.includes('payload'))       this.db.run('ALTER TABLE sync_queue ADD COLUMN payload TEXT');
-  }
+  constructor(private db: Database, private maxRetries: number = MAX_RETRIES) {}
 
   enqueue(entityType: 'observation' | 'session' | 'summary', entityId: number): void {
     this.db.run(
@@ -846,14 +894,29 @@ CREATE INDEX IF NOT EXISTS idx_learnings_project ON learnings (project);
 CREATE INDEX IF NOT EXISTS idx_learnings_hash    ON learnings (content_hash);
 CREATE INDEX IF NOT EXISTS idx_learnings_agent   ON learnings (source_agent_id);
 
+-- schema_versions value: verify next free number before applying.
+-- The initial migration inserts version 1. If other migrations have bumped past 2,
+-- pick the next unused integer. INSERT uses ON CONFLICT DO NOTHING so it's safe to retry.
 INSERT INTO schema_versions (version) VALUES (2) ON CONFLICT DO NOTHING;
 ```
 
 - [ ] **Step 2: Apply migration locally**
 
-Run: `rtk supabase db push` (or the equivalent deploy command used in this repo — check `package.json` scripts).
+Before applying, check the current max version:
 
-Expected: migration file applied without error. Query `SELECT to_regclass('learnings');` returns `learnings`.
+```bash
+rtk supabase db remote psql -c "SELECT MAX(version) FROM schema_versions"
+```
+
+Adjust the `VALUES (2)` literal if needed, then run:
+
+```bash
+rtk supabase db push
+```
+
+(Or the equivalent deploy command used in this repo — check `package.json` scripts.)
+
+Expected: migration applied without error. Query `SELECT to_regclass('learnings');` returns `learnings`.
 
 - [ ] **Step 3: Commit**
 
@@ -973,9 +1036,7 @@ Respond ONLY with JSON: {"decision": "ADD"|"UPDATE"|"INVALIDATE"|"NOOP", "target
 }
 ```
 
-Then modify `src/services/sync/ConflictDetector.ts` to import `buildConflictPrompt` from `../../api/lib/conflict-prompt.js` (or move the shared file to a path both client and server can import — a `packages/` or `shared/` dir if present, otherwise a neutral location like `src/services/sync/conflict-prompt.ts` that the server imports via relative path).
-
-**Simpler alternative:** keep the prompt in `src/services/sync/conflict-prompt.ts`, have the server lib import from `../../src/services/sync/conflict-prompt.js`. Either way, remove the duplicated `buildPrompt` function from `ConflictDetector.ts`.
+**Prompt location decision:** `api/lib/conflict-prompt.ts`. Rationale — the file has no Node/Bun-specific imports, and the client already imports across package boundaries via relative paths (e.g. `api/lib/SupabaseManager.ts` import used in `api/sync/push.ts`). The client-side `src/services/sync/ConflictDetector.ts` imports the prompt via relative path `../../../api/lib/conflict-prompt.js`. Do NOT duplicate the prompt text in both directories — remove the inline `buildPrompt` from the client detector.
 
 - [ ] **Step 4: Implement server-side detector**
 
@@ -1557,6 +1618,8 @@ git commit -m "feat(api): dashboard endpoints — list, detail, review"
 import { describe, expect, test, mock } from 'bun:test';
 import { SyncClient } from '../SyncClient.js';
 
+const clientConfig = { serverUrl: 'https://e.test', apiKey: 'k', agentName: 'test-agent', timeoutMs: 5000 };
+
 describe('SyncClient.pushLearnings', () => {
   test('POSTs to /api/sync/learnings with target_status', async () => {
     const captured: any = {};
@@ -1566,7 +1629,7 @@ describe('SyncClient.pushLearnings', () => {
       return new Response(JSON.stringify({ results: [] }), { status: 200 });
     }) as any;
 
-    const c = new SyncClient({ baseUrl: 'https://e.test', apiKey: 'k' });
+    const c = new SyncClient(clientConfig);
     await c.pushLearnings([{
       claim: 'x', evidence: null, scope: null, confidence: 0.9,
       project: 'p', source_session: 's', content_hash: 'h',
@@ -1579,7 +1642,7 @@ describe('SyncClient.pushLearnings', () => {
 
   test('throws with HTTP status on non-2xx', async () => {
     globalThis.fetch = mock(async () => new Response('boom', { status: 500 })) as any;
-    const c = new SyncClient({ baseUrl: 'https://e.test', apiKey: 'k' });
+    const c = new SyncClient(clientConfig);
     await expect(c.pushLearnings([], 'pending')).rejects.toThrow(/500/);
   });
 });
@@ -1963,9 +2026,9 @@ git commit -m "feat(worker): wire LearningExtractor + threshold + feature flag"
 ## Task 15: Dashboard — minimal list/detail/review UI (DOM-only, no innerHTML)
 
 **Files:**
-- Create: `web/dashboard/index.html`
-- Create: `web/dashboard/app.js`
-- Create: `web/dashboard/styles.css`
+- Create: `public/dashboard/index.html`
+- Create: `public/dashboard/app.js`
+- Create: `public/dashboard/styles.css`
 
 No TDD — static assets + small amount of DOM-safe JS. **All DOM construction uses `createElement` + `textContent`. No `innerHTML` with any server-provided data.** Total ≤200 LOC.
 
@@ -2109,9 +2172,20 @@ button { padding: .4rem .8rem; border: 1px solid #ccc; background: #fff; cursor:
 button:hover { background: #f0f0f0; }
 ```
 
-- [ ] **Step 4: Vercel route — serve `/dashboard/*` from `web/dashboard/`**
+- [ ] **Step 4: Vercel route — serve `/dashboard/*` from `public/dashboard/`**
 
-Modify `vercel.ts` to add a rewrite: any `/dashboard` → `/dashboard/index.html`, and add static paths for `web/dashboard/**`. If a `public/` dir is already the static root, copy files there at build time instead. Confirm by running `rtk vercel dev` and hitting `http://localhost:3000/dashboard/`.
+Current state: `vercel.json` has no rewrites and the repo has **no `public/` dir**. Add static hosting via `public/` (Vercel's zero-config static root):
+
+1. Create `public/dashboard/` and move the three files (`index.html`, `app.js`, `styles.css`) there — OR keep the source files in `web/dashboard/` and add a build step that copies them.
+2. Simplest: **put the files directly in `public/dashboard/`** for the POC. No rewrite needed; Vercel serves `public/**` at the root.
+3. Add `.gitignore` entries if the build step creates derived files; otherwise just check in the three files.
+
+Verify:
+```bash
+rtk vercel dev
+# open http://localhost:3000/dashboard/
+```
+If a 404 occurs, check `vercel.json` `outputDirectory` (currently `.`) — you may need to set it to `public` or add `{ "source": "/dashboard", "destination": "/dashboard/index.html" }` to `rewrites`.
 
 - [ ] **Step 5: Smoke test manually**
 
@@ -2123,7 +2197,7 @@ Modify `vercel.ts` to add a rewrite: any `/dashboard` → `/dashboard/index.html
 - [ ] **Step 6: Commit**
 
 ```bash
-git add web/dashboard/ vercel.ts
+git add public/dashboard/ vercel.json
 git commit -m "feat(dashboard): minimal pending-learning review UI (DOM-safe)"
 ```
 
