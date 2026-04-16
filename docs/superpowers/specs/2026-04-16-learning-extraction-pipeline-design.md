@@ -117,6 +117,10 @@ export interface SessionInput {
   summary: { request: string; investigated: string; learned: string; next_steps: string } | null;
 }
 
+// Note on `facts`: stored on observations as JSON text (see SessionSearch.ts).
+// SyncWorker already has parseJsonArray(); SessionInput construction reuses it
+// so the extractor always receives a real string[] (never null / raw JSON).
+
 export class LearningExtractor {
   constructor(config: LearningExtractorConfig);
   async extract(session: SessionInput): Promise<ExtractedLearning[]>;
@@ -153,10 +157,12 @@ Table: `learnings` (schema in Data Model section).
 
 New endpoints:
 
-- `POST /api/sync/learnings` — authenticated (agent key). Accepts `{ learnings: LearningPayload[], target_status: 'approved' | 'pending' }`. If `approved`, runs ConflictDetector per row. Returns per-row result.
+- `POST /api/sync/learnings` — authenticated (agent key). Accepts `{ learnings: LearningPayload[], target_status: 'approved' | 'pending' }`. If `approved`, runs **server-side ConflictDetector** per row. Returns per-row result.
 - `GET /api/learnings?status=pending&project=<p>&limit=&offset=` — dashboard list.
 - `GET /api/learnings/:id` — detail view.
-- `POST /api/learnings/:id/review` — body: `{ action: 'approve' | 'reject' | 'edit_approve', edited?: Partial<LearningPayload>, rejection_reason?: string }`. `approve` / `edit_approve` runs ConflictDetector and promotes to `approved`.
+- `POST /api/learnings/:id/review` — body: `{ action: 'approve' | 'reject' | 'edit_approve', edited?: Partial<LearningPayload>, rejection_reason?: string }`. `approve` / `edit_approve` runs server-side ConflictDetector and promotes to `approved`.
+
+**Note on ConflictDetector server port:** the existing `src/services/sync/ConflictDetector.ts` lives client-side in the worker. For the approval path it must run on the server (so approval is authoritative and can invalidate canonical rows atomically). Plan a server port: `api/lib/ConflictDetector.ts` using the same LLM prompt + `fetchSimilar` against Supabase directly (instead of HTTP). Shared prompt text factored into `api/lib/conflict-prompt.ts` so client and server cannot drift.
 
 ### 5. Dashboard — minimal web UI
 
@@ -179,9 +185,12 @@ In `~/.claude-mem/settings.json`:
   "CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED": true,
   "CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD": 0.8,
   "CLAUDE_MEM_LEARNING_LLM_MODEL": "claude-sonnet-4-6",
-  "CLAUDE_MEM_LEARNING_MAX_PER_SESSION": 10
+  "CLAUDE_MEM_LEARNING_MAX_PER_SESSION": 10,
+  "CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES": 3
 }
 ```
+
+**Settings → LLM closure wiring:** the worker-service bootstrap constructs a single `llm: (prompt) => Promise<string>` closure at init time from `CLAUDE_MEM_LEARNING_LLM_MODEL` (via the existing Claude Agent SDK used for summaries). The same closure is passed into both `LearningExtractor` and the (client-side) `ConflictDetector`. Unit tests inject a stub closure instead — no runtime coupling to the SDK inside the extractor itself.
 
 When `CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED = false`, pipeline falls back to legacy observation sync (for emergency rollback during POC).
 
@@ -276,7 +285,7 @@ interface LearningPushResponse {
 
 | Failure | Handling |
 |---|---|
-| Extractor LLM throws / returns malformed JSON | Log; bump `extraction_attempts`; set `extraction_status='failed'`. Sweep retries up to 3 times; then `'permanently_failed'`. Raw obs remain local — no data loss. |
+| Extractor LLM throws / returns malformed JSON | Log; bump `extraction_attempts`; set `extraction_status='failed'`. Sweep retries up to `CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES` times (default 3); then `'permanently_failed'`. Raw obs remain local — no data loss. |
 | Extractor emits 0 learnings | Normal. `extraction_status='done'`. |
 | `/api/sync/learnings` returns 4xx | `markFailedPermanently`. Session stuck at `failed`; manual inspection. |
 | `/api/sync/learnings` returns 5xx / network | `markFailed`, retry next tick. |
