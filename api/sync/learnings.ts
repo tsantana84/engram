@@ -25,10 +25,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL!;
-  const supabaseKey = process.env.SUPABASE_ANON_KEY!;
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    res.status(500).json({ error: 'SUPABASE_URL or SUPABASE_ANON_KEY not configured' });
+    return;
+  }
   const db = await initSupabase(supabaseUrl, supabaseKey);
 
+  // fetchSimilar receives { title, narrative } where `title` holds the claim text
+  // (set on the .check() call below). db.fetchSimilarLearnings searches by claim,
+  // so we pass title through as-is. Keep this mapping if the detector's item shape
+  // evolves.
   const detector = new ServerConflictDetector({
     enabled: body.target_status === 'approved',
     llm: getLlmClosure(),
@@ -71,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         results.push({ content_hash: learning.content_hash, action: 'dedupe_noop' });
       }
     } catch (err: any) {
-      results.push({ content_hash: learning.content_hash, action: 'inserted', error: err?.message ?? 'unknown' });
+      results.push({ content_hash: learning.content_hash, action: 'failed', error: err?.message ?? 'unknown' });
     }
   }
 

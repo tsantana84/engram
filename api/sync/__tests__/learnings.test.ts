@@ -1,8 +1,9 @@
-import { describe, expect, test, mock, beforeAll } from 'bun:test';
+import { describe, expect, test, mock, beforeEach } from 'bun:test';
 
 // --- Mock state for controlling test scenarios ---
 let mockAuthResult: { agentId: string; agentName: string } | null = null;
-let mockInsertResult: { id?: number; action: 'inserted' | 'dedupe_noop' } = { id: 42, action: 'inserted' };
+let mockInsertResult: { id?: number; action: 'inserted' | 'dedupe_noop' } | null = { id: 42, action: 'inserted' };
+let mockInsertShouldThrow = false;
 let mockFetchSimilarResult: Array<{ id: number; title: string | null; narrative: string | null }> = [];
 let mockLlmResult = '{"decision":"ADD"}';
 let conflictDetectorCheckCalled = false;
@@ -19,7 +20,10 @@ mock.module('../../../api/auth.js', () => ({
 mock.module('../../../api/lib/SupabaseManager.js', () => ({
   initSupabase: async () => ({
     fetchSimilarLearnings: async () => mockFetchSimilarResult,
-    insertLearning: async () => mockInsertResult,
+    insertLearning: async () => {
+      if (mockInsertShouldThrow) throw new Error('DB connection failed');
+      return mockInsertResult;
+    },
     invalidateLearning: async () => {},
   }),
   getSupabaseInstance: () => ({}),
@@ -75,12 +79,17 @@ async function callHandler(req: any) {
 }
 
 describe('POST /api/sync/learnings', () => {
-  beforeAll(() => {
-    // Reset shared state before suite
+  beforeEach(() => {
+    // Reset shared state before each test
     conflictDetectorCheckCalled = false;
     mockInsertResult = { id: 42, action: 'inserted' };
+    mockInsertShouldThrow = false;
     mockFetchSimilarResult = [];
     mockLlmResult = '{"decision":"ADD"}';
+    mockAuthResult = null;
+    // Satisfy env var guard (initSupabase is fully mocked, values are unused)
+    process.env.SUPABASE_URL = 'http://test.supabase.co';
+    process.env.SUPABASE_ANON_KEY = 'test-anon-key';
   });
 
   test('1. returns 405 on non-POST method', async () => {
@@ -133,7 +142,6 @@ describe('POST /api/sync/learnings', () => {
   });
 
   test('4. target_status="approved" path triggers ServerConflictDetector.check() before insert', async () => {
-    conflictDetectorCheckCalled = false;
     mockInsertResult = { id: 99, action: 'inserted' };
 
     const res = await callHandler({
@@ -153,7 +161,6 @@ describe('POST /api/sync/learnings', () => {
   });
 
   test('5. target_status="pending" SKIPS ConflictDetector and inserts with status="pending"', async () => {
-    conflictDetectorCheckCalled = false;
     mockInsertResult = { id: 55, action: 'inserted' };
 
     const res = await callHandler({
@@ -190,5 +197,24 @@ describe('POST /api/sync/learnings', () => {
     expect(result.action).toBe('dedupe_noop');
     expect(result.id).toBeUndefined();
     expect(result.content_hash).toBe('hash-001');
+  });
+
+  test('7. insertLearning throwing → result has action="failed" with error message', async () => {
+    mockInsertShouldThrow = true;
+
+    const res = await callHandler({
+      method: 'POST',
+      headers: { authorization: 'Bearer valid' },
+      body: {
+        target_status: 'pending',
+        learnings: [{ claim: 'c', evidence: null, scope: null, confidence: 0.5, project: 'p', source_session: 's', content_hash: 'h1' }],
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.results).toHaveLength(1);
+    expect(res.body.results[0].action).toBe('failed');
+    expect(res.body.results[0].error).toBe('DB connection failed');
+    expect(res.body.results[0].content_hash).toBe('h1');
   });
 });

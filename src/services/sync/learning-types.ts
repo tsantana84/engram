@@ -21,7 +21,7 @@ export interface LearningPushRequest {
 export interface LearningPushResult {
   content_hash: string;
   id?: number;
-  action: 'inserted' | 'dedupe_noop' | 'invalidated_target' | 'updated_target';
+  action: 'inserted' | 'dedupe_noop' | 'invalidated_target' | 'updated_target' | 'failed';
   error?: string;
 }
 
