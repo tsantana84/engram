@@ -1,6 +1,6 @@
-# Claude-Mem: AI Development Instructions
+# Engram: AI Development Instructions
 
-Claude-mem is a Claude Code plugin providing persistent memory across sessions. It captures tool usage, compresses observations using the Claude Agent SDK, and injects relevant context into future sessions.
+Engram is a fork of [claude-mem](https://github.com/thedotmack/claude-mem) (v12.1.0) with multi-agent sync added on top. It provides persistent memory across Claude Code sessions, plus a Supabase-backed sync layer so multiple agents share context.
 
 ## Architecture
 
@@ -22,6 +22,41 @@ Claude-mem is a Claude Code plugin providing persistent memory across sessions. 
 
 **Viewer UI** (`src/ui/viewer/`) - React interface at http://localhost:37777, built to `plugin/ui/viewer.html`
 
+## Sync Pipeline (Engram-specific)
+
+**SyncQueue** (`src/services/sync/SyncQueue.ts`) - SQLite-backed queue; `storeObservation`/`storeSummary` enqueue items after writes
+
+**SyncClient** (`src/services/sync/SyncClient.ts`) - HTTP client pushing queue items to Vercel backend
+
+**SyncWorker** (`src/services/sync/SyncWorker.ts`) - Tick-based worker; drains queue, runs learning extraction when enabled
+
+**ConflictDetector** (`src/services/sync/ConflictDetector.ts`) - LLM-based dedup/conflict detection for learnings; runs server-side on approval path
+
+**LearningExtractor** (`src/services/sync/LearningExtractor.ts`) - Session-end LLM distillation; extracts `{claim, evidence, scope, confidence}` from observations. High-confidence (≥threshold) learnings auto-sync; low-confidence queue as `pending` for dashboard review
+
+**Vercel API** (`api/`) - Serverless functions:
+- `api/sync/push.ts` — receives sync payloads from agents
+- `api/sync/status.ts` — queue status
+- `api/sync/invalidate.ts` — invalidate a learning
+- `api/search.ts` — unified search (observations + approved learnings)
+- `api/timeline.ts` — timeline queries
+- `api/agents/` — agent key management (create, revoke, list)
+- `api/health.ts`, `api/db-check.ts` — ops endpoints
+- `api/lib/SupabaseManager.ts` — all Supabase interactions
+
+**Supabase migrations** (`supabase/`) - Schema versioned migrations
+
+**Review Dashboard** (`public/dashboard/`) - DOM-safe UI for reviewing pending learnings. Bearer token auth (agent key). Actions: Approve / Reject / Edit. ConflictDetector runs on Approve.
+
+## Learning Extraction Feature Flag
+
+Disabled by default. Enable in worker env:
+
+```bash
+CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED=true
+CLAUDE_MEM_CONFIDENCE_THRESHOLD=0.8   # default
+```
+
 ## Privacy Tags
 - `<private>content</private>` - User-level privacy control (manual, prevents storage)
 
@@ -41,13 +76,13 @@ Settings are managed in `~/.claude-mem/settings.json`. The file is auto-created 
 
 - **Source**: `<project-root>/src/`
 - **Built Plugin**: `<project-root>/plugin/`
-- **Installed Plugin**: `~/.claude/plugins/marketplaces/thedotmack/`
+- **Installed Plugin**: `~/.claude/plugins/marketplaces/thedotmack/` (plugin ID: `engram@thedotmack`)
 - **Database**: `~/.claude-mem/claude-mem.db`
 - **Chroma**: `~/.claude-mem/chroma/`
 
 ## Exit Code Strategy
 
-Claude-mem hooks use specific exit codes per Claude Code's hook contract:
+Hooks use specific exit codes per Claude Code's hook contract:
 
 - **Exit 0**: Success or graceful shutdown (Windows Terminal closes tabs)
 - **Exit 1**: Non-blocking error (stderr shown to user, continues)
@@ -71,7 +106,7 @@ See `private/context/claude-code/exit-codes.md` for full hook behavior matrix.
 
 ## Pro Features Architecture
 
-Claude-mem is designed with a clean separation between open-source core functionality and optional Pro features.
+Engram is designed with a clean separation between open-source core functionality and optional Pro features.
 
 **Open-Source Core** (this repository):
 
@@ -86,8 +121,6 @@ Claude-mem is designed with a clean separation between open-source core function
 - Additional features like advanced filtering, timeline scrubbing, and search tools
 - Access gated by license validation, not by modifying core endpoints
 - Users without Pro licenses continue using the full open-source viewer UI without limitation
-
-This architecture preserves the open-source nature of the project while enabling sustainable development through optional paid features.
 
 ## Important
 
