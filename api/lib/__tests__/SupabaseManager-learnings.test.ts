@@ -36,4 +36,23 @@ describe('SupabaseManager learnings methods', () => {
     });
     expect(out.status).toBe('approved');
   });
+
+  test('insertLearning returns dedupe_noop when upsert returns PGRST116', async () => {
+    const client = {
+      from: () => ({
+        upsert: () => ({
+          select: () => ({
+            single: async () => ({ data: null, error: { code: 'PGRST116' } }),
+          }),
+        }),
+      }),
+    };
+    const mgr = new SupabaseManager(client as any);
+    const out = await mgr.insertLearning({
+      claim: 'c', evidence: null, scope: null, confidence: 0.9,
+      project: 'p', source_session: 's', content_hash: 'h', source_agent_id: 'agent-1',
+    }, 'approved');
+    expect(out.action).toBe('dedupe_noop');
+    expect(out.id).toBeUndefined();
+  });
 });

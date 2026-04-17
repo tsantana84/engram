@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { LearningPayload, LearningTargetStatus, LearningRecord } from '../../src/services/sync/learning-types.js';
 
 export interface AgentRecord {
@@ -112,11 +112,11 @@ export function resetSupabase(): void {
 }
 
 export class SupabaseManager {
-  private supabase;
+  private supabase: SupabaseClient;
   private url: string;
   private anonKey: string;
 
-  constructor(urlOrClient: string | { from: (table: string) => any }, anonKey?: string) {
+  constructor(urlOrClient: string | SupabaseClient, anonKey?: string) {
     if (typeof urlOrClient === 'string') {
       if (!anonKey) throw new Error('anonKey required when url is provided');
       this.url = urlOrClient;
@@ -125,7 +125,7 @@ export class SupabaseManager {
     } else {
       this.url = '';
       this.anonKey = '';
-      this.supabase = urlOrClient as any;
+      this.supabase = urlOrClient;
     }
   }
 
@@ -363,7 +363,7 @@ export class SupabaseManager {
   async insertLearning(
     payload: LearningPayload & { source_agent_id: string },
     targetStatus: LearningTargetStatus
-  ): Promise<{ id: number; action: 'inserted' | 'dedupe_noop' }> {
+  ): Promise<{ id?: number; action: 'inserted' | 'dedupe_noop' }> {
     const row = {
       claim: payload.claim,
       evidence: payload.evidence,
@@ -381,8 +381,11 @@ export class SupabaseManager {
       .select()
       .single();
 
-    if (error) throw error;
-    if (!data) return { id: 0, action: 'dedupe_noop' };
+    if (error) {
+      if ((error as any).code === 'PGRST116') return { action: 'dedupe_noop' };
+      throw error;
+    }
+    if (!data) return { action: 'dedupe_noop' };
     return { id: data.id, action: 'inserted' };
   }
 
@@ -445,12 +448,12 @@ export class SupabaseManager {
     }
   ): Promise<LearningRecord> {
     const update: Record<string, unknown> = {
+      ...(patch.edited ?? {}),
       status: patch.status,
       reviewed_at: new Date().toISOString(),
       reviewed_by: patch.reviewed_by,
     };
     if (patch.edit_diff !== undefined) update.edit_diff = patch.edit_diff;
-    if (patch.edited) Object.assign(update, patch.edited);
     if (patch.rejection_reason !== undefined) update.rejection_reason = patch.rejection_reason;
 
     const { data, error } = await this.supabase
