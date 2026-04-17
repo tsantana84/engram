@@ -35,7 +35,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       offset: offset ? parseInt(offset as string) : 0,
     });
 
-    res.status(200).json({ results, count: results.length });
+    const learnings = q ? await db.searchLearnings(q as string, project as string | undefined) : [];
+
+    res.status(200).json({ results, count: results.length, learnings });
   } catch (err: any) {
     res.status(500).json({ error: 'Search failed', detail: err?.message });
   }
