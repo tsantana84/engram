@@ -39,9 +39,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // approve / edit_approve
+  if (!process.env.ANTHROPIC_API_KEY) {
+    res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured — cannot run conflict detector' });
+    return;
+  }
+
   let effective: LearningRecord = existing;
   let editDiff: Record<string, unknown> | null = null;
   if (body.action === 'edit_approve') {
+    const ALLOWED = ['claim', 'evidence', 'scope'] as const;
+    const keys = Object.keys(body.edited ?? {});
+    const invalid = keys.filter((k) => !(ALLOWED as readonly string[]).includes(k));
+    if (invalid.length > 0) {
+      res.status(400).json({ error: 'edited contains disallowed fields', invalid });
+      return;
+    }
     editDiff = {
       before: { claim: existing.claim, evidence: existing.evidence, scope: existing.scope },
       after: body.edited,

@@ -111,6 +111,7 @@ describe('Dashboard API', () => {
     reviewLearningLastPatch = null;
     process.env.SUPABASE_URL = 'http://test.supabase.co';
     process.env.SUPABASE_ANON_KEY = 'test-anon-key';
+    process.env.ANTHROPIC_API_KEY = 'test-api-key';
   });
 
   // --- List tests ---
@@ -231,6 +232,44 @@ describe('Dashboard API', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body?.learning?.status).toBe('rejected');
       expect(reviewLearningLastPatch?.rejection_reason).toBe('dedupe_noop: detector judged duplicate');
+    });
+
+    test('8. approve returns 500 when ANTHROPIC_API_KEY missing', async () => {
+      const savedKey = process.env.ANTHROPIC_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      try {
+        const res = await callReview({
+          method: 'POST',
+          headers: { authorization: 'Bearer valid' },
+          query: { id: '1' },
+          body: { action: 'approve' },
+        });
+        expect(res.statusCode).toBe(500);
+        expect(res.body?.error).toContain('ANTHROPIC_API_KEY');
+      } finally {
+        if (savedKey !== undefined) process.env.ANTHROPIC_API_KEY = savedKey;
+      }
+    });
+
+    test('9. edit_approve rejects disallowed fields in edited', async () => {
+      mockGetResult = {
+        id: 5, claim: 'orig', evidence: 'orig-ev', scope: null, status: 'pending',
+        project: 'p', source_session: 's', content_hash: 'h', confidence: 0.9,
+        invalidated: false, invalidated_by: null, extracted_at: '2026-01-01',
+        reviewed_at: null, reviewed_by: null, edit_diff: null, rejection_reason: null,
+      };
+      const res = await callReview({
+        method: 'POST',
+        headers: { authorization: 'Bearer valid' },
+        query: { id: '5' },
+        body: {
+          action: 'edit_approve',
+          edited: { claim: 'ok', status: 'sneaky' }, // 'status' not in allowlist
+        },
+      });
+      expect(res.statusCode).toBe(400);
+      expect(res.body?.error).toContain('disallowed');
+      expect(res.body?.invalid).toEqual(['status']);
     });
   });
 });

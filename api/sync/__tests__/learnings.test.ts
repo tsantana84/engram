@@ -90,6 +90,7 @@ describe('POST /api/sync/learnings', () => {
     // Satisfy env var guard (initSupabase is fully mocked, values are unused)
     process.env.SUPABASE_URL = 'http://test.supabase.co';
     process.env.SUPABASE_ANON_KEY = 'test-anon-key';
+    process.env.ANTHROPIC_API_KEY = 'test-api-key';
   });
 
   test('1. returns 405 on non-POST method', async () => {
@@ -197,6 +198,25 @@ describe('POST /api/sync/learnings', () => {
     expect(result.action).toBe('dedupe_noop');
     expect(result.id).toBeUndefined();
     expect(result.content_hash).toBe('hash-001');
+  });
+
+  test('8. approved path returns 500 when ANTHROPIC_API_KEY missing', async () => {
+    const savedKey = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const res = await callHandler({
+        method: 'POST',
+        headers: { authorization: 'Bearer valid' },
+        body: {
+          target_status: 'approved',
+          learnings: [{ claim: 'c', evidence: null, scope: null, confidence: 0.9, project: 'p', source_session: 's', content_hash: 'h' }],
+        },
+      });
+      expect(res.statusCode).toBe(500);
+      expect(res.body?.error).toContain('ANTHROPIC_API_KEY');
+    } finally {
+      if (savedKey !== undefined) process.env.ANTHROPIC_API_KEY = savedKey;
+    }
   });
 
   test('7. insertLearning throwing → result has action="failed" with error message', async () => {
