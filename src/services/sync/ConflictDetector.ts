@@ -1,3 +1,5 @@
+import { buildConflictPrompt } from '../../../api/lib/conflict-prompt.js';
+
 export type ConflictDecision = 'ADD' | 'UPDATE' | 'INVALIDATE' | 'NOOP';
 
 export interface SimilarObservation {
@@ -28,28 +30,6 @@ export interface ConflictDetectorConfig {
   enabled?: boolean;
 }
 
-function buildPrompt(obs: { title: string; narrative?: string }, similar: SimilarObservation[]): string {
-  const similarText = similar.map((s, i) =>
-    `[${i + 1}] ID:${s.id} | Agent:${s.agent_name ?? 'unknown'} | Branch:${s.git_branch ?? 'unknown'}\n    TITLE: ${s.title ?? ''}\n    NARRATIVE: ${s.narrative ?? '(none)'}`
-  ).join('\n\n');
-
-  return `You are a memory conflict resolver for a shared AI coding assistant knowledge base.
-
-A new observation is about to be stored:
-TITLE: ${obs.title}
-NARRATIVE: ${obs.narrative ?? '(none)'}
-
-Most semantically similar existing observations:
-${similarText}
-
-Decide what to do. Choose ONE:
-- ADD: New information, no conflict. Store it.
-- UPDATE: Supersedes an existing one. Store new, invalidate old (provide targetId).
-- INVALIDATE: Contradicts an existing one that appears wrong. Invalidate old, add new (provide targetId).
-- NOOP: Duplicate or adds no value. Skip.
-
-Respond ONLY with JSON: {"decision": "ADD"|"UPDATE"|"INVALIDATE"|"NOOP", "targetId": <number or null>, "reason": "<brief>"}`;
-}
 
 export class ConflictDetector {
   private config: ConflictDetectorConfig;
@@ -67,7 +47,7 @@ export class ConflictDetector {
       const similar = await this.config.fetchSimilar(obs);
       if (similar.length === 0) return { decision: 'ADD' };
 
-      const prompt = buildPrompt(obs, similar);
+      const prompt = buildConflictPrompt(obs, similar);
       const text = await this.config.llm(prompt);
 
       // Extract first JSON object from response (LLM may wrap in prose)
