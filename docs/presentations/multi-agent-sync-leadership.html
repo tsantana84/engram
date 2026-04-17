@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engram: Shared Team Brain</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #2a3550;
+    --accent: #4f8ef7;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --gradient: linear-gradient(135deg, #4f8ef7, #7c3aed);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(10,14,26,0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+  }
+  .nav-logo {
+    font-size: 1.1rem; font-weight: 700;
+    background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .nav-links { display: flex; gap: 1.5rem; }
+  .nav-links a {
+    color: var(--text-muted); text-decoration: none; font-size: 0.85rem;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  /* ─── SECTIONS ─── */
+  section {
+    min-height: 100vh;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 6rem 2rem 4rem;
+    max-width: 1100px; margin: 0 auto;
+  }
+
+  /* ─── HERO ─── */
+  #hero {
+    text-align: center;
+    align-items: center;
+  }
+  .eyebrow {
+    font-size: 0.8rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent);
+    margin-bottom: 1rem;
+  }
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800; line-height: 1.1;
+    margin-bottom: 1.25rem;
+  }
+  .gradient-text {
+    background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    font-size: 1.2rem; color: var(--text-muted); max-width: 640px; margin: 0 auto 2.5rem;
+  }
+  .badge-row {
+    display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-bottom: 3rem;
+  }
+  .badge {
+    padding: 0.4rem 1rem; border-radius: 999px; font-size: 0.82rem; font-weight: 600;
+    border: 1px solid;
+  }
+  .badge-blue  { color: var(--accent);  border-color: var(--accent);  background: rgba(79,142,247,0.08); }
+  .badge-purple{ color: #a78bfa;        border-color: #7c3aed;         background: rgba(124,58,237,0.08); }
+  .badge-green { color: var(--accent3); border-color: var(--accent3); background: rgba(16,185,129,0.08); }
+  .badge-amber { color: var(--accent4); border-color: var(--accent4); background: rgba(245,158,11,0.08); }
+
+  /* ─── PROBLEM ─── */
+  .problem-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem;
+    margin-top: 2.5rem;
+  }
+  .problem-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 1.75rem;
+  }
+  .problem-icon { font-size: 2rem; margin-bottom: 1rem; }
+  .problem-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+  .problem-card p  { color: var(--text-muted); font-size: 0.93rem; }
+
+  /* ─── SECTION HEADER ─── */
+  .section-header { margin-bottom: 2.5rem; }
+  .section-header .eyebrow { margin-bottom: 0.5rem; }
+  .section-header h2 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; }
+  .section-header p  { color: var(--text-muted); margin-top: 0.75rem; max-width: 640px; font-size: 1rem; }
+
+  /* ─── ARCHITECTURE DIAGRAM ─── */
+  .arch-diagram {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    padding: 2.5rem; overflow-x: auto;
+  }
+  .arch-diagram svg { width: 100%; max-width: 900px; display: block; margin: 0 auto; }
+
+  /* ─── FLOW STEPS ─── */
+  .flow-steps {
+    display: flex; flex-direction: column; gap: 0; margin-top: 2rem;
+    position: relative;
+  }
+  .flow-step {
+    display: flex; gap: 1.5rem; align-items: flex-start;
+    padding: 1.5rem; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 0; position: relative;
+  }
+  .flow-step:first-child { border-radius: 16px 16px 0 0; }
+  .flow-step:last-child  { border-radius: 0 0 16px 16px; }
+  .flow-step + .flow-step { border-top: none; }
+  .step-num {
+    width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 0.9rem; flex-shrink: 0;
+    background: var(--gradient); color: #fff;
+  }
+  .step-content h4 { font-size: 1rem; margin-bottom: 0.3rem; }
+  .step-content p  { color: var(--text-muted); font-size: 0.9rem; }
+  .step-arrow {
+    text-align: center; color: var(--border); font-size: 1.5rem; line-height: 1;
+    padding: 0.25rem 0;
+    background: var(--surface); border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+    padding-left: 2.9rem;
+  }
+
+  /* ─── BENEFITS ─── */
+  .benefits-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;
+    margin-top: 2.5rem;
+  }
+  .benefit-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 1.75rem; position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .benefit-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .benefit-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--gradient);
+  }
+  .benefit-icon { font-size: 1.75rem; margin-bottom: 1rem; }
+  .benefit-card h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
+  .benefit-card p  { color: var(--text-muted); font-size: 0.9rem; }
+
+  /* ─── SEARCH DEMO ─── */
+  .search-demo {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    overflow: hidden; margin-top: 2rem;
+  }
+  .demo-bar {
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    padding: 1rem 1.5rem; display: flex; align-items: center; gap: 0.75rem;
+  }
+  .demo-bar-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-red    { background: #ef4444; }
+  .dot-yellow { background: #f59e0b; }
+  .dot-green  { background: #10b981; }
+  .demo-input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 0.4rem 0.75rem; font-size: 0.85rem;
+    font-family: monospace;
+  }
+  .demo-results { padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+  .result-row {
+    display: flex; gap: 1rem; align-items: flex-start;
+    padding: 0.85rem 1rem; border-radius: 10px; border: 1px solid var(--border);
+    font-size: 0.88rem;
+  }
+  .result-row.local  { border-left: 3px solid var(--accent); background: rgba(79,142,247,0.04); }
+  .result-row.team   { border-left: 3px solid var(--accent2); background: rgba(124,58,237,0.04); }
+  .result-agent { font-size: 0.75rem; font-weight: 600; white-space: nowrap; margin-top: 2px; }
+  .agent-me    { color: var(--accent); }
+  .agent-sarah { color: #a78bfa; }
+  .agent-diana { color: var(--accent3); }
+  .result-meta { flex: 1; }
+  .result-title { font-weight: 600; margin-bottom: 0.25rem; }
+  .result-sub   { color: var(--text-muted); }
+  .source-tag {
+    font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; white-space: nowrap;
+    align-self: flex-start;
+  }
+  .source-local { background: rgba(79,142,247,0.15); color: var(--accent); }
+  .source-team  { background: rgba(124,58,237,0.15); color: #a78bfa; }
+
+  /* ─── ROADMAP ─── */
+  .roadmap {
+    display: flex; flex-direction: column; gap: 1rem; margin-top: 2.5rem;
+    position: relative;
+  }
+  .roadmap::before {
+    content: ''; position: absolute; left: 19px; top: 28px; bottom: 28px;
+    width: 2px; background: var(--border);
+  }
+  .roadmap-item {
+    display: flex; gap: 1.5rem; align-items: flex-start;
+  }
+  .roadmap-dot {
+    width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-weight: 800; font-size: 0.85rem; flex-shrink: 0;
+    border: 2px solid; z-index: 1;
+  }
+  .v1 { background: rgba(79,142,247,0.15); border-color: var(--accent); color: var(--accent); }
+  .v2 { background: rgba(124,58,237,0.15); border-color: #7c3aed; color: #a78bfa; }
+  .v3 { background: rgba(16,185,129,0.15); border-color: var(--accent3); color: var(--accent3); }
+  .v4 { background: rgba(245,158,11,0.15); border-color: var(--accent4); color: var(--accent4); }
+  .roadmap-body {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 1.25rem 1.5rem; flex: 1;
+  }
+  .roadmap-body h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .roadmap-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .roadmap-tag {
+    font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 6px;
+    background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border);
+  }
+  .roadmap-tag.now { background: rgba(79,142,247,0.1); color: var(--accent); border-color: var(--accent); }
+
+  /* ─── PRIVACY ─── */
+  .privacy-card {
+    display: flex; gap: 1.5rem; background: var(--surface); border: 1px solid var(--accent3);
+    border-radius: 16px; padding: 1.75rem; margin-top: 2rem; align-items: flex-start;
+  }
+  .privacy-icon { font-size: 2.5rem; flex-shrink: 0; }
+  .privacy-card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent3); }
+  .privacy-card p  { color: var(--text-muted); font-size: 0.93rem; margin-bottom: 1rem; }
+  .code-inline {
+    font-family: monospace; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.88rem;
+    color: #a78bfa; display: block;
+  }
+
+  /* ─── CTA ─── */
+  #cta {
+    text-align: center; align-items: center;
+  }
+  .cta-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 24px;
+    padding: 3.5rem 2.5rem; max-width: 700px; margin: 0 auto;
+  }
+  .cta-box h2 { font-size: 2rem; margin-bottom: 1rem; }
+  .cta-box p  { color: var(--text-muted); margin-bottom: 2rem; }
+  .cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    padding: 0.75rem 2rem; border-radius: 10px; font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; border: none; text-decoration: none; display: inline-block;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+  .btn:hover { transform: translateY(-1px); opacity: 0.9; }
+  .btn-primary { background: var(--gradient); color: #fff; }
+  .btn-secondary {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  /* ─── STATS BAR ─── */
+  .stats-bar {
+    display: flex; gap: 1px; background: var(--border); border-radius: 16px; overflow: hidden;
+    margin-top: 3rem;
+  }
+  .stat {
+    flex: 1; background: var(--surface); padding: 1.5rem;
+    text-align: center;
+  }
+  .stat-val { font-size: 1.8rem; font-weight: 800; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-label { color: var(--text-muted); font-size: 0.82rem; margin-top: 0.25rem; }
+
+  @media (max-width: 640px) {
+    .stats-bar { flex-direction: column; gap: 0; background: none; }
+    .stat { border: 1px solid var(--border); margin-bottom: 1px; border-radius: 10px; }
+    nav .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">⚡ engram</div>
+  <div class="nav-links">
+    <a href="#problem">Problem</a>
+    <a href="#how">How It Works</a>
+    <a href="#benefits">Benefits</a>
+    <a href="#search">Search</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#roadmap">Roadmap</a>
+  </div>
+</nav>
+
+<!-- ─── HERO ─── -->
+<section id="hero">
+  <div class="eyebrow">Engram Multi-Agent Sync · v1</div>
+  <h1>One <span class="gradient-text">shared brain</span><br>for the whole team</h1>
+  <p class="hero-sub">Each engineer's AI agent learns and remembers. Multi-Agent Sync pools that knowledge so your entire team benefits from every discovery, fix, and decision.</p>
+  <div class="badge-row">
+    <span class="badge badge-blue">Local-First</span>
+    <span class="badge badge-purple">Push-Based Sync</span>
+    <span class="badge badge-green">Privacy Controls</span>
+    <span class="badge badge-amber">Merged Timeline Search</span>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat">
+      <div class="stat-val">5–20</div>
+      <div class="stat-label">Team members</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">30s</div>
+      <div class="stat-label">Sync interval</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">100%</div>
+      <div class="stat-label">Offline capable</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val">3s</div>
+      <div class="stat-label">Team search timeout</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── PROBLEM ─── -->
+<section id="problem">
+  <div class="section-header">
+    <div class="eyebrow">The Problem</div>
+    <h2>AI agents work in silos</h2>
+    <p>Every engineer's AI assistant builds its own memory, but that knowledge never leaves their machine. When someone solves a hard problem, their teammates start from scratch.</p>
+  </div>
+  <div class="problem-grid">
+    <div class="problem-card">
+      <div class="problem-icon">🧱</div>
+      <h3>Isolated Knowledge</h3>
+      <p>Thiago discovers a tricky SQLite migration bug. Sarah hits the same wall 3 days later — her agent has no idea it's been solved.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">🔁</div>
+      <h3>Repeated Investigations</h3>
+      <p>Architecture decisions get re-litigated in every thread. "Why did we choose X?" gets answered from scratch every sprint.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">📤</div>
+      <h3>Knowledge Walks Out the Door</h3>
+      <p>When a team member leaves or switches projects, their agent's institutional memory disappears with them.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ─── -->
+<section id="how">
+  <div class="section-header">
+    <div class="eyebrow">Architecture</div>
+    <h2>How it works</h2>
+    <p>A sync layer sits on top of each local engram instance. No local changes — your SQLite database stays the source of truth. The server just collects and serves what's been shared.</p>
+  </div>
+
+  <!-- Architecture SVG Diagram -->
+  <div class="arch-diagram">
+    <svg viewBox="0 0 860 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#4f8ef7"/>
+        </marker>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#7c3aed"/>
+        </marker>
+        <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#4f8ef7" stop-opacity="0.2"/>
+          <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.2"/>
+        </linearGradient>
+        <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#4f8ef7"/>
+          <stop offset="100%" stop-color="#7c3aed"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Central Server -->
+      <rect x="320" y="30" width="220" height="360" rx="16" fill="url(#g1)" stroke="#7c3aed" stroke-width="1.5"/>
+      <text x="430" y="58" text-anchor="middle" fill="#a78bfa" font-size="12" font-weight="700" letter-spacing="1">CENTRAL SERVER</text>
+      <!-- Postgres -->
+      <rect x="345" y="72" width="170" height="60" rx="10" fill="#1a2236" stroke="#2a3550" stroke-width="1"/>
+      <text x="430" y="97" text-anchor="middle" fill="#e2e8f0" font-size="12" font-weight="600">Postgres</text>
+      <text x="430" y="116" text-anchor="middle" fill="#94a3b8" font-size="10">observations · sessions</text>
+      <!-- FTS -->
+      <rect x="345" y="146" width="170" height="44" rx="10" fill="#1a2236" stroke="#2a3550" stroke-width="1"/>
+      <text x="430" y="165" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">Full-Text Search</text>
+      <text x="430" y="181" text-anchor="middle" fill="#94a3b8" font-size="10">tsvector · GIN index</text>
+      <!-- Auth -->
+      <rect x="345" y="204" width="80" height="40" rx="10" fill="#1a2236" stroke="#2a3550" stroke-width="1"/>
+      <text x="385" y="222" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="600">Auth</text>
+      <text x="385" y="237" text-anchor="middle" fill="#94a3b8" font-size="9">cmem_ak_…</text>
+      <!-- Agents API -->
+      <rect x="435" y="204" width="80" height="40" rx="10" fill="#1a2236" stroke="#2a3550" stroke-width="1"/>
+      <text x="475" y="222" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="600">REST API</text>
+      <text x="475" y="237" text-anchor="middle" fill="#94a3b8" font-size="9">/sync /search</text>
+      <!-- sync queue label -->
+      <rect x="345" y="258" width="170" height="44" rx="10" fill="#1a2236" stroke="#2a3550" stroke-width="1"/>
+      <text x="430" y="277" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">Agent Registry</text>
+      <text x="430" y="293" text-anchor="middle" fill="#94a3b8" font-size="10">Thiago · Sarah · Diana</text>
+
+      <!-- Engineer Thiago (left) -->
+      <rect x="20" y="60" width="170" height="300" rx="14" fill="#111827" stroke="#2a3550" stroke-width="1.5"/>
+      <text x="105" y="86" text-anchor="middle" fill="#4f8ef7" font-size="12" font-weight="700">THIAGO</text>
+      <rect x="36" y="96" width="138" height="48" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="105" y="117" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">SQLite</text>
+      <text x="105" y="133" text-anchor="middle" fill="#94a3b8" font-size="10">local observations</text>
+      <rect x="36" y="154" width="138" height="38" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="105" y="172" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">Sync Queue</text>
+      <text x="105" y="188" text-anchor="middle" fill="#94a3b8" font-size="10">pending · synced</text>
+      <rect x="36" y="202" width="138" height="38" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="105" y="222" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">Sync Worker</text>
+      <text x="105" y="238" text-anchor="middle" fill="#94a3b8" font-size="10">every 30s</text>
+      <rect x="36" y="250" width="138" height="38" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="105" y="272" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="600">Claude Code + Hooks</text>
+      <text x="105" y="288" text-anchor="middle" fill="#94a3b8" font-size="10">records observations</text>
+      <rect x="36" y="298" width="138" height="38" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="105" y="318" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">Search Manager</text>
+      <text x="105" y="334" text-anchor="middle" fill="#94a3b8" font-size="10">local + team merge</text>
+
+      <!-- Engineer Diana (right) -->
+      <rect x="670" y="60" width="170" height="300" rx="14" fill="#111827" stroke="#2a3550" stroke-width="1.5"/>
+      <text x="755" y="86" text-anchor="middle" fill="#10b981" font-size="12" font-weight="700">DIANA</text>
+      <rect x="686" y="96" width="138" height="48" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="755" y="117" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">SQLite</text>
+      <text x="755" y="133" text-anchor="middle" fill="#94a3b8" font-size="10">local observations</text>
+      <rect x="686" y="154" width="138" height="38" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="755" y="172" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">Sync Queue</text>
+      <text x="755" y="188" text-anchor="middle" fill="#94a3b8" font-size="10">pending · synced</text>
+      <rect x="686" y="202" width="138" height="38" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="755" y="222" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">Sync Worker</text>
+      <text x="755" y="238" text-anchor="middle" fill="#94a3b8" font-size="10">every 30s</text>
+      <rect x="686" y="250" width="138" height="38" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="755" y="272" text-anchor="middle" fill="#e2e8f0" font-size="10" font-weight="600">Claude Code + Hooks</text>
+      <text x="755" y="288" text-anchor="middle" fill="#94a3b8" font-size="10">records observations</text>
+      <rect x="686" y="298" width="138" height="38" rx="8" fill="#1a2236" stroke="#2a3550"/>
+      <text x="755" y="318" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">Search Manager</text>
+      <text x="755" y="334" text-anchor="middle" fill="#94a3b8" font-size="10">local + team merge</text>
+
+      <!-- PUSH arrows left → server -->
+      <line x1="174" y1="173" x2="318" y2="173" stroke="#4f8ef7" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="5,3"/>
+      <text x="246" y="163" text-anchor="middle" fill="#4f8ef7" font-size="10" font-weight="600">PUSH</text>
+      <!-- QUERY arrows -->
+      <line x1="318" y1="193" x2="174" y2="193" stroke="#4f8ef7" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="246" y="207" text-anchor="middle" fill="#4f8ef7" font-size="10" font-weight="600">SEARCH</text>
+
+      <!-- PUSH arrows right → server -->
+      <line x1="666" y1="173" x2="542" y2="173" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr2)" stroke-dasharray="5,3"/>
+      <text x="604" y="163" text-anchor="middle" fill="#10b981" font-size="10" font-weight="600">PUSH</text>
+      <line x1="542" y1="193" x2="666" y2="193" stroke="#10b981" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <text x="604" y="207" text-anchor="middle" fill="#10b981" font-size="10" font-weight="600">SEARCH</text>
+
+      <!-- Sarah indicator at bottom center -->
+      <text x="430" y="405" text-anchor="middle" fill="#94a3b8" font-size="11">+ Sarah, + up to 20 team members — each with their own local instance</text>
+    </svg>
+  </div>
+
+  <!-- Sync flow steps -->
+  <div style="margin-top:2.5rem">
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h4>Agent observes &amp; stores locally</h4>
+          <p>Claude Code hooks capture what you worked on — decisions, bugs fixed, discoveries. Stored instantly in your local SQLite database. Always works offline.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h4>Sync queue fills asynchronously</h4>
+          <p>Each new observation is added to a lightweight <code>sync_queue</code> table. No blocking. No latency on your local experience.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h4>Background worker pushes in batches</h4>
+          <p>Every 30 seconds, up to 100 pending items are pushed to the central server via HTTPS. Idempotent — safe to retry. Fails gracefully if the server is down.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h4>Team knowledge is immediately searchable</h4>
+          <p>Searches automatically merge local results with team results. Each observation is attributed to its author. Local copy always wins on deduplication.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── SEARCH DEMO ─── -->
+<section id="search">
+  <div class="section-header">
+    <div class="eyebrow">Team Search</div>
+    <h2>Everyone's work, one timeline</h2>
+    <p>Search results merge local and team observations in a single attributed timeline. Your work appears first; teammates' work is clearly labeled.</p>
+  </div>
+
+  <div class="search-demo">
+    <div class="demo-bar">
+      <div class="demo-bar-dot dot-red"></div>
+      <div class="demo-bar-dot dot-yellow"></div>
+      <div class="demo-bar-dot dot-green"></div>
+      <input class="demo-input" type="text" value="migration sqlite fts5" readonly/>
+    </div>
+    <div class="demo-results">
+      <div class="result-row local">
+        <div class="result-agent agent-me">YOU</div>
+        <div class="result-meta">
+          <div class="result-title">FTS5 index rebuild required after bulk import</div>
+          <div class="result-sub">Fixed by calling <code>rebuild()</code> after batch inserts — otherwise search returns stale results</div>
+        </div>
+        <div class="source-tag source-local">local</div>
+      </div>
+      <div class="result-row team">
+        <div class="result-agent agent-sarah">SARAH</div>
+        <div class="result-meta">
+          <div class="result-title">Migration 24: FTS5 triggers need explicit table alias</div>
+          <div class="result-sub">SQLite quirk — shadow table ambiguity without alias causes silent failures on some versions</div>
+        </div>
+        <div class="source-tag source-team">team</div>
+      </div>
+      <div class="result-row team">
+        <div class="result-agent agent-diana">DIANA</div>
+        <div class="result-meta">
+          <div class="result-title">Rollback strategy for failed migrations: no automatic undo</div>
+          <div class="result-sub">SQLite has no transactional DDL. Document manual rollback steps in the migration file header.</div>
+        </div>
+        <div class="source-tag source-team">team</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── BENEFITS ─── -->
+<section id="benefits">
+  <div class="section-header">
+    <div class="eyebrow">Benefits</div>
+    <h2>What the team gains</h2>
+  </div>
+  <div class="benefits-grid">
+    <div class="benefit-card">
+      <div class="benefit-icon">🧠</div>
+      <h3>Institutional memory that persists</h3>
+      <p>Architectural decisions, debugging breakthroughs, and lessons learned accumulate in a shared corpus that outlasts any single engineer.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">⚡</div>
+      <h3>Zero impact on local experience</h3>
+      <p>Local SQLite stays the source of truth. Sync is async, offline-safe, and completely invisible to the agent during normal use.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">🔍</div>
+      <h3>Team-wide context in every search</h3>
+      <p>Ask your agent about any codebase topic and get insights from the full team — not just your own sessions.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">🏷️</div>
+      <h3>Attribution &amp; provenance</h3>
+      <p>Every observation is tagged with its author and source. You always know whose experience produced an insight.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">🛡️</div>
+      <h3>Privacy by default</h3>
+      <p>Sensitive content stays local with a simple <code>&lt;private&gt;</code> tag. No configuration needed — the tag system already exists.</p>
+    </div>
+    <div class="benefit-card">
+      <div class="benefit-icon">🐳</div>
+      <h3>Simple self-hosted deployment</h3>
+      <p>A single Docker Compose file spins up the Postgres server and the engram central service. No cloud vendor lock-in.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── PRIVACY ─── -->
+<section id="privacy">
+  <div class="section-header">
+    <div class="eyebrow">Privacy Model</div>
+    <h2>Default share, opt-out via tags</h2>
+    <p>The team gets maximum knowledge by default. Engineers opt specific content out of sharing using a tag that already exists in engram today.</p>
+  </div>
+
+  <div class="privacy-card">
+    <div class="privacy-icon">🔒</div>
+    <div>
+      <h3>How it works</h3>
+      <p>Tag any content with <code>&lt;private&gt;</code> and it is stripped at the hook layer — before data ever reaches the local database. It never enters the sync queue and never touches the server.</p>
+      <code class="code-inline">I found the issue &lt;private&gt;customer API key was abc123xyz — rotate immediately&lt;/private&gt; in the config file.</code>
+    </div>
+  </div>
+
+  <div style="margin-top:1.5rem; display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1rem">
+    <div class="problem-card">
+      <div class="problem-icon">✅</div>
+      <h3>What's shared</h3>
+      <p>Code discoveries, debugging sessions, architecture decisions, patterns, and learnings — the knowledge your team needs.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">🚫</div>
+      <h3>What stays local</h3>
+      <p>Anything wrapped in <code>&lt;private&gt;</code> tags: credentials, sensitive customer data, personal notes, anything you choose.</p>
+    </div>
+    <div class="problem-card">
+      <div class="problem-icon">🔑</div>
+      <h3>Authentication</h3>
+      <p>Each team member has a unique API key (<code>cmem_ak_…</code>) registered with the server. Keys are bcrypt-hashed. No OAuth complexity.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ROADMAP ─── -->
+<section id="roadmap">
+  <div class="section-header">
+    <div class="eyebrow">Roadmap</div>
+    <h2>Where we're going</h2>
+    <p>v1 ships the core shared brain. Future versions add intelligence, controls, and scale.</p>
+  </div>
+
+  <div class="roadmap">
+    <div class="roadmap-item">
+      <div class="roadmap-dot v1">v1</div>
+      <div class="roadmap-body">
+        <h3>Shared Team Brain — Core</h3>
+        <div class="roadmap-tags">
+          <span class="roadmap-tag now">Now</span>
+          <span class="roadmap-tag">Agent registration &amp; API keys</span>
+          <span class="roadmap-tag">Push-based async sync</span>
+          <span class="roadmap-tag">Merged team search</span>
+          <span class="roadmap-tag">CLI management</span>
+          <span class="roadmap-tag">Docker Compose deploy</span>
+          <span class="roadmap-tag">Private tag privacy</span>
+        </div>
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot v2">v2</div>
+      <div class="roadmap-body">
+        <h3>Team Intelligence</h3>
+        <div class="roadmap-tags">
+          <span class="roadmap-tag">Team Knowledge Agents (corpora)</span>
+          <span class="roadmap-tag">Project-level RBAC</span>
+          <span class="roadmap-tag">Self-service key rotation</span>
+          <span class="roadmap-tag">Admin dashboard UI</span>
+          <span class="roadmap-tag">Rate limiting</span>
+        </div>
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot v3">v3</div>
+      <div class="roadmap-body">
+        <h3>Advanced Collaboration</h3>
+        <div class="roadmap-tags">
+          <span class="roadmap-tag">Local cache of team observations</span>
+          <span class="roadmap-tag">Vector / semantic search</span>
+          <span class="roadmap-tag">Audit log</span>
+          <span class="roadmap-tag">Observation reactions &amp; annotations</span>
+        </div>
+      </div>
+    </div>
+    <div class="roadmap-item">
+      <div class="roadmap-dot v4">v4</div>
+      <div class="roadmap-body">
+        <h3>Enterprise</h3>
+        <div class="roadmap-tags">
+          <span class="roadmap-tag">SSO / OAuth (GitHub org, Google Workspace)</span>
+          <span class="roadmap-tag">Multi-team org hierarchy</span>
+          <span class="roadmap-tag">Retention policies</span>
+          <span class="roadmap-tag">Webhooks (Slack, etc.)</span>
+          <span class="roadmap-tag">Horizontal scaling</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── CTA ─── -->
+<section id="cta">
+  <div class="cta-box">
+    <h2>Ready to build the <span class="gradient-text">shared brain?</span></h2>
+    <p>The spec is approved, the implementation plan is written. 15 tasks across two parallel tracks — local sync infrastructure and the central server.</p>
+    <div class="cta-buttons">
+      <a href="../superpowers/plans/2026-04-14-multi-agent-sync.md" class="btn btn-primary">View Implementation Plan →</a>
+      <a href="../superpowers/specs/2026-04-14-multi-agent-sync-design.md" class="btn btn-secondary">Read the Spec</a>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

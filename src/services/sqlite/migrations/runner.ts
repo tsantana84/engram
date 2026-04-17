@@ -38,6 +38,7 @@ export class MigrationRunner {
     this.createObservationFeedbackTable();
     this.addSessionPlatformSourceColumn();
     this.createSyncQueueTable();
+    this.addProvenanceColumns();
   }
 
   /**
@@ -1008,5 +1009,34 @@ export class MigrationRunner {
 
     this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(27, new Date().toISOString());
     logger.debug('DB', 'Successfully created sync_queue table');
+  }
+
+  /**
+   * Add provenance and temporal retention columns to observations (migration 28)
+   */
+  private addProvenanceColumns(): void {
+    const applied = this.db.prepare('SELECT version FROM schema_versions WHERE version = ?').get(28) as SchemaVersion | undefined;
+    if (applied) return;
+
+    logger.debug('DB', 'Migration 28: Adding provenance columns to observations');
+
+    const columns = this.db.prepare('PRAGMA table_info(observations)').all() as any[];
+    const names = columns.map((c: any) => c.name);
+
+    if (!names.includes('git_branch')) {
+      this.db.run(`ALTER TABLE observations ADD COLUMN git_branch TEXT`);
+    }
+    if (!names.includes('invalidated_at')) {
+      this.db.run(`ALTER TABLE observations ADD COLUMN invalidated_at INTEGER`);
+    }
+    if (!names.includes('validation_status')) {
+      this.db.run(`ALTER TABLE observations ADD COLUMN validation_status TEXT DEFAULT 'unvalidated'`);
+    }
+
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_observations_validation ON observations(validation_status)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_observations_invalidated ON observations(invalidated_at)`);
+
+    this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(28, new Date().toISOString());
+    logger.debug('DB', 'Successfully added git_branch, invalidated_at, validation_status to observations');
   }
 }

@@ -143,6 +143,7 @@ export function getObservationsByFilePath(
       (files_read LIKE '[%' AND EXISTS (SELECT 1 FROM json_each(files_read) WHERE value = ?))
       OR (files_modified LIKE '[%' AND EXISTS (SELECT 1 FROM json_each(files_modified) WHERE value = ?))
     )
+    AND (invalidated_at IS NULL OR invalidated_at = 0)
     ${projectClause}
     ORDER BY created_at_epoch DESC
     LIMIT ?

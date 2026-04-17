@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>engram — Walkthrough</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a0a;
+      --fg: #f0ebe3;
+      --muted: #555;
+      --accent: #e8b84b;
+      --dim: #1e1e1e;
+      --card: #141414;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .deck {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      padding: 60px;
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .slide__inner {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    .slide__content {}
+
+    .slide__step {
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+
+    .slide__title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(52px, 7vw, 100px);
+      line-height: 0.95;
+      letter-spacing: 0.02em;
+      color: var(--fg);
+      margin-bottom: 28px;
+    }
+
+    .slide__title em {
+      font-style: normal;
+      color: var(--muted);
+    }
+
+    .slide__body {
+      font-size: 15px;
+      font-weight: 300;
+      color: var(--muted);
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+
+    .slide__items {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .slide__items li {
+      font-size: 14px;
+      color: var(--fg);
+      padding: 10px 16px;
+      background: var(--card);
+      border-radius: 8px;
+      border: 1px solid var(--dim);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .slide__items li::before {
+      content: '→';
+      color: var(--accent);
+      font-size: 12px;
+    }
+
+    .slide__items li.muted {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .slide__items li.muted::before {
+      content: '·';
+      color: var(--muted);
+    }
+
+    .slide__mockup {
+      background: var(--card);
+      border: 1px solid var(--dim);
+      border-radius: 24px;
+      padding: 32px 28px;
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .mockup__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--dim);
+    }
+
+    .mockup__title {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--fg);
+    }
+
+    .mockup__subtitle {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .mockup__section-title {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+
+    .mockup__row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--dim);
+      font-size: 14px;
+      color: var(--fg);
+    }
+
+    .mockup__row:last-child {
+      border-bottom: none;
+    }
+
+    .mockup__row .label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .mockup__row .value {
+      font-weight: 500;
+    }
+
+    .mockup__field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 14px 16px;
+      background: var(--bg);
+      border-radius: 10px;
+      border: 1px solid var(--dim);
+      margin-bottom: 10px;
+    }
+
+    .mockup__field .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .mockup__field .input-line {
+      height: 8px;
+      background: var(--dim);
+      border-radius: 4px;
+    }
+
+    .mockup__field .input-line.short {
+      width: 60%;
+    }
+
+    .mockup__cta {
+      text-align: center;
+      padding: 14px;
+      background: var(--fg);
+      color: var(--bg);
+      border-radius: 10px;
+      font-weight: 500;
+      font-size: 14px;
+      margin-top: auto;
+    }
+
+    .mockup__list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mockup__list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: var(--bg);
+      border-radius: 10px;
+      border: 1px solid var(--dim);
+      font-size: 13px;
+      color: var(--fg);
+    }
+
+    .mockup__list-item .date {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    nav {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      z-index: 100;
+    }
+
+    button {
+      background: none;
+      border: 1px solid var(--dim);
+      color: var(--fg);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    button:disabled {
+      opacity: 0.2;
+      cursor: default;
+    }
+
+    button:disabled:hover {
+      border-color: var(--dim);
+      background: none;
+      color: var(--fg);
+    }
+
+    .dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--dim);
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .dot.active {
+      background: var(--accent);
+      width: 20px;
+      border-radius: 3px;
+    }
+
+    .progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 2px;
+      background: var(--accent);
+      transition: width 0.4s ease;
+      z-index: 100;
+    }
+
+    .logo {
+      position: fixed;
+      top: 40px;
+      left: 60px;
+      font-size: 13px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      font-weight: 500;
+      z-index: 100;
+      color: var(--fg);
+    }
+
+    .logo span {
+      color: var(--muted);
+    }
+
+    .counter {
+      position: fixed;
+      top: 40px;
+      right: 60px;
+      font-size: 13px;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      font-weight: 500;
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+<div class="logo">engram <span>/ walkthrough</span></div>
+<div class="counter" id="counter">01 / 05</div>
+
+<div class="deck">
+
+  <!-- Slide 1: Get Started -->
+  <div class="slide active" data-step="Step 01 / 05">
+    <div class="slide__inner">
+      <div class="slide__content">
+        <div class="slide__step">Step 01 / 05</div>
+        <div class="slide__title">GET<br><em>STARTED</em></div>
+        <div class="slide__body">Welcome to engram. Your personal memory layer — private, structured, and always accessible.</div>
+        <ul class="slide__items">
+          <li>100% private — your data stays yours</li>
+          <li>Capture thoughts, links, and reflections</li>
+          <li>Organize with templates and streams</li>
+          <li class="muted">Tap anywhere to begin</li>
+        </ul>
+      </div>
+      <div class="slide__mockup">
+        <div class="mockup__header">
+          <div>
+            <div class="mockup__title">engram</div>
+            <div class="mockup__subtitle">your memory layer</div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;">
+          <div style="font-size:40px;">🧠</div>
+          <div style="font-size:14px;color:var(--muted);">Tap anywhere to begin</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 2: Memory Stream -->
+  <div class="slide" data-step="Step 02 / 05">
+    <div class="slide__inner">
+      <div class="slide__content">
+        <div class="slide__step">Step 02 / 05</div>
+        <div class="slide__title">MEMORY<br><em>STREAM</em></div>
+        <div class="slide__body">Everything you capture flows into your Memory Stream — organized by date and topic, ready when you need them.</div>
+        <ul class="slide__items">
+          <li>Design Review — captured Mar 26</li>
+          <li>All Hands — captured Mar 26</li>
+          <li>Weekly Sync — captured Mar 24</li>
+          <li class="muted">Grouped by date automatically</li>
+        </ul>
+      </div>
+      <div class="slide__mockup">
+        <div class="mockup__header">
+          <div>
+            <div class="mockup__title">Memory Stream</div>
+            <div class="mockup__subtitle">Mar 26, 2026</div>
+          </div>
+        </div>
+        <div class="mockup__list">
+          <div class="mockup__list-item">
+            <span>Design Review</span>
+            <span class="date">Today</span>
+          </div>
+          <div class="mockup__list-item">
+            <span>All Hands</span>
+            <span class="date">Today</span>
+          </div>
+        </div>
+        <div class="mockup__section-title">Earlier</div>
+        <div class="mockup__list">
+          <div class="mockup__list-item">
+            <span>Weekly Sync</span>
+            <span class="date">Mar 24</span>
+          </div>
+          <div class="mockup__list-item">
+            <span>Sprint Planning</span>
+            <span class="date">Mar 22</span>
+          </div>
+          <div class="mockup__list-item">
+            <span>1-on-1 Notes</span>
+            <span class="date">Mar 20</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 3: Templates -->
+  <div class="slide" data-step="Step 03 / 05">
+    <div class="slide__inner">
+      <div class="slide__content">
+        <div class="slide__step">Step 03 / 05</div>
+        <div class="slide__title">READY-MADE<br><em>TEMPLATES</em></div>
+        <div class="slide__body">Don't start from scratch. Choose from templates built for the rituals you already do.</div>
+        <ul class="slide__items">
+          <li>Daily Standup — quick async updates</li>
+          <li>Weekly Review — reflect and plan ahead</li>
+          <li>Retrospective — build smarter, together</li>
+          <li>Project Retro — ship better products</li>
+        </ul>
+      </div>
+      <div class="slide__mockup">
+        <div class="mockup__header">
+          <div class="mockup__title">Templates</div>
+        </div>
+        <div class="mockup__list">
+          <div class="mockup__list-item">
+            <span>Daily Standup</span>
+            <span class="date">→</span>
+          </div>
+          <div class="mockup__list-item">
+            <span>Weekly Review</span>
+            <span class="date">→</span>
+          </div>
+          <div class="mockup__list-item">
+            <span>Retrospective</span>
+            <span class="date">→</span>
+          </div>
+          <div class="mockup__list-item">
+            <span>Project Retro</span>
+            <span class="date">→</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 4: Retrospective Template -->
+  <div class="slide" data-step="Step 04 / 05">
+    <div class="slide__inner">
+      <div class="slide__content">
+        <div class="slide__step">Step 04 / 05</div>
+        <div class="slide__title">RETRO<br><em>TEMPLATE</em></div>
+        <div class="slide__body">A structured retrospective with clear sections so your team can focus on what matters.</div>
+        <ul class="slide__items">
+          <li>Start Doing — what should we begin?</li>
+          <li>Keep Doing — what's already working?</li>
+          <li>Stop Doing — what needs to change?</li>
+          <li class="muted">Participants, Date, Facilitator</li>
+        </ul>
+      </div>
+      <div class="slide__mockup">
+        <div class="mockup__header">
+          <div>
+            <div class="mockup__title">Retrospective</div>
+            <div class="mockup__subtitle">Apr 15, 2026</div>
+          </div>
+        </div>
+        <div class="mockup__field">
+          <div class="label">Start Doing</div>
+          <div class="input-line short"></div>
+        </div>
+        <div class="mockup__field">
+          <div class="label">Keep Doing</div>
+          <div class="input-line short"></div>
+        </div>
+        <div class="mockup__field">
+          <div class="label">Stop Doing</div>
+          <div class="input-line short"></div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div class="mockup__field" style="flex:1;margin-bottom:0;">
+            <div class="label">Participants</div>
+            <div class="input-line"></div>
+          </div>
+          <div class="mockup__field" style="flex:1;margin-bottom:0;">
+            <div class="label">Facilitator</div>
+            <div class="input-line"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 5: Create Template -->
+  <div class="slide" data-step="Step 05 / 05">
+    <div class="slide__inner">
+      <div class="slide__content">
+        <div class="slide__step">Step 05 / 05</div>
+        <div class="slide__title">CREATE<br><em>TEMPLATE</em></div>
+        <div class="slide__body">Build templates that match how your team actually thinks and works. Your structure, your rules.</div>
+        <ul class="slide__items">
+          <li>Add your own sections and fields</li>
+          <li>Set Participants and Facilitator</li>
+          <li>Assign a Date for context</li>
+          <li class="muted">Save and use it instantly</li>
+        </ul>
+      </div>
+      <div class="slide__mockup">
+        <div class="mockup__header">
+          <div class="mockup__title">Create Template</div>
+        </div>
+        <div class="mockup__field">
+          <div class="label">Section Title</div>
+          <div class="input-line"></div>
+        </div>
+        <div class="mockup__field">
+          <div class="label">Section Title</div>
+          <div class="input-line"></div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div class="mockup__field" style="flex:1;margin-bottom:0;">
+            <div class="label">Participants</div>
+            <div class="input-line"></div>
+          </div>
+          <div class="mockup__field" style="flex:1;margin-bottom:0;">
+            <div class="label">Date</div>
+            <div class="input-line"></div>
+          </div>
+        </div>
+        <div class="mockup__field" style="margin-bottom:0;">
+          <div class="label">Facilitator</div>
+          <div class="input-line short"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<nav>
+  <button id="prev" disabled>←</button>
+  <div class="dots" id="dots"></div>
+  <button id="next">→</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const progress = document.getElementById('progress');
+  const counter = document.getElementById('counter');
+  const dots = document.getElementById('dots');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+  let cur = 0;
+
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.addEventListener('click', () => go(i));
+    dots.appendChild(d);
+  });
+
+  function go(i) {
+    if (i < 0 || i >= slides.length) return;
+    slides[cur].classList.remove('active');
+    dots.children[cur].classList.remove('active');
+    cur = i;
+    slides[cur].classList.add('active');
+    dots.children[cur].classList.add('active');
+    progress.style.width = ((cur + 1) / slides.length * 100) + '%';
+    counter.textContent = String(cur + 1).padStart(2, '0') + ' / 0' + slides.length;
+    prevBtn.disabled = cur === 0;
+    nextBtn.disabled = cur === slides.length - 1;
+  }
+
+  prevBtn.addEventListener('click', () => go(cur - 1));
+  nextBtn.addEventListener('click', () => go(cur + 1));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') go(cur + 1);
+    if (e.key === 'ArrowLeft') go(cur - 1);
+  });
+
+  go(0);
+</script>
+
+</body>
+</html>

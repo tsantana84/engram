@@ -573,6 +573,28 @@ export const migration009: Migration = {
 };
 
 /**
+ * Migration 010: Add provenance and temporal retention columns to observations
+ *
+ * - git_branch: branch active when the observation was written
+ * - invalidated_at: epoch timestamp when invalidated (NULL = still valid)
+ * - validation_status: 'unvalidated' | 'validated' | 'invalidated'
+ */
+export const migration010: Migration = {
+  version: 28,
+  description: 'Add provenance and temporal retention columns to observations',
+  up: (db: Database) => {
+    db.run(`ALTER TABLE observations ADD COLUMN git_branch TEXT`);
+    db.run(`ALTER TABLE observations ADD COLUMN invalidated_at INTEGER`);
+    db.run(`ALTER TABLE observations ADD COLUMN validation_status TEXT DEFAULT 'unvalidated'`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_observations_validation ON observations(validation_status)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_observations_invalidated ON observations(invalidated_at)`);
+  },
+  down: (_db: Database) => {
+    // Rollback intentionally not implemented
+  }
+};
+
+/**
  * All migrations in order
  */
 export const migrations: Migration[] = [
@@ -584,5 +606,6 @@ export const migrations: Migration[] = [
   migration006,
   migration007,
   migration008,
-  migration009
+  migration009,
+  migration010
 ];

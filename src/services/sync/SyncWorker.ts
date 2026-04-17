@@ -1,5 +1,6 @@
 import { SyncQueue, SyncQueueItem } from './SyncQueue.js';
 import { SyncClient, SyncPushPayload, SyncObservationPayload, SyncSessionPayload, SyncSummaryPayload } from './SyncClient.js';
+import { ConflictDetector } from './ConflictDetector.js';
 
 export interface SyncWorkerConfig {
   enabled: boolean;
@@ -12,6 +13,12 @@ export interface SyncWorkerConfig {
   timeoutMs: number;
   maxRetries: number;
   batchSize: number;
+  /**
+   * Optional LLM function for conflict detection.
+   * Injected from worker-service.ts using the active provider (CLAUDE_MEM_PROVIDER).
+   * If not provided, conflict detection is skipped (all observations pass as ADD).
+   */
+  llm?: (prompt: string) => Promise<string>;
 }
 
 export class SyncWorker {
@@ -19,6 +26,7 @@ export class SyncWorker {
   private queue: SyncQueue;
   private sessionStore: any;
   private client: SyncClient;
+  private detector: ConflictDetector;
   private intervalMs: number;
   private batchSize: number;
   private paused: boolean = false;
@@ -36,6 +44,12 @@ export class SyncWorker {
       apiKey: config.apiKey,
       agentName: config.agentName,
       timeoutMs: config.timeoutMs,
+    });
+
+    this.detector = new ConflictDetector({
+      fetchSimilar: (obs) => this.client.fetchSimilar(obs.title ?? ''),
+      llm: config.llm,
+      enabled: true,
     });
   }
 
@@ -70,6 +84,7 @@ export class SyncWorker {
     if (pending.length === 0) return;
 
     const payload = this.buildPayload(pending);
+    payload.observations = await this.processConflicts(payload.observations);
     const ids = pending.map((item) => item.id);
 
     try {
@@ -161,6 +176,37 @@ export class SyncWorker {
     }
 
     return { observations, sessions, summaries };
+  }
+
+  private async processConflicts(observations: SyncObservationPayload[]): Promise<SyncObservationPayload[]> {
+    const toInvalidate: number[] = [];
+    const filtered: SyncObservationPayload[] = [];
+
+    for (const obs of observations) {
+      if (!obs.title) {
+        filtered.push(obs);
+        continue;
+      }
+
+      const result = await this.detector.check({
+        title: obs.title,
+        narrative: obs.narrative ?? undefined,
+      });
+
+      if (result.decision === 'NOOP') continue; // drop duplicate
+
+      if ((result.decision === 'INVALIDATE' || result.decision === 'UPDATE') && result.targetId) {
+        toInvalidate.push(result.targetId);
+      }
+
+      filtered.push(obs);
+    }
+
+    if (toInvalidate.length > 0) {
+      await this.client.pushInvalidations(toInvalidate);
+    }
+
+    return filtered;
   }
 
   private parseJsonArray(value: string | string[] | null): string[] {

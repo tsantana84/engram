@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+  }
+  .slide-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #58a6ff;
+    margin-bottom: 24px;
+    font-family: monospace;
+  }
+  h2 {
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+    max-width: 760px;
+  }
+  .lead {
+    font-size: 17px;
+    color: #8b949e;
+    line-height: 1.6;
+    max-width: 680px;
+    margin-bottom: 36px;
+  }
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    max-width: 960px;
+    margin-bottom: 28px;
+  }
+  .metric {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .metric-number {
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1;
+    font-family: monospace;
+  }
+  .metric-label {
+    font-size: 14px;
+    color: #e6edf3;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  .metric-sub {
+    font-size: 12px;
+    color: #8b949e;
+    line-height: 1.4;
+    margin-top: 2px;
+  }
+  .disclaimer {
+    font-size: 13px;
+    color: #484f58;
+    max-width: 700px;
+    font-style: italic;
+    border-left: 2px solid #21262d;
+    padding-left: 12px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <div class="slide-label">02 · What We Built</div>
+  <h2>A memory layer for AI sessions.<br><span style="color:#58a6ff">Here's what that's worth.</span></h2>
+  <p class="lead">Engram captures every session automatically — decisions, discoveries, code written — and makes it instantly available next time. On any machine. For any engineer on the team.</p>
+
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-number" style="color:#58a6ff">85%</div>
+      <div class="metric-label">Reduction in session startup time</div>
+      <div class="metric-sub">From ~15 min re-establishing context to ~2 min with automatic injection</div>
+    </div>
+    <div class="metric">
+      <div class="metric-number" style="color:#3fb950">3 wks</div>
+      <div class="metric-label">Engineering time recovered per engineer per year</div>
+      <div class="metric-sub">Based on 4 sessions/day × 10 min saved × 220 working days</div>
+    </div>
+    <div class="metric">
+      <div class="metric-number" style="color:#bc8cff">$200k+</div>
+      <div class="metric-label">Recovered engineering capacity at 10 engineers</div>
+      <div class="metric-sub">At $150/hr fully loaded cost across the team annually</div>
+    </div>
+    <div class="metric">
+      <div class="metric-number" style="color:#f0883e">0</div>
+      <div class="metric-label">Knowledge lost between sessions</div>
+      <div class="metric-sub">100% of session work captured, searchable, shared across every machine</div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Projections based on internal estimates. Actual results will vary by team size, session frequency, and workflow.
+  </div>
+</body>
+</html>

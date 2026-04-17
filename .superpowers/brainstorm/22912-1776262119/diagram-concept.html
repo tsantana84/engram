@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d1117;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 24px;
+  }
+
+  h2 { font-size: 28px; font-weight: 700; margin-bottom: 8px; text-align: center; }
+  .sub { color: #8b949e; font-size: 15px; margin-bottom: 48px; text-align: center; }
+
+  svg { width: 100%; max-width: 900px; height: auto; }
+</style>
+</head>
+<body>
+
+<h2>The Shared Brain</h2>
+<p class="sub">Every engineer contributes. Every engineer benefits.</p>
+
+<svg viewBox="0 0 900 520" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Background grid -->
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(88,166,255,0.04)" stroke-width="1"/>
+    </pattern>
+    <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#58a6ff" opacity="0.7"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#3fb950" opacity="0.7"/>
+    </marker>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="900" height="520" fill="url(#grid)"/>
+
+  <!-- SUPABASE CLOUD (center top) -->
+  <g transform="translate(450, 60)">
+    <!-- glow -->
+    <ellipse cx="0" cy="0" rx="90" ry="40" fill="#1a3a6e" opacity="0.3" filter="url(#glow)"/>
+    <!-- box -->
+    <rect x="-80" y="-30" width="160" height="60" rx="12" fill="#0d1525" stroke="#1f6feb" stroke-width="1.5"/>
+    <!-- icon -->
+    <text x="-32" y="6" font-size="22" text-anchor="middle">🗄️</text>
+    <!-- label -->
+    <text x="18" y="-4" font-size="13" font-weight="700" fill="#58a6ff" text-anchor="middle">Supabase</text>
+    <text x="18" y="12" font-size="10" fill="#8b949e" text-anchor="middle">Shared brain</text>
+  </g>
+
+  <!-- ENGINEER 1 (left) -->
+  <g transform="translate(130, 380)">
+    <rect x="-70" y="-50" width="140" height="95" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="0" y="-22" font-size="28" text-anchor="middle">👩‍💻</text>
+    <text x="0" y="4" font-size="12" font-weight="600" fill="#e6edf3" text-anchor="middle">thiago</text>
+    <text x="0" y="20" font-size="10" fill="#8b949e" text-anchor="middle">Claude Code</text>
+    <!-- engram badge -->
+    <rect x="-30" y="28" width="60" height="16" rx="4" fill="#0d2030" stroke="#58a6ff" stroke-width="1"/>
+    <text x="0" y="40" font-size="9" fill="#58a6ff" text-anchor="middle" font-family="monospace">engram ●</text>
+  </g>
+
+  <!-- ENGINEER 2 (center) -->
+  <g transform="translate(450, 380)">
+    <rect x="-70" y="-50" width="140" height="95" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="0" y="-22" font-size="28" text-anchor="middle">👨‍💻</text>
+    <text x="0" y="4" font-size="12" font-weight="600" fill="#e6edf3" text-anchor="middle">frida</text>
+    <text x="0" y="20" font-size="10" fill="#8b949e" text-anchor="middle">Claude Code</text>
+    <rect x="-30" y="28" width="60" height="16" rx="4" fill="#0d2030" stroke="#58a6ff" stroke-width="1"/>
+    <text x="0" y="40" font-size="9" fill="#58a6ff" text-anchor="middle" font-family="monospace">engram ●</text>
+  </g>
+
+  <!-- ENGINEER 3 (right) -->
+  <g transform="translate(770, 380)">
+    <rect x="-70" y="-50" width="140" height="95" rx="10" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="0" y="-22" font-size="28" text-anchor="middle">👩‍💻</text>
+    <text x="0" y="4" font-size="12" font-weight="600" fill="#e6edf3" text-anchor="middle">olga</text>
+    <text x="0" y="20" font-size="10" fill="#8b949e" text-anchor="middle">Claude Code</text>
+    <rect x="-30" y="28" width="60" height="16" rx="4" fill="#0d2030" stroke="#58a6ff" stroke-width="1"/>
+    <text x="0" y="40" font-size="9" fill="#58a6ff" text-anchor="middle" font-family="monospace">engram ●</text>
+  </g>
+
+  <!-- LOCAL SQLITE nodes -->
+  <!-- Engineer 1 local DB -->
+  <g transform="translate(130, 255)">
+    <rect x="-50" y="-20" width="100" height="38" rx="6" fill="#161b22" stroke="#238636" stroke-width="1"/>
+    <text x="0" y="-4" font-size="10" fill="#3fb950" text-anchor="middle" font-weight="600">SQLite</text>
+    <text x="0" y="11" font-size="9" fill="#8b949e" text-anchor="middle">~/.engram/</text>
+  </g>
+  <!-- Engineer 2 local DB -->
+  <g transform="translate(450, 255)">
+    <rect x="-50" y="-20" width="100" height="38" rx="6" fill="#161b22" stroke="#238636" stroke-width="1"/>
+    <text x="0" y="-4" font-size="10" fill="#3fb950" text-anchor="middle" font-weight="600">SQLite</text>
+    <text x="0" y="11" font-size="9" fill="#8b949e" text-anchor="middle">~/.engram/</text>
+  </g>
+  <!-- Engineer 3 local DB -->
+  <g transform="translate(770, 255)">
+    <rect x="-50" y="-20" width="100" height="38" rx="6" fill="#161b22" stroke="#238636" stroke-width="1"/>
+    <text x="0" y="-4" font-size="10" fill="#3fb950" text-anchor="middle" font-weight="600">SQLite</text>
+    <text x="0" y="11" font-size:9" fill="#8b949e" text-anchor="middle">~/.engram/</text>
+  </g>
+
+  <!-- ARROWS: Engineer → SQLite (capture) -->
+  <line x1="130" y1="330" x2="130" y2="275" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6" marker-end="url(#arrow-green)"/>
+  <line x1="450" y1="330" x2="450" y2="275" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6" marker-end="url(#arrow-green)"/>
+  <line x1="770" y1="330" x2="770" y2="275" stroke="#3fb950" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6" marker-end="url(#arrow-green)"/>
+
+  <!-- ARROWS: SQLite → Supabase (sync) -->
+  <line x1="160" y1="237" x2="380" y2="85" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow-blue)"/>
+  <line x1="450" y1="237" x2="450" y2="92" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow-blue)"/>
+  <line x1="740" y1="237" x2="520" y2="85" stroke="#58a6ff" stroke-width="1.5" opacity="0.5" marker-end="url(#arrow-blue)"/>
+
+  <!-- LABELS on arrows -->
+  <text x="240" y="185" font-size="9" fill="#8b949e" transform="rotate(-28, 240, 185)">sync every 30s</text>
+  <text x="455" y="180" font-size="9" fill="#8b949e">sync every 30s</text>
+  <text x="595" y="185" font-size="9" fill="#8b949e" transform="rotate(28, 595, 185)">sync every 30s</text>
+
+  <text x="80" y="307" font-size="9" fill="#3fb950">capture</text>
+  <text x="452" y="307" font-size="9" fill="#3fb950">capture</text>
+  <text x="773" y="307" font-size="9" fill="#3fb950">capture</text>
+
+  <!-- SEARCH label bottom -->
+  <text x="450" y="490" font-size="11" fill="#8b949e" text-anchor="middle">Search from any machine returns observations from all agents</text>
+
+</svg>
+
+</body>
+</html>

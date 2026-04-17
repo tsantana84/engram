@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engram Multi-Agent Sync — Team Guide</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --accent2: #bc8cff;
+    --accent3: #3fb950;
+    --accent4: #d29922;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --red: #f85149;
+    --gradient: linear-gradient(135deg, #58a6ff, #bc8cff);
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(13,17,23,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 2rem; height: 54px;
+  }
+  .nav-logo { font-size: 1rem; font-weight: 700; font-family: monospace; color: var(--accent3); }
+  .nav-links { display: flex; gap: 1.5rem; }
+  .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.83rem; transition: color .2s; }
+  .nav-links a:hover { color: var(--text); }
+
+  /* ── LAYOUT ── */
+  section {
+    max-width: 1060px; margin: 0 auto;
+    padding: 6rem 2rem 4rem;
+    min-height: 100vh; display: flex; flex-direction: column; justify-content: center;
+  }
+  .eyebrow {
+    font-size: 0.78rem; font-weight: 600; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: .75rem;
+  }
+  h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1.15; margin-bottom: 1rem; }
+  h2 { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 800; margin-bottom: .75rem; }
+  .gradient { background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .lead { color: var(--text-muted); font-size: 1rem; max-width: 680px; margin-bottom: 2rem; }
+
+  /* ── CODE BLOCKS ── */
+  pre, code {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', Menlo, monospace;
+  }
+  .codeblock {
+    background: #010409; border: 1px solid var(--border); border-radius: 10px;
+    overflow-x: auto; font-size: 0.85rem;
+  }
+  .codeblock-header {
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    padding: .55rem 1rem; font-size: .78rem; color: var(--text-muted);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .codeblock-header .lang {
+    background: var(--border); padding: .15rem .5rem; border-radius: 4px; font-size: .72rem;
+  }
+  .codeblock pre { padding: 1.25rem; line-height: 1.65; }
+  .c-comment { color: #8b949e; }
+  .c-key     { color: #79c0ff; }
+  .c-str     { color: #a5d6ff; }
+  .c-green   { color: #3fb950; }
+  .c-yellow  { color: #e3b341; }
+  .c-purple  { color: #d2a8ff; }
+  .c-red     { color: #ff7b72; }
+  .c-cmd     { color: #58a6ff; }
+  .prompt    { color: var(--accent3); user-select: none; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem;
+  }
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+
+  /* ── CHECKLIST ── */
+  .checklist { display: flex; flex-direction: column; gap: .6rem; margin-top: 1.5rem; }
+  .check-item {
+    display: flex; align-items: flex-start; gap: .75rem;
+    padding: .9rem 1.1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .check-item:first-child { border-radius: 10px 10px 0 0; }
+  .check-item:last-child  { border-radius: 0 0 10px 10px; }
+  .check-item + .check-item { border-top: none; border-radius: 0; }
+  .check-item:last-child { border-radius: 0 0 10px 10px; }
+  .checkmark { font-size: 1rem; flex-shrink: 0; margin-top: .1rem; }
+  .check-text h4 { font-size: .93rem; margin-bottom: .15rem; }
+  .check-text p  { font-size: .85rem; color: var(--text-muted); }
+
+  /* ── FLOW ── */
+  .flow { display: flex; gap: 0; margin-top: 1.5rem; }
+  .flow-col { flex: 1; }
+  .flow-step {
+    padding: 1rem 1.25rem; border: 1px solid var(--border); background: var(--surface);
+    position: relative;
+  }
+  .flow-step:first-child { border-radius: 10px 10px 0 0; }
+  .flow-step:last-child  { border-radius: 0 0 10px 10px; }
+  .flow-step+.flow-step  { border-top: none; border-radius: 0; }
+  .flow-step:last-child  { border-radius: 0 0 10px 10px; }
+  .flow-num {
+    display: inline-block; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--gradient); color: #fff; font-size: .72rem; font-weight: 800;
+    text-align: center; line-height: 22px; margin-right: .5rem;
+  }
+  .flow-step h4 { display: inline; font-size: .9rem; }
+  .flow-step p  { color: var(--text-muted); font-size: .85rem; margin-top: .3rem; }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  thead th { text-align: left; padding: .6rem 1rem; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
+  tbody td { padding: .65rem 1rem; border-bottom: 1px solid var(--border); }
+  tbody tr:last-child td { border-bottom: none; }
+  .td-code { font-family: monospace; color: var(--accent2); font-size: .82rem; }
+  .td-default { font-family: monospace; color: var(--accent4); font-size: .82rem; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-top: 1.5rem; }
+
+  /* ── TAGS ── */
+  .tag {
+    display: inline-block; font-size: .73rem; padding: .2rem .55rem; border-radius: 6px;
+    font-weight: 600; border: 1px solid;
+  }
+  .tag-blue   { color: var(--accent);  border-color: var(--accent);  background: rgba(88,166,255,.08); }
+  .tag-purple { color: var(--accent2); border-color: var(--accent2); background: rgba(188,140,255,.08); }
+  .tag-green  { color: var(--accent3); border-color: var(--accent3); background: rgba(63,185,80,.08); }
+  .tag-red    { color: var(--red);     border-color: var(--red);     background: rgba(248,81,73,.08); }
+
+  /* ── CALLOUT ── */
+  .callout {
+    display: flex; gap: 1rem; border-radius: 10px; padding: 1rem 1.25rem;
+    border: 1px solid; font-size: .9rem;
+  }
+  .callout-icon { font-size: 1.1rem; flex-shrink: 0; }
+  .callout.tip   { border-color: var(--accent3); background: rgba(63,185,80,.07); }
+  .callout.warn  { border-color: var(--accent4); background: rgba(210,153,34,.07); }
+  .callout.info  { border-color: var(--accent);  background: rgba(88,166,255,.07); }
+  .callout p { color: var(--text-muted); }
+  .callout strong { color: var(--text); }
+
+  /* ── TERMINAL ── */
+  .terminal {
+    background: #010409; border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    font-size: .85rem;
+  }
+  .terminal-bar {
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    padding: .5rem 1rem; display: flex; gap: .5rem; align-items: center;
+  }
+  .t-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .t-dot.r { background: #ff5f57; }
+  .t-dot.y { background: #febc2e; }
+  .t-dot.g { background: #28c840; }
+  .terminal-body { padding: 1.25rem 1.25rem; line-height: 1.75; font-family: 'SF Mono', Menlo, monospace; }
+
+  /* ── PRIVACY TAG DEMO ── */
+  .ptag { color: var(--red); }
+  .pcontent { color: var(--text-muted); background: rgba(248,81,73,.08); padding: 0 .2rem; border-radius: 3px; }
+
+  /* ── RESULT ROWS ── */
+  .results { display: flex; flex-direction: column; gap: .6rem; margin-top: 1.25rem; }
+  .result {
+    display: flex; gap: .9rem; padding: .85rem 1rem;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: .87rem;
+  }
+  .result.local  { border-left: 3px solid var(--accent); }
+  .result.team   { border-left: 3px solid var(--accent2); }
+  .result-who { font-size: .73rem; font-weight: 700; white-space: nowrap; padding-top: 2px; }
+  .who-me    { color: var(--accent); }
+  .who-sarah { color: var(--accent2); }
+  .who-diana { color: var(--accent3); }
+  .result-body { flex: 1; }
+  .result-title { font-weight: 600; margin-bottom: .2rem; }
+  .result-sub   { color: var(--text-muted); }
+  .result-src { font-size: .7rem; padding: .18rem .45rem; border-radius: 5px; align-self: flex-start; white-space: nowrap; }
+  .src-local  { background: rgba(88,166,255,.12); color: var(--accent); }
+  .src-team   { background: rgba(188,140,255,.12); color: var(--accent2); }
+
+  /* ── ROADMAP ── */
+  .rm-list { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; position: relative; }
+  .rm-list::before {
+    content: ''; position: absolute; left: 19px; top: 24px; bottom: 24px;
+    width: 2px; background: var(--border);
+  }
+  .rm-item { display: flex; gap: 1.25rem; }
+  .rm-dot {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: .82rem; border: 2px solid; z-index: 1;
+  }
+  .v1 { background: rgba(88,166,255,.12); border-color: var(--accent); color: var(--accent); }
+  .v2 { background: rgba(188,140,255,.12); border-color: var(--accent2); color: var(--accent2); }
+  .v3 { background: rgba(63,185,80,.12); border-color: var(--accent3); color: var(--accent3); }
+  .rm-body {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1rem 1.25rem; flex: 1;
+  }
+  .rm-body h3 { font-size: .95rem; margin-bottom: .5rem; }
+  .rm-tags { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .rm-tag {
+    font-size: .73rem; padding: .18rem .5rem; border-radius: 5px;
+    background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border);
+  }
+  .rm-tag.now { background: rgba(88,166,255,.1); color: var(--accent); border-color: var(--accent); }
+
+  @media (max-width: 640px) {
+    nav .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">$ engram</div>
+  <div class="nav-links">
+    <a href="#what">What's new</a>
+    <a href="#setup">Setup</a>
+    <a href="#workflow">Workflow</a>
+    <a href="#search">Search</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#cli">CLI</a>
+    <a href="#config">Config</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section id="hero">
+  <div class="eyebrow">Engram · Multi-Agent Sync</div>
+  <h1>Your agent's memory,<br><span class="gradient">shared with the team</span></h1>
+  <p class="lead">Everything engram learns during your sessions — bugs fixed, patterns discovered, architecture decisions — now flows to your teammates' agents automatically. Same tool, same workflow, team-wide knowledge.</p>
+
+  <div class="grid-3" style="margin-bottom:2rem">
+    <div class="card">
+      <div style="font-size:1.4rem;margin-bottom:.5rem">🔁</div>
+      <strong>Zero workflow change</strong>
+      <p style="color:var(--text-muted);font-size:.88rem;margin-top:.3rem">Keep using Claude Code exactly as you do today. Sync happens in the background.</p>
+    </div>
+    <div class="card">
+      <div style="font-size:1.4rem;margin-bottom:.5rem">📶</div>
+      <strong>Local-first, offline safe</strong>
+      <p style="color:var(--text-muted);font-size:.88rem;margin-top:.3rem">Your local SQLite never changes. If the server is down, you queue and drain later.</p>
+    </div>
+    <div class="card">
+      <div style="font-size:1.4rem;margin-bottom:.5rem">🔏</div>
+      <strong>Private by default control</strong>
+      <p style="color:var(--text-muted);font-size:.88rem;margin-top:.3rem">Wrap anything in <code style="color:var(--red)">&lt;private&gt;</code> to keep it off the server entirely.</p>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-icon">ℹ️</div>
+    <p><strong>What's shipping:</strong> Async push sync, merged team search, CLI for server/sync management, Docker Compose deploy. All inside the existing <code>engram</code> binary — no new tool to install.</p>
+  </div>
+</section>
+
+<!-- ── WHAT'S NEW ── -->
+<section id="what">
+  <div class="eyebrow">What's New</div>
+  <h2>Two new things in your stack</h2>
+  <p class="lead">The change is additive — your existing local setup is untouched. Two new components appear when sync is enabled.</p>
+
+  <div class="grid-2" style="margin-bottom:1.5rem">
+    <div>
+      <div class="codeblock">
+        <div class="codeblock-header"><span>Local SQLite (unchanged)</span><span class="lang">SQLite</span></div>
+        <pre><span class="c-comment">-- Existing tables (no changes)</span>
+observations
+sessions
+session_summaries
+
+<span class="c-comment">-- ✨ New: sync queue (migration 26)</span>
+<span class="c-green">sync_queue</span>
+  id          INTEGER PK
+  entity_type TEXT  <span class="c-comment">-- observation/session</span>
+  entity_id   INTEGER
+  status      TEXT  <span class="c-comment">-- pending/synced/failed</span>
+  attempts    INTEGER
+  created_at  TEXT
+  synced_at   TEXT</pre>
+      </div>
+    </div>
+    <div>
+      <div class="codeblock">
+        <div class="codeblock-header"><span>Central Server (Postgres)</span><span class="lang">Postgres</span></div>
+        <pre><span class="c-comment">-- Team-wide tables</span>
+<span class="c-green">agents</span>
+  id           UUID
+  name         VARCHAR  <span class="c-comment">-- "Thiago"</span>
+  api_key_hash VARCHAR  <span class="c-comment">-- bcrypt</span>
+  status       VARCHAR  <span class="c-comment">-- active/revoked</span>
+
+<span class="c-green">observations</span>  <span class="c-comment">-- mirrors local + agent_id</span>
+  + agent_id      UUID FK
+  + content_hash  VARCHAR UNIQUE
+  + search_vector TSVECTOR  <span class="c-comment">-- GIN index</span>
+
+sessions, session_summaries
+  + agent_id UUID FK</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-icon">✅</div>
+    <p><strong>Idempotent by design.</strong> The server deduplicates by <code>(agent_id, content_hash)</code>. You can push the same observation 10 times — only one copy is stored. Safe to retry on failure.</p>
+  </div>
+</section>
+
+<!-- ── SETUP ── -->
+<section id="setup">
+  <div class="eyebrow">Setup</div>
+  <h2>Get connected in 3 steps</h2>
+  <p class="lead">The server admin runs steps 1–2 once. Each team member runs step 3.</p>
+
+  <!-- Step 1: Server -->
+  <div style="margin-bottom:2rem">
+    <h3 style="margin-bottom:.75rem;font-size:1.05rem">Step 1 — Spin up the central server <span class="tag tag-green">admin</span></h3>
+    <div class="codeblock">
+      <div class="codeblock-header"><span>docker-compose.yml (ships with engram)</span><span class="lang">yaml</span></div>
+      <pre><span class="c-key">services</span>:
+  <span class="c-key">postgres</span>:
+    <span class="c-key">image</span>: <span class="c-str">postgres:16</span>
+    <span class="c-key">environment</span>:
+      <span class="c-key">POSTGRES_DB</span>: <span class="c-str">claude_mem</span>
+      <span class="c-key">POSTGRES_PASSWORD</span>: <span class="c-str">changeme</span>
+    <span class="c-key">volumes</span>: [<span class="c-str">pgdata:/var/lib/postgresql/data</span>]
+
+  <span class="c-key">engram-server</span>:
+    <span class="c-key">build</span>: <span class="c-str">.</span>
+    <span class="c-key">command</span>: <span class="c-str">engram server start</span>
+    <span class="c-key">environment</span>:
+      <span class="c-key">DATABASE_URL</span>: <span class="c-str">postgres://postgres:changeme@postgres:5432/claude_mem</span>
+    <span class="c-key">ports</span>: [<span class="c-str">"8888:8888"</span>]
+    <span class="c-key">depends_on</span>: [<span class="c-str">postgres</span>]
+
+<span class="c-key">volumes</span>: { <span class="c-key">pgdata</span>: {} }</pre>
+    </div>
+    <div class="terminal" style="margin-top:.75rem">
+      <div class="terminal-bar"><div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div></div>
+      <div class="terminal-body">
+        <span class="prompt">$ </span><span class="c-cmd">docker compose up -d</span><br>
+        <span class="c-green">✓ postgres started</span><br>
+        <span class="c-green">✓ engram-server started on :8888</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Register agents -->
+  <div style="margin-bottom:2rem">
+    <h3 style="margin-bottom:.75rem;font-size:1.05rem">Step 2 — Register each team member <span class="tag tag-green">admin</span></h3>
+    <div class="terminal">
+      <div class="terminal-bar"><div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div></div>
+      <div class="terminal-body">
+        <span class="prompt">$ </span><span class="c-cmd">engram server create-agent --name "Thiago"</span><br>
+        <span class="c-yellow">✓ Agent created</span><br>
+        <br>
+        <span class="c-green">API Key (shown once — store it safely):</span><br>
+        <span class="c-purple">  cmem_ak_9f3a2b1c4d5e6f7a8b9c0d1e2f3a4b5c</span><br>
+        <br>
+        <span class="prompt">$ </span><span class="c-cmd">engram server create-agent --name "Sarah"</span><br>
+        <span class="c-purple">  cmem_ak_1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d</span><br>
+        <br>
+        <span class="prompt">$ </span><span class="c-cmd">engram server list-agents</span><br>
+        <span class="c-comment">  NAME     STATUS   CREATED</span><br>
+        <span class="c-green">  Thiago   active   2026-04-14</span><br>
+        <span class="c-green">  Sarah    active   2026-04-14</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Configure local -->
+  <div>
+    <h3 style="margin-bottom:.75rem;font-size:1.05rem">Step 3 — Configure your local engram <span class="tag tag-blue">each member</span></h3>
+    <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:.75rem">Admin sends you your API key. Add it to <code>~/.claude-mem/settings.json</code>:</p>
+    <div class="codeblock">
+      <div class="codeblock-header"><span>~/.claude-mem/settings.json</span><span class="lang">json</span></div>
+      <pre>{
+  <span class="c-comment">// ... existing settings ...</span>
+
+  <span class="c-comment">// ✨ Add these</span>
+  <span class="c-key">"CLAUDE_MEM_SYNC_ENABLED"</span>:     <span class="c-green">true</span>,
+  <span class="c-key">"CLAUDE_MEM_SYNC_SERVER_URL"</span>:  <span class="c-str">"https://engram.your-team.com"</span>,
+  <span class="c-key">"CLAUDE_MEM_SYNC_API_KEY"</span>:     <span class="c-str">"cmem_ak_9f3a2b1c4d5e6f7a8b9c0d1e2f3a4b5c"</span>,
+  <span class="c-key">"CLAUDE_MEM_SYNC_AGENT_NAME"</span>:  <span class="c-str">"Thiago"</span>
+}</pre>
+    </div>
+    <div style="margin-top:.75rem" class="callout tip">
+      <div class="callout-icon">✅</div>
+      <p>That's it. Restart the worker (<code>engram sync status</code> should show <strong>connected</strong>) and sync starts automatically.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── WORKFLOW ── -->
+<section id="workflow">
+  <div class="eyebrow">Daily Workflow</div>
+  <h2>Nothing changes for you</h2>
+  <p class="lead">The sync layer is invisible. Here's what's happening under the hood every session.</p>
+
+  <div class="flow" style="display:flex;flex-direction:column;gap:0;margin-top:1.5rem">
+    <div class="flow-step">
+      <span class="flow-num">1</span><h4>Hook fires → observation stored in SQLite</h4>
+      <p>Exactly as before. Zero latency. Your local DB is the source of truth.</p>
+    </div>
+    <div class="flow-step">
+      <span class="flow-num">2</span><h4>Observation enqueued in <code>sync_queue</code></h4>
+      <p>A lightweight row is inserted alongside the observation. Async, non-blocking.</p>
+    </div>
+    <div class="flow-step">
+      <span class="flow-num">3</span><h4>SyncWorker batches and pushes every 30s</h4>
+      <p>Up to 100 items per request. Server deduplicates by content hash. If server is unreachable, items stay pending and retry next cycle.</p>
+    </div>
+    <div class="flow-step">
+      <span class="flow-num">4</span><h4>Search merges local + team results</h4>
+      <p>When you ask your agent about anything, it queries local SQLite AND the team server (3s timeout). Results are merged, deduped (local wins), and attributed by author.</p>
+    </div>
+  </div>
+
+  <div style="margin-top:1.5rem" class="callout warn">
+    <div class="callout-icon">⚠️</div>
+    <p><strong>Offline?</strong> No problem. Queue fills locally and drains automatically when connectivity returns. Your local agent is fully unaffected.</p>
+  </div>
+
+  <!-- Failure handling -->
+  <div style="margin-top:2rem">
+    <h3 style="margin-bottom:.75rem;font-size:1.05rem">Failure handling</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Scenario</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td>Network timeout / 5xx</td><td>Item stays <code>pending</code>, retried next cycle. Increments attempt counter.</td></tr>
+          <tr><td>5 failed attempts</td><td>Marked <code>failed</code>, logged, skipped. Run <code>engram sync retry</code> to resume.</td></tr>
+          <tr><td>Server 4xx (bad key, conflict)</td><td>Marked <code>failed</code> immediately. No retry. Check your API key.</td></tr>
+          <tr><td>Duplicate content</td><td>Server silently ignores. <code>ON CONFLICT DO NOTHING</code>. Always safe to resend.</td></tr>
+          <tr><td>Server query timeout (&gt;3s)</td><td>Search returns local results only. No error shown to agent.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── SEARCH ── -->
+<section id="search">
+  <div class="eyebrow">Team Search</div>
+  <h2>One query, everyone's knowledge</h2>
+  <p class="lead">Your existing MCP tools (<code>search</code>, <code>smart_search</code>, <code>timeline</code>) automatically include team results when sync is enabled. One new optional filter: <code>agent</code>.</p>
+
+  <!-- Query examples -->
+  <div class="codeblock" style="margin-bottom:1.25rem">
+    <div class="codeblock-header"><span>MCP tool call — no changes needed</span><span class="lang">json</span></div>
+    <pre><span class="c-comment">// Same call as always — team results included automatically</span>
+{
+  <span class="c-key">"tool"</span>: <span class="c-str">"search"</span>,
+  <span class="c-key">"query"</span>: <span class="c-str">"fts5 migration rebuild"</span>
+}
+
+<span class="c-comment">// New: filter by teammate</span>
+{
+  <span class="c-key">"tool"</span>: <span class="c-str">"search"</span>,
+  <span class="c-key">"query"</span>: <span class="c-str">"postgres connection pool"</span>,
+  <span class="c-key">"agent"</span>: <span class="c-str">"Sarah"</span>
+}</pre>
+  </div>
+
+  <!-- Mock results -->
+  <div class="results">
+    <div class="result local">
+      <div class="result-who who-me">YOU</div>
+      <div class="result-body">
+        <div class="result-title">FTS5 index rebuild required after bulk import</div>
+        <div class="result-sub">Fixed by calling <code>rebuild()</code> after batch inserts — otherwise search returns stale results · Apr 14</div>
+      </div>
+      <div class="result-src src-local">local</div>
+    </div>
+    <div class="result team">
+      <div class="result-who who-sarah">SARAH</div>
+      <div class="result-body">
+        <div class="result-title">Migration 24: FTS5 triggers need explicit table alias</div>
+        <div class="result-sub">SQLite shadow table ambiguity without alias causes silent failures on some versions · Apr 13</div>
+      </div>
+      <div class="result-src src-team">team</div>
+    </div>
+    <div class="result team">
+      <div class="result-who who-diana">DIANA</div>
+      <div class="result-body">
+        <div class="result-title">Rollback strategy for failed SQLite migrations: no automatic undo</div>
+        <div class="result-sub">Document manual rollback steps in the migration file header · Apr 12</div>
+      </div>
+      <div class="result-src src-team">team</div>
+    </div>
+  </div>
+
+  <div style="margin-top:1.25rem" class="callout info">
+    <div class="callout-icon">ℹ️</div>
+    <p><strong>Dedup rule:</strong> <code>content_hash</code> is used to deduplicate. Local copy always wins. Among remote-only dupes, earliest is kept.</p>
+  </div>
+</section>
+
+<!-- ── PRIVACY ── -->
+<section id="privacy">
+  <div class="eyebrow">Privacy</div>
+  <h2>Keep sensitive content local</h2>
+  <p class="lead">Default: everything you work on is shared. To exclude something, wrap it in a <code style="color:var(--red)">&lt;private&gt;</code> tag. Stripping happens at the hook layer — the content never reaches your local DB or the server.</p>
+
+  <div class="codeblock" style="margin-bottom:1.25rem">
+    <div class="codeblock-header"><span>In any Claude Code message or tool output</span></div>
+    <pre><span class="c-comment">// Everything outside the tag → shared normally</span>
+Found the issue: the connection string was wrong.
+<span class="c-red">&lt;private&gt;</span><span class="pcontent">DB_URL=postgres://admin:s3cr3tpw@prod-db.internal/main</span><span class="c-red">&lt;/private&gt;</span>
+Fixed by updating the .env and redeploying.</pre>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4 style="margin-bottom:.5rem;color:var(--accent3)">✅ Shared (reaches server)</h4>
+      <ul style="color:var(--text-muted);font-size:.88rem;padding-left:1.1rem;line-height:2">
+        <li>Bug discoveries and fixes</li>
+        <li>Architecture decisions</li>
+        <li>Code patterns and gotchas</li>
+        <li>Session summaries</li>
+        <li>File paths and component names</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4 style="margin-bottom:.5rem;color:var(--red)">🚫 Stays local (stripped at hook)</h4>
+      <ul style="color:var(--text-muted);font-size:.88rem;padding-left:1.1rem;line-height:2">
+        <li>Credentials and API keys</li>
+        <li>Customer PII or sensitive data</li>
+        <li>Internal URLs or IPs</li>
+        <li>Anything in <code>&lt;private&gt;…&lt;/private&gt;</code></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── CLI ── -->
+<section id="cli">
+  <div class="eyebrow">CLI Reference</div>
+  <h2>Sync commands</h2>
+  <p class="lead">Day-to-day sync management. All under the <code>engram sync</code> subcommand.</p>
+
+  <div class="terminal" style="margin-bottom:1.5rem">
+    <div class="terminal-bar"><div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div></div>
+    <div class="terminal-body">
+      <span class="c-comment"># Check sync health</span><br>
+      <span class="prompt">$ </span><span class="c-cmd">engram sync status</span><br>
+      <span class="c-green">  Status:      connected</span><br>
+      <span class="c-yellow">  Pending:     3 items</span><br>
+      <span class="c-green">  Last sync:   2026-04-14 18:22:05</span><br>
+      <span class="c-green">  Server:      https://engram.your-team.com</span><br>
+      <br>
+      <span class="c-comment"># Retry all failed items</span><br>
+      <span class="prompt">$ </span><span class="c-cmd">engram sync retry</span><br>
+      <span class="c-green">  ✓ 2 items re-queued</span><br>
+      <br>
+      <span class="c-comment"># Pause sync (queue still fills locally)</span><br>
+      <span class="prompt">$ </span><span class="c-cmd">engram sync pause</span><br>
+      <span class="c-yellow">  ⏸ Sync paused. Queue filling locally.</span><br>
+      <br>
+      <span class="c-comment"># Resume</span><br>
+      <span class="prompt">$ </span><span class="c-cmd">engram sync resume</span><br>
+      <span class="c-green">  ▶ Sync resumed.</span>
+    </div>
+  </div>
+
+  <h3 style="margin-bottom:.75rem;font-size:1.05rem">Server admin commands</h3>
+  <div class="terminal">
+    <div class="terminal-bar"><div class="t-dot r"></div><div class="t-dot y"></div><div class="t-dot g"></div></div>
+    <div class="terminal-body">
+      <span class="prompt">$ </span><span class="c-cmd">engram server start --port 8888 --database-url postgres://...</span><br>
+      <span class="prompt">$ </span><span class="c-cmd">engram server create-agent --name "Sarah"</span><br>
+      <span class="prompt">$ </span><span class="c-cmd">engram server list-agents</span><br>
+      <span class="prompt">$ </span><span class="c-cmd">engram server revoke-agent --name "Sarah"</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── CONFIG ── -->
+<section id="config">
+  <div class="eyebrow">Configuration</div>
+  <h2>All sync settings</h2>
+  <p class="lead">All settings go in <code>~/.claude-mem/settings.json</code>. Defaults work for most teams.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Setting</th>
+          <th>Default</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="td-code">CLAUDE_MEM_SYNC_ENABLED</td>
+          <td class="td-default">false</td>
+          <td>Master toggle. Set to <code>true</code> to enable sync.</td>
+        </tr>
+        <tr>
+          <td class="td-code">CLAUDE_MEM_SYNC_SERVER_URL</td>
+          <td class="td-default">null</td>
+          <td>URL of your central server. e.g. <code>https://engram.your-team.com</code></td>
+        </tr>
+        <tr>
+          <td class="td-code">CLAUDE_MEM_SYNC_API_KEY</td>
+          <td class="td-default">null</td>
+          <td>Your personal API key from the admin. Starts with <code>cmem_ak_</code></td>
+        </tr>
+        <tr>
+          <td class="td-code">CLAUDE_MEM_SYNC_AGENT_NAME</td>
+          <td class="td-default">null</td>
+          <td>Your display name on team search results. Must match registered name.</td>
+        </tr>
+        <tr>
+          <td class="td-code">CLAUDE_MEM_SYNC_INTERVAL_MS</td>
+          <td class="td-default">30000</td>
+          <td>Push interval in milliseconds. Default: 30 seconds.</td>
+        </tr>
+        <tr>
+          <td class="td-code">CLAUDE_MEM_SYNC_TIMEOUT_MS</td>
+          <td class="td-default">3000</td>
+          <td>Server query timeout. Falls back to local-only if exceeded.</td>
+        </tr>
+        <tr>
+          <td class="td-code">CLAUDE_MEM_SYNC_MAX_RETRIES</td>
+          <td class="td-default">5</td>
+          <td>Max attempts before marking an item <code>failed</code>. Run <code>sync retry</code> to reset.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Roadmap teaser -->
+  <div style="margin-top:3rem">
+    <div class="eyebrow">What's next</div>
+    <h2>Roadmap</h2>
+    <div class="rm-list">
+      <div class="rm-item">
+        <div class="rm-dot v1">v1</div>
+        <div class="rm-body">
+          <h3>Shared Team Brain — shipping now</h3>
+          <div class="rm-tags">
+            <span class="rm-tag now">Now</span>
+            <span class="rm-tag">Async sync</span>
+            <span class="rm-tag">Merged team search</span>
+            <span class="rm-tag">CLI management</span>
+            <span class="rm-tag">Docker Compose</span>
+            <span class="rm-tag">Private tag privacy</span>
+          </div>
+        </div>
+      </div>
+      <div class="rm-item">
+        <div class="rm-dot v2">v2</div>
+        <div class="rm-body">
+          <h3>Team Intelligence</h3>
+          <div class="rm-tags">
+            <span class="rm-tag">Team Knowledge Agents</span>
+            <span class="rm-tag">Project-level access control</span>
+            <span class="rm-tag">Admin dashboard</span>
+            <span class="rm-tag">Key rotation</span>
+          </div>
+        </div>
+      </div>
+      <div class="rm-item">
+        <div class="rm-dot v3">v3</div>
+        <div class="rm-body">
+          <h3>Advanced Collaboration</h3>
+          <div class="rm-tags">
+            <span class="rm-tag">Semantic / vector search</span>
+            <span class="rm-tag">Local team cache (offline team search)</span>
+            <span class="rm-tag">Observation annotations</span>
+            <span class="rm-tag">Audit log</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Final callout -->
+  <div style="margin-top:3rem" class="callout tip">
+    <div class="callout-icon">🚀</div>
+    <p><strong>Getting started:</strong> Ask your admin for the server URL and your API key. Add the 4 settings to <code>~/.claude-mem/settings.json</code>. Run <code>engram sync status</code> to confirm you're connected. That's the entire onboarding.</p>
+  </div>
+</section>
+
+</body>
+</html>
