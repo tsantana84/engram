@@ -83,6 +83,9 @@ export class SyncWorker {
 
   start(): void {
     if (!this.enabled) return;
+    if (this.extractionEnabled) {
+      this.sessionStore.resetStaleExtractionRows();
+    }
     this.timer = setInterval(() => this.tick(), this.intervalMs);
   }
 

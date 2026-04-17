@@ -256,6 +256,28 @@ describe('SyncWorker — learning extraction flow', () => {
     expect(id).toBeGreaterThan(0);
   });
 
+  test('startup resets stale in_progress rows to failed', () => {
+    // Arrange: create a completed session and force its extraction_status to
+    // 'in_progress' — simulating a worker crash mid-LLM call.
+    const { id } = seedSession(store);
+    store.db.run(
+      "UPDATE sdk_sessions SET extraction_status = 'in_progress' WHERE id = ?",
+      [id]
+    );
+
+    // Act: call start() on a worker with extractionEnabled — triggers the reset.
+    const client = makeFakeClient();
+    const worker = makeWorker({ store, queue, client, extractionEnabled: true });
+    worker.start();
+    worker.stop(); // immediately stop the interval; we only care about startup side-effect
+
+    // Assert: row is now 'failed' so the next tick picks it up.
+    const row = store.db.query<{ extraction_status: string }, [number]>(
+      'SELECT extraction_status FROM sdk_sessions WHERE id = ?'
+    ).get(id);
+    expect(row?.extraction_status).toBe('failed');
+  });
+
   test('feature flag disabled → legacy observation push still works', async () => {
     const { id, memory } = seedSession(store);
 

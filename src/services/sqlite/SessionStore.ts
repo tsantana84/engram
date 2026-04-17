@@ -1107,6 +1107,18 @@ export class SessionStore {
   // Extraction pipeline state mutators (migration 29: extraction_status columns)
   // ---------------------------------------------------------------------------
 
+  /**
+   * Reset any rows stuck in 'in_progress' back to 'failed' so the pending-sessions
+   * sweep picks them up on the next tick. Called once at worker startup — stale rows
+   * are the residue of a crash mid-LLM call.
+   */
+  resetStaleExtractionRows(): number {
+    const result = this.db.run(
+      "UPDATE sdk_sessions SET extraction_status = 'failed' WHERE extraction_status = 'in_progress'"
+    );
+    return (result as any).changes ?? 0;
+  }
+
   markExtractionInProgress(id: number): void {
     this.db.run(
       "UPDATE sdk_sessions SET extraction_status = 'in_progress' WHERE id = ?",
@@ -1128,17 +1140,22 @@ export class SessionStore {
     );
   }
 
+  /**
+   * Increment extraction_attempts and set status to 'permanently_failed'
+   * once attempts reaches maxRetries. Setting named `MAX_RETRIES` for
+   * user-facing clarity but interpreted as "max total attempts": at
+   * MAX_RETRIES=3 the flow is attempt 1 → attempt 2 → attempt 3 → give up.
+   */
   markExtractionFailed(id: number, maxRetries: number): void {
-    const row = this.db
-      .query<{ attempts: number }, [number]>(
-        'SELECT extraction_attempts + 1 as attempts FROM sdk_sessions WHERE id = ?'
-      )
-      .get(id);
-    const attempts = row?.attempts ?? 1;
-    const nextStatus = attempts >= maxRetries ? 'permanently_failed' : 'failed';
     this.db.run(
-      'UPDATE sdk_sessions SET extraction_status = ?, extraction_attempts = ? WHERE id = ?',
-      [nextStatus, attempts, id]
+      `UPDATE sdk_sessions
+       SET extraction_attempts = extraction_attempts + 1,
+           extraction_status = CASE
+             WHEN extraction_attempts + 1 >= ? THEN 'permanently_failed'
+             ELSE 'failed'
+           END
+       WHERE id = ?`,
+      [maxRetries, id]
     );
   }
 
