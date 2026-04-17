@@ -129,6 +129,40 @@ export function buildStatusOutput(status: 'ready' | 'error', message?: string): 
   };
 }
 
+/**
+ * Build an LLM closure backed by a direct Anthropic Messages API call.
+ * Used by LearningExtractor (and reused by SyncWorker's ConflictDetector).
+ *
+ * Reads ANTHROPIC_API_KEY from process.env — the worker already sources
+ * ~/.engram/.env via buildIsolatedEnv(), so the key is available when the
+ * worker starts. If the key is missing the closure throws at call time;
+ * LearningExtractor's try/catch then returns [] gracefully and SyncWorker
+ * falls back to marking extraction_status='failed'.
+ */
+export function buildLearningLlmClosure(model: string): (prompt: string) => Promise<string> {
+  return async (prompt: string): Promise<string> => {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY missing');
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!resp.ok) throw new Error(`Anthropic API ${resp.status}`);
+    const json = await resp.json() as any;
+    const text = json?.content?.[0]?.text ?? '';
+    return String(text);
+  };
+}
+
 export class WorkerService {
   private server: Server;
   private startTime: number = Date.now();
@@ -410,6 +444,7 @@ export class WorkerService {
           const { SyncQueue } = await import('./sync/SyncQueue.js');
           const { SyncClient } = await import('./sync/SyncClient.js');
           const { SyncWorker } = await import('./sync/SyncWorker.js');
+          const { LearningExtractor } = await import('./sync/LearningExtractor.js');
 
           const sessionStore = this.dbManager.getSessionStore();
           const syncQueue = new SyncQueue(sessionStore.db);
@@ -428,6 +463,21 @@ export class WorkerService {
 
           searchManager.setSyncClient(syncClient);
 
+          // Learning extraction wiring (Task 14)
+          const learningExtractionEnabled = settings.CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED === 'true';
+          const learningConfidenceThreshold = parseFloat(settings.CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD ?? '0.8');
+          const learningModel = settings.CLAUDE_MEM_LEARNING_LLM_MODEL ?? 'claude-sonnet-4-6';
+          const learningMaxPerSession = parseInt(settings.CLAUDE_MEM_LEARNING_MAX_PER_SESSION ?? '10', 10);
+          const learningMaxRetries = parseInt(settings.CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES ?? '3', 10);
+
+          const llm = buildLearningLlmClosure(learningModel);
+
+          const extractor = new LearningExtractor({
+            enabled: learningExtractionEnabled,
+            llm,
+            maxLearningsPerSession: learningMaxPerSession,
+          });
+
           this.syncWorker = new SyncWorker({
             enabled: true,
             queue: syncQueue,
@@ -439,10 +489,23 @@ export class WorkerService {
             timeoutMs,
             maxRetries,
             batchSize: 50,
+            // Learning extraction wiring (Task 14)
+            llm,
+            extractor,
+            confidenceThreshold: learningConfidenceThreshold,
+            extractionEnabled: learningExtractionEnabled,
+            extractionMaxRetries: learningMaxRetries,
           });
 
           this.syncWorker.start();
-          logger.info('SYNC', 'Multi-agent sync started', { agentName: syncAgentName, serverUrl: syncUrl, intervalMs });
+          logger.info('SYNC', 'Multi-agent sync started', {
+            agentName: syncAgentName,
+            serverUrl: syncUrl,
+            intervalMs,
+            learningExtractionEnabled,
+            learningConfidenceThreshold,
+            learningModel,
+          });
         } catch (error) {
           logger.error('SYNC', 'Failed to initialize sync (non-blocking)', {}, error as Error);
         }
