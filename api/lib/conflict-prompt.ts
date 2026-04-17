@@ -1,3 +1,20 @@
+/**
+ * Shared ConflictDetector prompt + types.
+ *
+ * Imported by both server (api/lib/ConflictDetector.ts) and client
+ * (src/services/sync/ConflictDetector.ts). MUST NOT import Node or Bun
+ * builtins — both Vercel serverless and the Bun-based worker must
+ * compile this module.
+ */
+
+export type ConflictDecision = 'ADD' | 'UPDATE' | 'INVALIDATE' | 'NOOP';
+
+export interface ConflictCheckResult {
+  decision: ConflictDecision;
+  targetId?: number | null;
+  reason?: string;
+}
+
 export interface SimilarItem {
   id: number;
   title: string | null;

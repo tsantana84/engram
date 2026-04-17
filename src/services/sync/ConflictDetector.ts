@@ -1,24 +1,13 @@
-import { buildConflictPrompt } from '../../../api/lib/conflict-prompt.js';
+import { buildConflictPrompt, type SimilarItem, type ConflictDecision, type ConflictCheckResult } from '../../../api/lib/conflict-prompt.js';
 
-export type ConflictDecision = 'ADD' | 'UPDATE' | 'INVALIDATE' | 'NOOP';
+export type { ConflictDecision, ConflictCheckResult };
 
-export interface SimilarObservation {
-  id: number;
-  title: string | null;
-  narrative?: string | null;
-  agent_name?: string;
-  git_branch?: string | null;
-}
-
-export interface ConflictCheckResult {
-  decision: ConflictDecision;
-  targetId?: number;
-  reason?: string;
-}
+// Re-exported for callers that use the SimilarObservation name (e.g. SyncClient)
+export type SimilarObservation = SimilarItem;
 
 export interface ConflictDetectorConfig {
   /** Fetch semantically similar observations — implemented by SyncClient.fetchSimilar() */
-  fetchSimilar: (obs: { title: string; narrative?: string }) => Promise<SimilarObservation[]>;
+  fetchSimilar: (obs: { title: string; narrative?: string }) => Promise<SimilarItem[]>;
   /**
    * Injected LLM function — routed through CLAUDE_MEM_PROVIDER (claude/gemini/openrouter).
    * Accepts a full prompt string, returns raw LLM text (JSON parsed internally).

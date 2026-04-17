@@ -1,6 +1,6 @@
-import { buildConflictPrompt, type SimilarItem } from './conflict-prompt.js';
+import { buildConflictPrompt, type SimilarItem, type ConflictDecision, type ConflictCheckResult } from './conflict-prompt.js';
 
-export type ConflictDecision = 'ADD' | 'UPDATE' | 'INVALIDATE' | 'NOOP';
+export type { ConflictDecision, ConflictCheckResult };
 
 export interface ServerConflictDetectorConfig {
   enabled: boolean;
@@ -8,17 +8,11 @@ export interface ServerConflictDetectorConfig {
   fetchSimilar: (item: { title: string; narrative?: string | null }) => Promise<SimilarItem[]>;
 }
 
-export interface ConflictCheckResult {
-  decision: ConflictDecision;
-  targetId?: number | null;
-  reason?: string;
-}
-
 export class ServerConflictDetector {
   constructor(private cfg: ServerConflictDetectorConfig) {}
 
   async check(item: { title: string; narrative?: string | null }): Promise<ConflictCheckResult> {
-    if (!this.cfg.enabled || !this.cfg.llm) return { decision: 'ADD' };
+    if (!this.cfg.enabled) return { decision: 'ADD' };
     try {
       const similar = await this.cfg.fetchSimilar(item);
       if (similar.length === 0) return { decision: 'ADD' };
