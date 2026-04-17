@@ -1,4 +1,5 @@
 import type { SimilarObservation } from './ConflictDetector.js';
+import type { LearningPayload, LearningTargetStatus, LearningPushResponse } from './learning-types.js';
 
 export interface SyncClientConfig {
   serverUrl: string;
@@ -252,5 +253,17 @@ export class SyncClient {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  async pushLearnings(learnings: LearningPayload[], target_status: LearningTargetStatus): Promise<LearningPushResponse> {
+    const response = await fetch(this.buildUrl('/api/sync/learnings'), {
+      method: 'POST',
+      headers: { ...this.buildHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ learnings, target_status }),
+    });
+    if (!response.ok) {
+      throw new Error(`pushLearnings failed (${response.status}): ${await response.text()}`);
+    }
+    return response.json() as Promise<LearningPushResponse>;
   }
 }
