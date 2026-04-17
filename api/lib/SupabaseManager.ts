@@ -440,21 +440,6 @@ export class SupabaseManager {
     if (error) throw error;
     return (data ?? []) as LearningRecord[];
   }
-
-  async searchLearnings(query: string, project?: string, limit = 10): Promise<LearningRecord[]> {
-    let q = this.supabase
-      .from('learnings')
-      .select('*')
-      .eq('status', 'approved')
-      .eq('invalidated', false)
-      .ilike('claim', `%${query.slice(0, 64)}%`)
-      .limit(limit);
-    if (project) q = q.eq('project', project);
-    const { data, error } = await q;
-    if (error) throw error;
-    return (data ?? []) as LearningRecord[];
-  }
-
   async getLearning(id: number): Promise<LearningRecord | null> {
     const { data, error } = await this.supabase
       .from('learnings')
