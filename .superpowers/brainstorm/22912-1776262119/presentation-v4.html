@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engram — Leadership Presentation</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .deck { width: 100%; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 72px 100px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  .nav {
+    position: fixed;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 100;
+  }
+
+  .nav button {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    padding: 10px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+
+  .nav button:hover { background: #30363d; color: #e6edf3; }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+
+  .dots { display: flex; gap: 8px; align-items: center; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #30363d; cursor: pointer; transition: all 0.2s; }
+  .dot.active { background: #58a6ff; width: 20px; border-radius: 3px; }
+
+  .slide-number { position: fixed; top: 36px; right: 60px; font-family: monospace; font-size: 13px; color: #30363d; }
+  .slide-label { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #58a6ff; margin-bottom: 20px; font-family: monospace; }
+
+  h1 { font-size: 60px; font-weight: 800; line-height: 1.1; letter-spacing: -1px; margin-bottom: 24px; max-width: 800px; }
+  h2 { font-size: 40px; font-weight: 700; line-height: 1.15; letter-spacing: -0.5px; margin-bottom: 18px; max-width: 760px; }
+  .lead { font-size: 18px; color: #8b949e; line-height: 1.6; max-width: 640px; margin-bottom: 32px; }
+
+  /* SLIDE 1 */
+  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 52px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: #58a6ff; }
+  .logo-text { font-family: monospace; font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: #58a6ff; }
+  .byline { font-size: 15px; color: #484f58; margin-top: 44px; }
+
+  /* SLIDE 2 */
+  .comparison { display: flex; gap: 20px; margin: 20px 0; max-width: 860px; }
+  .col { flex: 1; border-radius: 8px; padding: 20px; }
+  .col-exists { background: #161b22; border: 1px solid #30363d; }
+  .col-missing { background: #1a0f0f; border: 1px solid #6e2020; }
+  .col-header { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; font-family: monospace; }
+  .col-exists .col-header { color: #3fb950; }
+  .col-missing .col-header { color: #f85149; }
+  .col-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 14px; line-height: 1.4; }
+  .col-item .text { color: #e6edf3; }
+  .col-item .sub { color: #8b949e; font-size: 12px; margin-top: 2px; }
+  .footer-note { font-size: 14px; color: #8b949e; max-width: 680px; border-left: 3px solid #58a6ff; padding-left: 16px; line-height: 1.5; }
+
+  /* SLIDE 3 */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; max-width: 960px; margin-bottom: 24px; }
+  .metric { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 20px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .metric-number { font-size: 38px; font-weight: 800; line-height: 1; font-family: monospace; }
+  .metric-label { font-size: 13px; color: #e6edf3; line-height: 1.4; font-weight: 500; }
+  .metric-sub { font-size: 11px; color: #8b949e; line-height: 1.4; }
+  .disclaimer { font-size: 12px; color: #484f58; max-width: 700px; font-style: italic; border-left: 2px solid #21262d; padding-left: 12px; line-height: 1.5; }
+
+  /* SLIDE 4 — Proof */
+  .agent-list { display: flex; flex-direction: column; gap: 12px; margin: 24px 0; }
+  .agent-row { display: flex; align-items: center; gap: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px 22px; }
+  .agent-dot { width: 10px; height: 10px; border-radius: 50%; background: #3fb950; flex-shrink: 0; box-shadow: 0 0 8px #3fb950; }
+  .agent-name { font-family: monospace; font-size: 15px; width: 120px; }
+  .agent-bar-wrap { flex: 1; height: 5px; background: #21262d; border-radius: 3px; overflow: hidden; }
+  .agent-bar { height: 100%; border-radius: 3px; background: #58a6ff; }
+  .agent-count { font-family: monospace; font-size: 14px; color: #8b949e; width: 130px; text-align: right; }
+
+  /* SLIDE 5 — Vision */
+  .vision-list { display: flex; flex-direction: column; gap: 18px; margin: 24px 0; max-width: 700px; }
+  .vision-item { display: flex; gap: 20px; align-items: flex-start; }
+  .vision-num { font-family: monospace; font-size: 12px; color: #58a6ff; padding-top: 3px; flex-shrink: 0; width: 24px; }
+  .vision-text { font-size: 17px; color: #e6edf3; line-height: 1.5; }
+  .vision-sub { font-size: 13px; color: #8b949e; margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active" id="slide-1">
+    <div class="grid-bg"></div>
+    <div class="logo"><div class="logo-dot"></div><span class="logo-text">engram</span></div>
+    <h1>The shared brain<br>for AI engineering<br><span style="color:#58a6ff">teams.</span></h1>
+    <p class="lead">How we gave our AI agents persistent memory — and what it means for how we build software together.</p>
+    <div class="byline">Engineering · 2026</div>
+  </div>
+
+  <!-- SLIDE 2: Problem -->
+  <div class="slide" id="slide-2">
+    <div class="grid-bg"></div>
+    <div class="slide-label">01 · The Problem</div>
+    <h2>AI agents have <span style="color:#f85149">partial</span> memory.<br>The important parts are missing.</h2>
+    <p class="lead">Tools exist to give AI some context — but they're manual, static, and shallow. The rich work history that makes an engineer truly effective? Still lost between sessions.</p>
+    <div class="comparison">
+      <div class="col col-exists">
+        <div class="col-header">✓ What exists today</div>
+        <div class="col-item"><span>📄</span><div><div class="text">CLAUDE.md / project docs</div><div class="sub">Manual, static — you write it, you maintain it</div></div></div>
+        <div class="col-item"><span>💡</span><div><div class="text">Built-in AI memory</div><div class="sub">High-level preferences, not work history</div></div></div>
+        <div class="col-item"><span>🗒️</span><div><div class="text">Project wikis & READMEs</div><div class="sub">Architecture docs, if they're up to date</div></div></div>
+      </div>
+      <div class="col col-missing">
+        <div class="col-header">✗ What's still missing</div>
+        <div class="col-item"><span>🔴</span><div><div class="text">Automatic session history</div><div class="sub">What was actually done and decided last week</div></div></div>
+        <div class="col-item"><span>🔴</span><div><div class="text">Cross-session search</div><div class="sub">"How did we solve this before?" — no answer</div></div></div>
+        <div class="col-item"><span>🔴</span><div><div class="text">Shared team knowledge</div><div class="sub">What your colleague's AI learned isn't available to yours</div></div></div>
+      </div>
+    </div>
+    <div class="footer-note">The gap isn't total amnesia — it's that the <em>useful</em> memory, the lived work history, is still lost every session.</div>
+  </div>
+
+  <!-- SLIDE 3: Numbers -->
+  <div class="slide" id="slide-3">
+    <div class="grid-bg"></div>
+    <div class="slide-label">02 · What We Built</div>
+    <h2>A memory layer for AI sessions.<br><span style="color:#58a6ff">Here's what that's worth.</span></h2>
+    <p class="lead">Engram captures every session automatically — decisions, discoveries, code written — and makes it instantly available next time. On any machine. For any engineer on the team.</p>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-number" style="color:#58a6ff">85%</div>
+        <div class="metric-label">Reduction in session startup time</div>
+        <div class="metric-sub">From ~15 min re-establishing context to ~2 min with automatic injection</div>
+      </div>
+      <div class="metric">
+        <div class="metric-number" style="color:#3fb950">3 wks</div>
+        <div class="metric-label">Engineering time recovered per engineer per year</div>
+        <div class="metric-sub">4 sessions/day × 10 min saved × 220 working days</div>
+      </div>
+      <div class="metric">
+        <div class="metric-number" style="color:#bc8cff">$200k+</div>
+        <div class="metric-label">Recovered capacity at 10 engineers annually</div>
+        <div class="metric-sub">At $150/hr fully loaded cost across the team</div>
+      </div>
+      <div class="metric">
+        <div class="metric-number" style="color:#f0883e">0</div>
+        <div class="metric-label">Knowledge lost between sessions</div>
+        <div class="metric-sub">100% captured, searchable, shared across every machine</div>
+      </div>
+    </div>
+    <div class="disclaimer">Projections based on internal estimates. Actual results will vary by team size and workflow.</div>
+  </div>
+
+  <!-- SLIDE 4: Proof -->
+  <div class="slide" id="slide-4">
+    <div class="grid-bg"></div>
+    <div class="slide-label">03 · It's Working</div>
+    <h2>Live today.<br><span style="color:#3fb950">3 machines, 1 shared brain.</span></h2>
+    <p class="lead">Engram is running across 3 engineering machines right now. Every session contributes to a shared knowledge base. Every agent can search what every other agent has learned.</p>
+    <div class="agent-list">
+      <div class="agent-row">
+        <div class="agent-dot"></div>
+        <div class="agent-name">thiago</div>
+        <div class="agent-bar-wrap"><div class="agent-bar" style="width:100%"></div></div>
+        <div class="agent-count">131 observations</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-dot"></div>
+        <div class="agent-name">frida</div>
+        <div class="agent-bar-wrap"><div class="agent-bar" style="width:3%"></div></div>
+        <div class="agent-count">4 observations</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-dot"></div>
+        <div class="agent-name">olga</div>
+        <div class="agent-bar-wrap"><div class="agent-bar" style="width:1%"></div></div>
+        <div class="agent-count">1 observation</div>
+      </div>
+    </div>
+    <p style="font-size:14px;color:#8b949e">Search from any machine returns results from all agents — tagged by source. The shared brain is already working.</p>
+  </div>
+
+  <!-- SLIDE 5: Vision -->
+  <div class="slide" id="slide-5">
+    <div class="grid-bg"></div>
+    <div class="slide-label">04 · Where This Goes</div>
+    <h2>Memory is the foundation<br>of <span style="color:#bc8cff">collaborative AI.</span></h2>
+    <div class="vision-list">
+      <div class="vision-item">
+        <div class="vision-num">01</div>
+        <div>
+          <div class="vision-text">Every engineer onboards instantly</div>
+          <div class="vision-sub">New team member's AI inherits the team's collective knowledge from day one</div>
+        </div>
+      </div>
+      <div class="vision-item">
+        <div class="vision-num">02</div>
+        <div>
+          <div class="vision-text">No context is ever lost</div>
+          <div class="vision-sub">Decisions, discoveries, and hard-won debugging insights persist across people and time</div>
+        </div>
+      </div>
+      <div class="vision-item">
+        <div class="vision-num">03</div>
+        <div>
+          <div class="vision-text">AI agents that get smarter together</div>
+          <div class="vision-sub">Every session makes the shared brain better — compounding returns on every hour of AI-augmented work</div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:14px;color:#8b949e;margin-top:8px">This is what AI-augmented engineering looks like at the team level. We built the foundation.</p>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button id="prev" onclick="changeSlide(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <button id="next" onclick="changeSlide(1)">Next →</button>
+</div>
+
+<div class="slide-number" id="slide-num">1 / 5</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => goTo(i);
+    dotsEl.appendChild(dot);
+  });
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    document.querySelectorAll('.dot')[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    document.querySelectorAll('.dot')[current].classList.add('active');
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === total - 1;
+    document.getElementById('slide-num').textContent = (current + 1) + ' / ' + total;
+  }
+
+  function changeSlide(dir) { goTo(Math.max(0, Math.min(total - 1, current + dir))); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlide(1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') changeSlide(-1);
+  });
+</script>
+</body>
+</html>

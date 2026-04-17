@@ -89,19 +89,51 @@ export interface ObservationSearchResult {
   created_at_epoch: number;
 }
 
+let _instance: PostgresManager | null = null;
+let _pendingInit: Promise<PostgresManager> | null = null;
+
+export function getPostgresInstance(databaseUrl?: string): PostgresManager {
+  if (_instance) return _instance;
+  if (!databaseUrl) throw new Error('DATABASE_URL not set and no cached instance');
+  _instance = new PostgresManager(databaseUrl);
+  return _instance;
+}
+
+export async function initPostgres(databaseUrl: string): Promise<PostgresManager> {
+  if (_instance) return _instance;
+  if (_pendingInit) return _pendingInit;
+  _pendingInit = (async () => {
+    const mgr = new PostgresManager(databaseUrl);
+    await mgr.connect();
+    _instance = mgr;
+    return mgr;
+  })();
+  return _pendingInit;
+}
+
+export function resetPostgres(): void {
+  _instance = null;
+  _pendingInit = null;
+}
+
 export class PostgresManager {
   private sql: ReturnType<typeof postgres>;
+  private connected: boolean = false;
 
   constructor(databaseUrl: string) {
     this.sql = postgres(databaseUrl);
   }
 
   async connect(): Promise<void> {
+    if (this.connected) return;
     await this.sql`SELECT 1`;
+    this.connected = true;
   }
 
   async close(): Promise<void> {
+    if (!this.connected) return;
     await this.sql.end();
+    this.connected = false;
   }
 
   async query(text: string, params?: any[]): Promise<any> {

@@ -1,3 +1,6 @@
+import type { SimilarObservation } from './ConflictDetector.js';
+import type { LearningPayload, LearningTargetStatus, LearningPushResponse } from './learning-types.js';
+
 export interface SyncClientConfig {
   serverUrl: string;
   apiKey: string;
@@ -207,6 +210,69 @@ export class SyncClient {
       }
 
       return await response.json();
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async fetchSimilar(title: string, limit = 5): Promise<SimilarObservation[]> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const url = new URL(this.buildUrl('/api/search'));
+      url.searchParams.set('q', title);
+      url.searchParams.set('limit', String(limit));
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: this.buildHeaders(),
+        signal: controller.signal,
+      });
+      if (!response.ok) return [];
+      const data = await response.json() as { results?: SimilarObservation[] };
+      return data.results ?? [];
+    } catch {
+      return [];
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async pushInvalidations(ids: number[]): Promise<void> {
+    if (ids.length === 0) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      await fetch(this.buildUrl('/api/sync/invalidate'), {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({ ids }),
+        signal: controller.signal,
+      });
+    } catch {
+      // Silent failure — invalidation is best-effort
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async pushLearnings(learnings: LearningPayload[], target_status: LearningTargetStatus): Promise<LearningPushResponse> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    try {
+      const response = await fetch(this.buildUrl('/api/sync/learnings'), {
+        method: 'POST',
+        headers: { ...this.buildHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ learnings, target_status }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`pushLearnings failed (${response.status}): ${text}`);
+      }
+
+      return await response.json() as LearningPushResponse;
     } finally {
       clearTimeout(timeout);
     }

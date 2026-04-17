@@ -1,4 +1,5 @@
 import { Database } from 'bun:sqlite';
+import { spawnSync } from 'child_process';
 import { DATA_DIR, DB_PATH, ensureDir } from '../../shared/paths.js';
 import { logger } from '../../utils/logger.js';
 import {
@@ -72,6 +73,9 @@ export class SessionStore {
     this.addSessionPlatformSourceColumn();
     this.addObservationModelColumns();
     this.createSyncQueueTable();
+    this.addProvenanceColumns();
+    this.addExtractionStatusColumns();
+    this.widenSyncQueueForLearnings();
   }
 
   /**
@@ -977,6 +981,106 @@ export class SessionStore {
   }
 
   /**
+   * Add extraction pipeline tracking columns to sdk_sessions (migration 29)
+   */
+  private addExtractionStatusColumns(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(29) as SchemaVersion | undefined;
+    if (applied) return;
+
+    const cols = this.db
+      .prepare("PRAGMA table_info('sdk_sessions')")
+      .all() as Array<{ name: string }>;
+    const names = cols.map((c) => c.name);
+
+    if (!names.includes('extraction_status')) {
+      this.db.run(
+        "ALTER TABLE sdk_sessions ADD COLUMN extraction_status TEXT NOT NULL DEFAULT 'pending'"
+      );
+    }
+    if (!names.includes('extraction_attempts')) {
+      this.db.run(
+        'ALTER TABLE sdk_sessions ADD COLUMN extraction_attempts INTEGER NOT NULL DEFAULT 0'
+      );
+    }
+
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(29, new Date().toISOString());
+    logger.debug('DB', 'Migration 29 applied: extraction_status columns on sdk_sessions');
+  }
+
+  /**
+   * Widen sync_queue: add 'learning' to CHECK, add target_status + payload columns (migration 30)
+   *
+   * SQLite CHECK constraints can't be altered in place — rebuild the table.
+   */
+  private widenSyncQueueForLearnings(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(30) as SchemaVersion | undefined;
+    if (applied) return;
+
+    this.db.run('BEGIN');
+    try {
+      this.db.run(`
+        CREATE TABLE sync_queue_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL CHECK(entity_type IN ('observation','session','summary','learning')),
+          entity_id INTEGER NOT NULL,
+          target_status TEXT,
+          payload TEXT,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','synced','failed','permanently_failed')),
+          attempts INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          synced_at TEXT
+        )
+      `);
+      this.db.run(`INSERT INTO sync_queue_new (id, entity_type, entity_id, status, attempts, created_at, synced_at)
+                   SELECT id, entity_type, entity_id, status, attempts, created_at, synced_at FROM sync_queue`);
+      this.db.run('DROP TABLE sync_queue');
+      this.db.run('ALTER TABLE sync_queue_new RENAME TO sync_queue');
+      this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status)');
+      this.db.run('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+      this.db
+        .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+        .run(30, new Date().toISOString());
+      this.db.run('COMMIT');
+      logger.debug('DB', 'Migration 30 applied: sync_queue widened for learnings');
+    } catch (err) {
+      this.db.run('ROLLBACK');
+      throw err;
+    }
+  }
+
+  /**
+   * Add provenance and temporal retention columns to observations (migration 28)
+   */
+  private addProvenanceColumns(): void {
+    const applied = this.db.prepare('SELECT version FROM schema_versions WHERE version = ?').get(28) as SchemaVersion | undefined;
+    if (applied) return;
+
+    const columns = this.db.prepare('PRAGMA table_info(observations)').all() as TableColumnInfo[];
+    const names = columns.map((c) => c.name);
+
+    if (!names.includes('git_branch')) {
+      this.db.run(`ALTER TABLE observations ADD COLUMN git_branch TEXT`);
+    }
+    if (!names.includes('invalidated_at')) {
+      this.db.run(`ALTER TABLE observations ADD COLUMN invalidated_at INTEGER`);
+    }
+    if (!names.includes('validation_status')) {
+      this.db.run(`ALTER TABLE observations ADD COLUMN validation_status TEXT DEFAULT 'unvalidated'`);
+    }
+
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_observations_validation ON observations(validation_status)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_observations_invalidated ON observations(invalidated_at)`);
+
+    this.db.prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)').run(28, new Date().toISOString());
+  }
+
+  /**
    * Update the memory session ID for a session
    * Called by SDKAgent when it captures the session ID from the first SDK message
    * Also used to RESET to null on stale resume failures (worker-service.ts)
@@ -997,6 +1101,78 @@ export class SessionStore {
       SET status = 'completed', completed_at = ?, completed_at_epoch = ?
       WHERE id = ?
     `).run(nowIso, nowEpoch, sessionDbId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Extraction pipeline state mutators (migration 29: extraction_status columns)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Reset any rows stuck in 'in_progress' back to 'failed' so the pending-sessions
+   * sweep picks them up on the next tick. Called once at worker startup — stale rows
+   * are the residue of a crash mid-LLM call.
+   */
+  resetStaleExtractionRows(): number {
+    const result = this.db.run(
+      "UPDATE sdk_sessions SET extraction_status = 'failed' WHERE extraction_status = 'in_progress'"
+    );
+    return (result as any).changes ?? 0;
+  }
+
+  markExtractionInProgress(id: number): void {
+    this.db.run(
+      "UPDATE sdk_sessions SET extraction_status = 'in_progress' WHERE id = ?",
+      [id]
+    );
+  }
+
+  markExtractionDone(id: number): void {
+    this.db.run(
+      "UPDATE sdk_sessions SET extraction_status = 'done' WHERE id = ?",
+      [id]
+    );
+  }
+
+  markExtractionPending(id: number): void {
+    this.db.run(
+      "UPDATE sdk_sessions SET extraction_status = 'pending' WHERE id = ?",
+      [id]
+    );
+  }
+
+  /**
+   * Increment extraction_attempts and set status to 'permanently_failed'
+   * once attempts reaches maxRetries. Setting named `MAX_RETRIES` for
+   * user-facing clarity but interpreted as "max total attempts": at
+   * MAX_RETRIES=3 the flow is attempt 1 → attempt 2 → attempt 3 → give up.
+   */
+  markExtractionFailed(id: number, maxRetries: number): void {
+    this.db.run(
+      `UPDATE sdk_sessions
+       SET extraction_attempts = extraction_attempts + 1,
+           extraction_status = CASE
+             WHEN extraction_attempts + 1 >= ? THEN 'permanently_failed'
+             ELSE 'failed'
+           END
+       WHERE id = ?`,
+      [maxRetries, id]
+    );
+  }
+
+  getPendingExtractionSessions(
+    limit: number
+  ): Array<{ id: number; project: string; memory_session_id: string | null }> {
+    return this.db
+      .query<
+        { id: number; project: string; memory_session_id: string | null },
+        [number]
+      >(
+        `SELECT id, project, memory_session_id FROM sdk_sessions
+         WHERE extraction_status IN ('pending','failed')
+           AND completed_at IS NOT NULL
+         ORDER BY id ASC LIMIT ?`
+      )
+      .all(limit);
   }
 
   /**
@@ -1356,9 +1532,11 @@ export class SessionStore {
     subtitle: string;
     type: string;
     prompt_number: number | null;
+    narrative: string | null;
+    facts: string | null;
   }> {
     const stmt = this.db.prepare(`
-      SELECT title, subtitle, type, prompt_number
+      SELECT title, subtitle, type, prompt_number, narrative, facts
       FROM observations
       WHERE memory_session_id = ?
       ORDER BY created_at_epoch ASC
@@ -1761,12 +1939,18 @@ export class SessionStore {
       return { id: existing.id, createdAtEpoch: existing.created_at_epoch };
     }
 
+    let gitBranch: string | null = null;
+    try {
+      const gitResult = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8', timeout: 2000 });
+      if (gitResult.status === 0 && !gitResult.error) gitBranch = gitResult.stdout.trim() || null;
+    } catch { /* not in a git repo */ }
+
     const stmt = this.db.prepare(`
       INSERT INTO observations
       (memory_session_id, project, type, title, subtitle, facts, narrative, concepts,
        files_read, files_modified, prompt_number, discovery_tokens, content_hash, created_at, created_at_epoch,
-       generated_by_model)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       generated_by_model, git_branch)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -1785,12 +1969,31 @@ export class SessionStore {
       contentHash,
       timestampIso,
       timestampEpoch,
-      generatedByModel || null
+      generatedByModel || null,
+      gitBranch
     );
 
     const id = Number(result.lastInsertRowid);
     this.syncQueue?.enqueue('observation', id);
     return { id, createdAtEpoch: timestampEpoch };
+  }
+
+  invalidateObservation(id: number, reason?: string): void {
+    const now = Date.now();
+    this.db.prepare(`
+      UPDATE observations
+      SET invalidated_at = ?, validation_status = 'invalidated'
+      WHERE id = ?
+    `).run(now, id);
+    if (reason) {
+      logger.info('MEMORY', `Observation #${id} invalidated: ${reason}`);
+    }
+  }
+
+  validateObservation(id: number): void {
+    this.db.prepare(`
+      UPDATE observations SET validation_status = 'validated' WHERE id = ?
+    `).run(id);
   }
 
   /**
@@ -1963,7 +2166,17 @@ export class SessionStore {
     });
 
     // Execute the transaction and return results
-    return storeTx();
+    const result = storeTx();
+
+    // Enqueue new observations and summary for multi-agent sync (outside transaction)
+    for (const id of result.observationIds) {
+      this.syncQueue?.enqueue('observation', id);
+    }
+    if (result.summaryId !== null) {
+      this.syncQueue?.enqueue('summary', result.summaryId);
+    }
+
+    return result;
   }
 
   /**

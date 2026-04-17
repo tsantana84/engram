@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+  }
+  .slide-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #58a6ff;
+    margin-bottom: 24px;
+    font-family: monospace;
+  }
+  h2 {
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+    margin-bottom: 20px;
+    max-width: 700px;
+  }
+  .lead {
+    font-size: 18px;
+    color: #8b949e;
+    line-height: 1.6;
+    max-width: 680px;
+    margin-bottom: 40px;
+  }
+  .comparison {
+    display: flex;
+    gap: 24px;
+    margin: 32px 0;
+    max-width: 860px;
+  }
+  .col {
+    flex: 1;
+    border-radius: 8px;
+    padding: 24px;
+  }
+  .col-exists {
+    background: #161b22;
+    border: 1px solid #30363d;
+  }
+  .col-missing {
+    background: #1a0f0f;
+    border: 1px solid #6e2020;
+  }
+  .col-header {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    font-family: monospace;
+  }
+  .col-exists .col-header { color: #3fb950; }
+  .col-missing .col-header { color: #f85149; }
+  .col-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+    font-size: 15px;
+    line-height: 1.4;
+  }
+  .col-item .icon { flex-shrink: 0; margin-top: 1px; }
+  .col-item .text { color: #e6edf3; }
+  .col-item .sub { color: #8b949e; font-size: 13px; margin-top: 3px; }
+  .footer-note {
+    font-size: 15px;
+    color: #8b949e;
+    max-width: 680px;
+    border-left: 3px solid #58a6ff;
+    padding-left: 16px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+  <div class="slide-label">01 · The Problem</div>
+  <h2>AI agents have <span style="color:#f85149">partial</span> memory.<br>The important parts are missing.</h2>
+  <p class="lead">Tools exist to give AI some context — but they're manual, static, and shallow. The rich work history that makes an engineer truly effective? That's still lost between sessions.</p>
+
+  <div class="comparison">
+    <div class="col col-exists">
+      <div class="col-header">✓ What exists today</div>
+      <div class="col-item">
+        <span class="icon">📄</span>
+        <div>
+          <div class="text">CLAUDE.md / project docs</div>
+          <div class="sub">Manual, static, project-scoped — you write it, you maintain it</div>
+        </div>
+      </div>
+      <div class="col-item">
+        <span class="icon">💡</span>
+        <div>
+          <div class="text">Claude's built-in memory</div>
+          <div class="sub">High-level preferences — not work history</div>
+        </div>
+      </div>
+      <div class="col-item">
+        <span class="icon">🗒️</span>
+        <div>
+          <div class="text">Project READMEs & wikis</div>
+          <div class="sub">Architecture docs, if they're up to date</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col col-missing">
+      <div class="col-header">✗ What's still missing</div>
+      <div class="col-item">
+        <span class="icon">🔴</span>
+        <div>
+          <div class="text">Automatic session history</div>
+          <div class="sub">What was actually done, decided, and discovered last week</div>
+        </div>
+      </div>
+      <div class="col-item">
+        <span class="icon">🔴</span>
+        <div>
+          <div class="text">Cross-session search</div>
+          <div class="sub">"How did we solve this before?" — no answer without manual notes</div>
+        </div>
+      </div>
+      <div class="col-item">
+        <span class="icon">🔴</span>
+        <div>
+          <div class="text">Shared team knowledge</div>
+          <div class="sub">What your colleague's AI learned yesterday isn't available to yours today</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    The gap isn't total amnesia — it's that the <em>useful</em> memory, the lived work history, is still lost every session.
+  </div>
+</body>
+</html>

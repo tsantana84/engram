@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Engram — Leadership Presentation</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Slide container */
+  .deck { width: 100%; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 80px 100px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  /* Nav */
+  .nav {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 100;
+  }
+
+  .nav button {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    padding: 10px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+
+  .nav button:hover { background: #30363d; color: #e6edf3; }
+  .nav button:disabled { opacity: 0.3; cursor: default; }
+
+  .nav .dots {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #30363d;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dot.active { background: #58a6ff; width: 20px; border-radius: 3px; }
+
+  /* Slide label */
+  .slide-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #58a6ff;
+    margin-bottom: 24px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* Typography */
+  h1 {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    margin-bottom: 24px;
+    max-width: 800px;
+  }
+
+  h2 {
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+    margin-bottom: 20px;
+    max-width: 700px;
+  }
+
+  .lead {
+    font-size: 20px;
+    color: #8b949e;
+    line-height: 1.6;
+    max-width: 600px;
+    margin-bottom: 40px;
+  }
+
+  .highlight { color: #58a6ff; }
+  .highlight-purple { color: #bc8cff; }
+  .highlight-green { color: #3fb950; }
+
+  /* Slide 1 — Title */
+  #slide-1 { background: #0d1117; }
+
+  #slide-1 .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 60px;
+  }
+
+  #slide-1 .logo-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #58a6ff;
+  }
+
+  #slide-1 .logo-text {
+    font-family: monospace;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #58a6ff;
+  }
+
+  #slide-1 h1 { font-size: 68px; }
+
+  #slide-1 .byline {
+    font-size: 16px;
+    color: #484f58;
+    margin-top: 48px;
+  }
+
+  /* Slide 2 — Problem */
+  #slide-2 { background: #0d1117; }
+
+  .stat-row {
+    display: flex;
+    gap: 48px;
+    margin: 40px 0;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stat-number {
+    font-size: 48px;
+    font-weight: 800;
+    color: #f85149;
+    line-height: 1;
+    font-family: monospace;
+  }
+
+  .stat-label {
+    font-size: 14px;
+    color: #8b949e;
+    max-width: 160px;
+    line-height: 1.4;
+  }
+
+  /* Slide 3 — Solution */
+  #slide-3 { background: #0d1117; }
+
+  .diagram {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 40px 0;
+    flex-wrap: nowrap;
+  }
+
+  .diagram-node {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px 20px;
+    text-align: center;
+    min-width: 130px;
+  }
+
+  .diagram-node .node-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .diagram-node .node-label {
+    font-size: 13px;
+    color: #8b949e;
+    line-height: 1.3;
+  }
+
+  .diagram-node .node-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e6edf3;
+    margin-bottom: 4px;
+  }
+
+  .diagram-arrow {
+    color: #30363d;
+    font-size: 20px;
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+
+  .diagram-node.highlight-node {
+    border-color: #58a6ff;
+    background: #0d2030;
+  }
+
+  .diagram-node.highlight-node .node-name { color: #58a6ff; }
+
+  /* Slide 4 — Proof */
+  #slide-4 { background: #0d1117; }
+
+  .agent-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 32px 0;
+  }
+
+  .agent-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 16px 24px;
+  }
+
+  .agent-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #3fb950;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px #3fb950;
+  }
+
+  .agent-name {
+    font-family: monospace;
+    font-size: 15px;
+    color: #e6edf3;
+    width: 120px;
+  }
+
+  .agent-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: #21262d;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .agent-bar {
+    height: 100%;
+    border-radius: 3px;
+    background: #58a6ff;
+  }
+
+  .agent-count {
+    font-family: monospace;
+    font-size: 14px;
+    color: #8b949e;
+    width: 100px;
+    text-align: right;
+  }
+
+  /* Slide 5 — Vision */
+  #slide-5 { background: #0d1117; }
+
+  .vision-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 32px 0;
+    max-width: 680px;
+  }
+
+  .vision-item {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  .vision-num {
+    font-family: monospace;
+    font-size: 12px;
+    color: #58a6ff;
+    padding-top: 3px;
+    flex-shrink: 0;
+    width: 24px;
+  }
+
+  .vision-text { font-size: 18px; color: #e6edf3; line-height: 1.5; }
+  .vision-sub { font-size: 14px; color: #8b949e; margin-top: 4px; }
+
+  /* Background grid */
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  /* Slide number */
+  .slide-number {
+    position: fixed;
+    top: 40px;
+    right: 60px;
+    font-family: monospace;
+    font-size: 13px;
+    color: #30363d;
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- SLIDE 1: Title -->
+  <div class="slide active" id="slide-1">
+    <div class="grid-bg"></div>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <span class="logo-text">engram</span>
+    </div>
+    <h1>The shared brain<br>for AI engineering<br><span class="highlight">teams.</span></h1>
+    <p class="lead">How we gave our AI agents persistent memory — and what it means for how we build software.</p>
+    <div class="byline">Engineering · 2026</div>
+  </div>
+
+  <!-- SLIDE 2: Problem -->
+  <div class="slide" id="slide-2">
+    <div class="grid-bg"></div>
+    <div class="slide-label">01 · The Problem</div>
+    <h2>Every session, your AI<br>starts from <span class="highlight" style="color:#f85149">zero.</span></h2>
+    <p class="lead">AI coding agents are powerful — but they have no memory. Every morning, every new task, every context switch: you start over. You re-explain the codebase. You re-establish what was decided last week. You re-build trust with a tool that doesn't remember you.</p>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="stat-number">0</div>
+        <div class="stat-label">context retained between sessions by default</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number" style="color:#f85149">~15min</div>
+        <div class="stat-label">estimated context re-establishment per session</div>
+      </div>
+      <div class="stat">
+        <div class="stat-number" style="color:#f85149">×N</div>
+        <div class="stat-label">multiplied across every engineer on the team</div>
+      </div>
+    </div>
+    <p style="font-size:15px;color:#8b949e">This isn't a minor inconvenience. It's a structural tax on every AI-augmented workflow.</p>
+  </div>
+
+  <!-- SLIDE 3: Solution -->
+  <div class="slide" id="slide-3">
+    <div class="grid-bg"></div>
+    <div class="slide-label">02 · What We Built</div>
+    <h2>A persistent memory layer<br>for <span class="highlight">every AI session.</span></h2>
+    <p class="lead">Engram captures what happens in each session — decisions, discoveries, bugs fixed, code written — compresses it, and makes it available the next time. And the time after that. On any machine.</p>
+    <div class="diagram">
+      <div class="diagram-node">
+        <div class="node-icon">💻</div>
+        <div class="node-name">Claude Code</div>
+        <div class="node-label">Session activity</div>
+      </div>
+      <div class="diagram-arrow">→</div>
+      <div class="diagram-node highlight-node">
+        <div class="node-icon">🧠</div>
+        <div class="node-name">Engram</div>
+        <div class="node-label">Captures & compresses</div>
+      </div>
+      <div class="diagram-arrow">→</div>
+      <div class="diagram-node">
+        <div class="node-icon">🗄️</div>
+        <div class="node-name">Shared DB</div>
+        <div class="node-label">Supabase · always on</div>
+      </div>
+      <div class="diagram-arrow">→</div>
+      <div class="diagram-node">
+        <div class="node-icon">⚡</div>
+        <div class="node-name">Next Session</div>
+        <div class="node-label">Context injected instantly</div>
+      </div>
+    </div>
+    <p style="font-size:15px;color:#8b949e">Built as a Claude Code plugin. Zero friction — engineers install it once and forget about it. Memory is automatic.</p>
+  </div>
+
+  <!-- SLIDE 4: Proof -->
+  <div class="slide" id="slide-4">
+    <div class="grid-bg"></div>
+    <div class="slide-label">03 · It's Working</div>
+    <h2>Live today.<br><span class="highlight-green">3 machines, 1 brain.</span></h2>
+    <p class="lead">Engram is running in production across 3 engineering machines. Every session contributes to a shared knowledge base. Every agent can search what every other agent has learned.</p>
+    <div class="agent-list">
+      <div class="agent-row">
+        <div class="agent-dot"></div>
+        <div class="agent-name">thiago</div>
+        <div class="agent-bar-wrap"><div class="agent-bar" style="width:100%"></div></div>
+        <div class="agent-count">131 observations</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-dot"></div>
+        <div class="agent-name">frida</div>
+        <div class="agent-bar-wrap"><div class="agent-bar" style="width:3%"></div></div>
+        <div class="agent-count">4 observations</div>
+      </div>
+      <div class="agent-row">
+        <div class="agent-dot"></div>
+        <div class="agent-name">olga</div>
+        <div class="agent-bar-wrap"><div class="agent-bar" style="width:1%"></div></div>
+        <div class="agent-count">1 observation</div>
+      </div>
+    </div>
+    <p style="font-size:15px;color:#8b949e">Search from any machine returns results from all agents — tagged by source. The shared brain is already working.</p>
+  </div>
+
+  <!-- SLIDE 5: Vision -->
+  <div class="slide" id="slide-5">
+    <div class="grid-bg"></div>
+    <div class="slide-label">04 · Where This Goes</div>
+    <h2>Memory is the foundation<br>of <span class="highlight-purple">collaborative AI.</span></h2>
+    <div class="vision-list">
+      <div class="vision-item">
+        <div class="vision-num">01</div>
+        <div>
+          <div class="vision-text">Every engineer onboards instantly</div>
+          <div class="vision-sub">New team member's AI agent inherits the team's collective knowledge from day one</div>
+        </div>
+      </div>
+      <div class="vision-item">
+        <div class="vision-num">02</div>
+        <div>
+          <div class="vision-text">No context is ever lost</div>
+          <div class="vision-sub">Decisions, discoveries, and hard-won debugging insights persist across people and time</div>
+        </div>
+      </div>
+      <div class="vision-item">
+        <div class="vision-num">03</div>
+        <div>
+          <div class="vision-text">AI agents that get smarter together</div>
+          <div class="vision-sub">Every session makes the shared brain better — compounding returns on every hour of AI-augmented work</div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:15px;color:#8b949e;margin-top:8px">This is what AI-augmented engineering looks like at the team level. We built the foundation.</p>
+  </div>
+
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button id="prev" onclick="changeSlide(-1)" disabled>← Prev</button>
+  <div class="dots" id="dots"></div>
+  <button id="next" onclick="changeSlide(1)">Next →</button>
+</div>
+
+<div class="slide-number" id="slide-num">1 / 5</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+
+  // Build dots
+  const dotsEl = document.getElementById('dots');
+  slides.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => goTo(i);
+    dotsEl.appendChild(dot);
+  });
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    document.querySelectorAll('.dot')[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    document.querySelectorAll('.dot')[current].classList.add('active');
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === total - 1;
+    document.getElementById('slide-num').textContent = (current + 1) + ' / ' + total;
+  }
+
+  function changeSlide(dir) { goTo(Math.max(0, Math.min(total - 1, current + dir))); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlide(1);
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') changeSlide(-1);
+  });
+</script>
+</body>
+</html>

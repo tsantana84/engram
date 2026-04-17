@@ -19,6 +19,7 @@ export function getRecentObservations(
     SELECT type, text, prompt_number, created_at
     FROM observations
     WHERE project = ?
+    AND (invalidated_at IS NULL OR invalidated_at = 0)
     ORDER BY created_at_epoch DESC
     LIMIT ?
   `);
@@ -36,6 +37,7 @@ export function getAllRecentObservations(
   const stmt = db.prepare(`
     SELECT id, type, title, subtitle, text, project, prompt_number, created_at, created_at_epoch
     FROM observations
+    WHERE (invalidated_at IS NULL OR invalidated_at = 0)
     ORDER BY created_at_epoch DESC
     LIMIT ?
   `);

@@ -40,6 +40,15 @@ It will prompt for an agent name (e.g. `macbook-work`), register the machine, an
 
 That's it. Observations sync to the shared server after each session.
 
+## Updating
+
+```bash
+claude plugin marketplace refresh
+claude plugin install engram
+```
+
+This pulls the latest version from the marketplace and reinstalls. Your data (`~/.engram/`) is untouched — settings, database, and logs persist across updates.
+
 ---
 
 ## Developer setup
@@ -131,9 +140,10 @@ Claude Code session
   ↓ PostToolUse hook
 Worker (port 37777)
   ↓ storeObservations()
-SQLite (~/.engram/claude-mem.db)
+SQLite (~/.engram/claude-mem.db)     ← git_branch, invalidated_at, validation_status captured here
   ↓ sync_queue (enqueue)
 SyncWorker (every 30s)
+  ↓ ConflictDetector (ADD / UPDATE / INVALIDATE / NOOP)
   ↓ SyncClient.push()
 Vercel API (https://engram-ashy.vercel.app)
   ↓
@@ -141,6 +151,47 @@ Supabase (shared team DB)
 ```
 
 Sync is non-blocking — if the server is unreachable, observations are queued and retried (up to 5 attempts, then marked failed).
+
+---
+
+## Memory quality & conflict resolution
+
+Engram addresses the "bad memory" problem: an observation written while debugging a wrong hypothesis can pollute the shared brain and mislead other agents.
+
+### How it works
+
+Before each sync batch, `SyncWorker` runs every new observation through `ConflictDetector`:
+
+1. Fetches the top-5 semantically similar observations from Supabase
+2. Passes them to an LLM (routed via `CLAUDE_MEM_PROVIDER`) with a structured prompt
+3. Gets back a classification:
+   - **ADD** — new info, no conflict → store normally
+   - **UPDATE** — supersedes an existing one → store new, invalidate old
+   - **INVALIDATE** — contradicts an existing observation that appears wrong → invalidate old, store new
+   - **NOOP** — duplicate or adds no value → drop
+
+Invalidated observations are **never deleted** — they get an `invalidated_at` timestamp and `validation_status = 'invalidated'`, preserving history while hiding them from future context injection.
+
+### Provenance columns
+
+Every observation now carries:
+
+| Column | Type | Purpose |
+|--------|------|---------|
+| `git_branch` | TEXT | Branch active at write time — flags observations from unmerged branches |
+| `invalidated_at` | INTEGER | Epoch when superseded (NULL = still valid) |
+| `validation_status` | TEXT | `unvalidated` / `validated` / `invalidated` |
+
+### What's excluded from context
+
+- Observations with `invalidated_at IS NOT NULL` are filtered from automatic context injection
+- Team search results include an `unvalidated: true` flag for observations from unmerged branches
+
+### LLM provider
+
+Conflict detection routes through your configured `CLAUDE_MEM_PROVIDER`. No provider injected = conflict detection disabled (all observations pass as ADD — safe default).
+
+To enable, wire the `llm` function in `src/services/worker-service.ts` using the active agent's `complete()` method (see `ConflictDetector.ts` comments for wiring instructions).
 
 ---
 

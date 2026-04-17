@@ -28,6 +28,7 @@ export class SessionCompletionHandler {
   async completeByDbId(sessionDbId: number): Promise<void> {
     // Persist completion to database before in-memory cleanup (fix for #1532)
     this.dbManager.getSessionStore().markSessionCompleted(sessionDbId);
+    this.dbManager.getSessionStore().markExtractionPending(sessionDbId);
 
     // Delete from session manager (aborts SDK agent via SIGTERM)
     await this.sessionManager.deleteSession(sessionDbId);
