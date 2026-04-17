@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import type { LearningPayload, LearningTargetStatus, LearningRecord } from '../../src/services/sync/learning-types.js';
 
 export interface AgentRecord {
   id: string;
@@ -112,9 +113,20 @@ export function resetSupabase(): void {
 
 export class SupabaseManager {
   private supabase;
+  private url: string;
+  private anonKey: string;
 
-  constructor(private url: string, private anonKey: string) {
-    this.supabase = createClient(url, anonKey);
+  constructor(urlOrClient: string | { from: (table: string) => any }, anonKey?: string) {
+    if (typeof urlOrClient === 'string') {
+      if (!anonKey) throw new Error('anonKey required when url is provided');
+      this.url = urlOrClient;
+      this.anonKey = anonKey;
+      this.supabase = createClient(urlOrClient, anonKey);
+    } else {
+      this.url = '';
+      this.anonKey = '';
+      this.supabase = urlOrClient as any;
+    }
   }
 
   async createAgent(name: string, apiKeyHash: string): Promise<AgentRecord> {
@@ -346,5 +358,108 @@ export class SupabaseManager {
       .eq('agent_id', agentId);
 
     if (error) throw error;
+  }
+
+  async insertLearning(
+    payload: LearningPayload & { source_agent_id: string },
+    targetStatus: LearningTargetStatus
+  ): Promise<{ id: number; action: 'inserted' | 'dedupe_noop' }> {
+    const row = {
+      claim: payload.claim,
+      evidence: payload.evidence,
+      scope: payload.scope,
+      confidence: payload.confidence,
+      status: targetStatus,
+      project: payload.project,
+      source_agent_id: payload.source_agent_id,
+      source_session: payload.source_session,
+      content_hash: payload.content_hash,
+    };
+    const { data, error } = await this.supabase
+      .from('learnings')
+      .upsert(row, { onConflict: 'source_session,content_hash', ignoreDuplicates: true })
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!data) return { id: 0, action: 'dedupe_noop' };
+    return { id: data.id, action: 'inserted' };
+  }
+
+  async invalidateLearning(id: number, replacedBy: number): Promise<void> {
+    const { error } = await this.supabase
+      .from('learnings')
+      .update({ invalidated: true, invalidated_by: replacedBy })
+      .eq('id', id);
+    if (error) throw error;
+  }
+
+  async fetchSimilarLearnings(claim: string, limit = 5): Promise<Array<{
+    id: number; title: string | null; narrative: string | null;
+  }>> {
+    const { data, error } = await this.supabase
+      .from('learnings')
+      .select('id, claim, evidence')
+      .eq('status', 'approved')
+      .eq('invalidated', false)
+      .ilike('claim', `%${claim.slice(0, 64)}%`)
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({ id: r.id, title: r.claim, narrative: r.evidence ?? null }));
+  }
+
+  async listLearnings(opts: {
+    status?: 'pending' | 'approved' | 'rejected';
+    project?: string;
+    limit: number;
+    offset: number;
+  }): Promise<LearningRecord[]> {
+    let q = this.supabase.from('learnings').select('*');
+    if (opts.status) q = q.eq('status', opts.status);
+    if (opts.project) q = q.eq('project', opts.project);
+    const { data, error } = await q
+      .order('extracted_at', { ascending: false })
+      .range(opts.offset, opts.offset + opts.limit - 1);
+    if (error) throw error;
+    return (data ?? []) as LearningRecord[];
+  }
+
+  async getLearning(id: number): Promise<LearningRecord | null> {
+    const { data, error } = await this.supabase
+      .from('learnings')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error && (error as any).code !== 'PGRST116') throw error;
+    return (data as LearningRecord) ?? null;
+  }
+
+  async reviewLearning(
+    id: number,
+    patch: {
+      status: 'approved' | 'rejected';
+      reviewed_by: string;
+      edit_diff?: Record<string, unknown> | null;
+      edited?: Partial<Pick<LearningPayload, 'claim' | 'evidence' | 'scope'>>;
+      rejection_reason?: string;
+    }
+  ): Promise<LearningRecord> {
+    const update: Record<string, unknown> = {
+      status: patch.status,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: patch.reviewed_by,
+    };
+    if (patch.edit_diff !== undefined) update.edit_diff = patch.edit_diff;
+    if (patch.edited) Object.assign(update, patch.edited);
+    if (patch.rejection_reason !== undefined) update.rejection_reason = patch.rejection_reason;
+
+    const { data, error } = await this.supabase
+      .from('learnings')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data as LearningRecord;
   }
 }
