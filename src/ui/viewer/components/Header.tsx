@@ -60,7 +60,7 @@ export function Header({
               </div>
             )}
           </div>
-          <span className="logo-text">claude-mem</span>
+          <span className="logo-text">engram</span>
         </h1>
         <div className="source-tabs" role="tablist" aria-label="Context source tabs">
           {availableSources.map(source => (
