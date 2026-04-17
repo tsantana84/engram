@@ -1,0 +1,59 @@
+---
+title: "Learning Extraction"
+description: "How engram distills session activity into durable team learnings."
+---
+
+# Learning Extraction
+
+## Overview
+
+Instead of syncing every session observation, engram distills observations into high-confidence **learnings**—durable claims backed by evidence. This reduces noise and improves team knowledge quality.
+
+## How It Works
+
+At session end, observations are marked pending extraction. The SyncWorker (every 30s) runs **LearningExtractor** via Claude, producing `{claim, evidence, scope, confidence}` structures. Learnings above the confidence threshold auto-approve to your canonical corpus; below it they queue for review.
+
+**Flow:**
+1. Session ends → learnings pending
+2. SyncWorker picks up pending sessions
+3. Claude extracts learnings via Anthropic API
+4. Confidence threshold gates approval
+5. Approved learnings → ConflictDetector → canonical corpus
+
+## Review & Approval
+
+Manage learnings on the shared dashboard at `/dashboard/`. Approve, edit, or reject learnings. Approved learnings run through ConflictDetector before landing in your canonical set, preventing contradictions.
+
+## Configuration
+
+```bash
+# Enable/disable extraction
+CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED=true
+
+# Auto-approve threshold (0.0–1.0, default 0.8)
+CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD=0.8
+
+# Max learnings per session (default 10)
+CLAUDE_MEM_LEARNING_MAX_PER_SESSION=10
+
+# LLM model for extraction
+CLAUDE_MEM_LEARNING_LLM_MODEL=claude-sonnet-4-6
+
+# Max retries on failure (default 3)
+CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES=3
+```
+
+## Disable Temporarily
+
+To use legacy observation sync, set:
+
+```bash
+CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED=false
+```
+
+This fallback will be removed in a future version.
+
+## Next Steps
+
+- [Configuration](/configuration) — All settings
+- [Architecture Overview](/architecture/overview) — System design
