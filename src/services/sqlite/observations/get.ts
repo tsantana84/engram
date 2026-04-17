@@ -103,7 +103,7 @@ export function getObservationsForSession(
   memorySessionId: string
 ): ObservationSessionRow[] {
   const stmt = db.prepare(`
-    SELECT title, subtitle, type, prompt_number
+    SELECT title, subtitle, type, prompt_number, narrative, facts
     FROM observations
     WHERE memory_session_id = ?
     ORDER BY created_at_epoch ASC

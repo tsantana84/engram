@@ -54,6 +54,8 @@ export interface ObservationSessionRow {
   subtitle: string;
   type: string;
   prompt_number: number | null;
+  narrative: string | null;
+  facts: string | null;
 }
 
 /**

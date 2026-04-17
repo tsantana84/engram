@@ -1103,6 +1103,61 @@ export class SessionStore {
     `).run(nowIso, nowEpoch, sessionDbId);
   }
 
+  // ---------------------------------------------------------------------------
+  // Extraction pipeline state mutators (migration 29: extraction_status columns)
+  // ---------------------------------------------------------------------------
+
+  markExtractionInProgress(id: number): void {
+    this.db.run(
+      "UPDATE sdk_sessions SET extraction_status = 'in_progress' WHERE id = ?",
+      [id]
+    );
+  }
+
+  markExtractionDone(id: number): void {
+    this.db.run(
+      "UPDATE sdk_sessions SET extraction_status = 'done' WHERE id = ?",
+      [id]
+    );
+  }
+
+  markExtractionPending(id: number): void {
+    this.db.run(
+      "UPDATE sdk_sessions SET extraction_status = 'pending' WHERE id = ?",
+      [id]
+    );
+  }
+
+  markExtractionFailed(id: number, maxRetries: number): void {
+    const row = this.db
+      .query<{ attempts: number }, [number]>(
+        'SELECT extraction_attempts + 1 as attempts FROM sdk_sessions WHERE id = ?'
+      )
+      .get(id);
+    const attempts = row?.attempts ?? 1;
+    const nextStatus = attempts >= maxRetries ? 'permanently_failed' : 'failed';
+    this.db.run(
+      'UPDATE sdk_sessions SET extraction_status = ?, extraction_attempts = ? WHERE id = ?',
+      [nextStatus, attempts, id]
+    );
+  }
+
+  getPendingExtractionSessions(
+    limit: number
+  ): Array<{ id: number; project: string; memory_session_id: string | null }> {
+    return this.db
+      .query<
+        { id: number; project: string; memory_session_id: string | null },
+        [number]
+      >(
+        `SELECT id, project, memory_session_id FROM sdk_sessions
+         WHERE extraction_status IN ('pending','failed')
+           AND completed_at IS NOT NULL
+         ORDER BY id ASC LIMIT ?`
+      )
+      .all(limit);
+  }
+
   /**
    * Ensures memory_session_id is registered in sdk_sessions before FK-constrained INSERT.
    * This fixes Issue #846 where observations fail after worker restart because the
@@ -1460,9 +1515,11 @@ export class SessionStore {
     subtitle: string;
     type: string;
     prompt_number: number | null;
+    narrative: string | null;
+    facts: string | null;
   }> {
     const stmt = this.db.prepare(`
-      SELECT title, subtitle, type, prompt_number
+      SELECT title, subtitle, type, prompt_number, narrative, facts
       FROM observations
       WHERE memory_session_id = ?
       ORDER BY created_at_epoch ASC

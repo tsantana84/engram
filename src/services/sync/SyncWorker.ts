@@ -1,6 +1,14 @@
 import { SyncQueue, SyncQueueItem } from './SyncQueue.js';
 import { SyncClient, SyncPushPayload, SyncObservationPayload, SyncSessionPayload, SyncSummaryPayload } from './SyncClient.js';
 import { ConflictDetector } from './ConflictDetector.js';
+import { LearningExtractor, type SessionInput } from './LearningExtractor.js';
+import type { LearningPayload, LearningTargetStatus } from './learning-types.js';
+
+function sha256(s: string): string {
+  const hasher = new Bun.CryptoHasher('sha256');
+  hasher.update(s);
+  return hasher.digest('hex');
+}
 
 export interface SyncWorkerConfig {
   enabled: boolean;
@@ -19,6 +27,18 @@ export interface SyncWorkerConfig {
    * If not provided, conflict detection is skipped (all observations pass as ADD).
    */
   llm?: (prompt: string) => Promise<string>;
+  /**
+   * Optional learning extractor. When provided along with `extractionEnabled: true`,
+   * the worker runs per-session extraction during tick() and enqueues approved/pending
+   * learnings instead of pushing raw observations.
+   */
+  extractor?: LearningExtractor;
+  /** Learnings with confidence >= threshold are auto-approved. Default 0.8. */
+  confidenceThreshold?: number;
+  /** When false, SyncWorker behaves like the legacy observation-only path. Default false. */
+  extractionEnabled?: boolean;
+  /** Maximum extraction attempts before a session is marked permanently_failed. Default 3. */
+  extractionMaxRetries?: number;
 }
 
 export class SyncWorker {
@@ -31,6 +51,10 @@ export class SyncWorker {
   private batchSize: number;
   private paused: boolean = false;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private extractor: LearningExtractor | undefined;
+  private confidenceThreshold: number;
+  private extractionEnabled: boolean;
+  private extractionMaxRetries: number;
 
   constructor(config: SyncWorkerConfig) {
     this.enabled = config.enabled;
@@ -38,6 +62,10 @@ export class SyncWorker {
     this.sessionStore = config.sessionStore;
     this.intervalMs = config.intervalMs;
     this.batchSize = config.batchSize;
+    this.extractor = config.extractor;
+    this.confidenceThreshold = config.confidenceThreshold ?? 0.8;
+    this.extractionEnabled = config.extractionEnabled ?? false;
+    this.extractionMaxRetries = config.extractionMaxRetries ?? 3;
 
     this.client = new SyncClient({
       serverUrl: config.serverUrl,
@@ -80,25 +108,130 @@ export class SyncWorker {
   async tick(): Promise<void> {
     if (!this.enabled || this.paused) return;
 
+    // 1. Extract pending/retryable sessions into queued learnings.
+    if (this.extractionEnabled && this.extractor) {
+      const sessions = this.sessionStore.getPendingExtractionSessions(5);
+      for (const s of sessions) {
+        await this.extractSessionLearnings(s.id);
+      }
+    }
+
+    // 2. Drain the sync queue.
     const pending = this.queue.getPending(this.batchSize);
     if (pending.length === 0) return;
 
-    const payload = this.buildPayload(pending);
-    payload.observations = await this.processConflicts(payload.observations);
-    const ids = pending.map((item) => item.id);
+    const learningItems = pending.filter((p) => p.entity_type === 'learning');
+    const legacyItems = pending.filter((p) => p.entity_type !== 'learning');
 
-    try {
-      const response = await this.client.push(payload);
-      this.queue.markSynced(ids);
-    } catch (error: any) {
-      const statusMatch = error.message?.match(/\((\d{3})\)/);
-      const statusCode = statusMatch ? parseInt(statusMatch[1]) : 0;
+    const approvedItems = learningItems.filter((p) => p.target_status === 'approved');
+    const pendingItems = learningItems.filter((p) => p.target_status === 'pending');
 
-      if (statusCode >= 400 && statusCode < 500) {
-        this.queue.markFailedPermanently(ids);
-      } else {
-        this.queue.markFailed(ids);
+    for (const [group, status] of [
+      [approvedItems, 'approved'] as const,
+      [pendingItems, 'pending'] as const,
+    ]) {
+      if (group.length === 0) continue;
+      try {
+        await this.client.pushLearnings(
+          group.map((g) => g.payload!).filter(Boolean),
+          status
+        );
+        this.queue.markSynced(group.map((g) => g.id));
+      } catch (err: any) {
+        this.handlePushError(err, group.map((g) => g.id));
       }
+    }
+
+    // Legacy observation/session/summary path — kept behind the flag so the
+    // rollout can fall back without code changes.
+    if (!this.extractionEnabled && legacyItems.length > 0) {
+      const payload = this.buildPayload(legacyItems);
+      payload.observations = await this.processConflicts(payload.observations);
+      const ids = legacyItems.map((i) => i.id);
+      try {
+        await this.client.push(payload);
+        this.queue.markSynced(ids);
+      } catch (err: any) {
+        this.handlePushError(err, ids);
+      }
+    } else if (legacyItems.length > 0) {
+      // Feature flag on, but legacy items snuck in (e.g., existing queue rows
+      // from before the flag flipped). Drop them to avoid double-push.
+      this.queue.markSynced(legacyItems.map((i) => i.id));
+    }
+  }
+
+  /**
+   * Extract durable learnings from one completed session and enqueue them.
+   * No-ops when the feature flag is off or no extractor was injected.
+   *
+   * Confidence threshold controls auto-approval: payloads at or above the
+   * threshold enter the queue with target_status='approved'; below it, with
+   * target_status='pending' for manual review.
+   */
+  async extractSessionLearnings(sessionDbId: number): Promise<void> {
+    if (!this.extractionEnabled || !this.extractor) return;
+    const session = this.sessionStore.getSessionById(sessionDbId);
+    if (!session) return;
+    this.sessionStore.markExtractionInProgress(sessionDbId);
+    try {
+      const input = this.buildSessionInput(session);
+      const learnings = await this.extractor.extract(input);
+      const threshold = this.confidenceThreshold;
+      for (const l of learnings) {
+        const payload: LearningPayload = {
+          ...l,
+          project: session.project,
+          source_session: session.memory_session_id ?? String(session.id),
+          content_hash: sha256(`${l.claim}\n${l.scope ?? ''}`),
+        };
+        const target: LearningTargetStatus =
+          l.confidence >= threshold ? 'approved' : 'pending';
+        this.queue.enqueueLearning(payload, target);
+      }
+      this.sessionStore.markExtractionDone(sessionDbId);
+    } catch (err) {
+      this.sessionStore.markExtractionFailed(sessionDbId, this.extractionMaxRetries);
+    }
+  }
+
+  private buildSessionInput(session: {
+    id: number;
+    project: string;
+    memory_session_id: string | null;
+  }): SessionInput {
+    const obsRows = this.sessionStore.getObservationsForSession(
+      session.memory_session_id ?? ''
+    );
+    const summaryRow = session.memory_session_id
+      ? this.sessionStore.getSummaryForSession(session.memory_session_id)
+      : null;
+    return {
+      sessionId: String(session.id),
+      project: session.project,
+      observations: obsRows.map((o: any) => ({
+        title: o.title ?? '',
+        narrative: o.narrative ?? null,
+        facts: this.parseJsonArray(o.facts),
+      })),
+      summary: summaryRow
+        ? {
+            request: summaryRow.request ?? '',
+            investigated: summaryRow.investigated ?? '',
+            learned: summaryRow.learned ?? '',
+            next_steps: summaryRow.next_steps ?? '',
+          }
+        : null,
+    };
+  }
+
+  private handlePushError(error: any, ids: number[]): void {
+    const statusMatch = error?.message?.match(/\((\d{3})\)/);
+    const statusCode = statusMatch ? parseInt(statusMatch[1]) : 0;
+    if (statusCode >= 400 && statusCode < 500) {
+      this.queue.markFailedPermanently(ids);
+    } else {
+      this.queue.markFailed(ids);
     }
   }
 
