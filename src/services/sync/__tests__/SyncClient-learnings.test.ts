@@ -1,9 +1,19 @@
-import { describe, expect, test, mock } from 'bun:test';
+import { describe, expect, test, mock, beforeEach, afterEach } from 'bun:test';
 import { SyncClient } from '../SyncClient.js';
 
 const clientConfig = { serverUrl: 'https://e.test', apiKey: 'k', agentName: 'test-agent', timeoutMs: 5000 };
 
 describe('SyncClient.pushLearnings', () => {
+  let originalFetch: typeof fetch;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
   test('POSTs to /api/sync/learnings with target_status', async () => {
     const captured: any = {};
     globalThis.fetch = mock(async (url: any, init: any) => {
@@ -27,5 +37,25 @@ describe('SyncClient.pushLearnings', () => {
     globalThis.fetch = mock(async () => new Response('boom', { status: 500 })) as any;
     const c = new SyncClient(clientConfig);
     await expect(c.pushLearnings([], 'pending')).rejects.toThrow(/500/);
+  });
+
+  test('aborts when request exceeds timeoutMs', async () => {
+    let abortReceived = false;
+    globalThis.fetch = mock(async (_url: any, init: any) => {
+      const signal: AbortSignal | undefined = init?.signal;
+      return await new Promise<Response>((_resolve, reject) => {
+        if (signal) {
+          signal.addEventListener('abort', () => {
+            abortReceived = true;
+            reject(new DOMException('aborted', 'AbortError'));
+          });
+        }
+        // never resolve — wait for abort
+      });
+    }) as any;
+
+    const c = new SyncClient({ ...clientConfig, timeoutMs: 50 });
+    await expect(c.pushLearnings([], 'pending')).rejects.toThrow();
+    expect(abortReceived).toBe(true);
   });
 });

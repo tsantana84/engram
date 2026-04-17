@@ -256,14 +256,25 @@ export class SyncClient {
   }
 
   async pushLearnings(learnings: LearningPayload[], target_status: LearningTargetStatus): Promise<LearningPushResponse> {
-    const response = await fetch(this.buildUrl('/api/sync/learnings'), {
-      method: 'POST',
-      headers: { ...this.buildHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ learnings, target_status }),
-    });
-    if (!response.ok) {
-      throw new Error(`pushLearnings failed (${response.status}): ${await response.text()}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
+
+    try {
+      const response = await fetch(this.buildUrl('/api/sync/learnings'), {
+        method: 'POST',
+        headers: { ...this.buildHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ learnings, target_status }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`pushLearnings failed (${response.status}): ${text}`);
+      }
+
+      return await response.json() as LearningPushResponse;
+    } finally {
+      clearTimeout(timeout);
     }
-    return response.json() as Promise<LearningPushResponse>;
   }
 }
