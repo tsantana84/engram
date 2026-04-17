@@ -56,8 +56,16 @@ function renderCard(list, l) {
 }
 
 async function doReview(id, body) {
-  await authedFetch(`/api/learnings/${id}/review`, { method: 'POST', body: JSON.stringify(body) });
-  renderList();
+  const card = document.querySelector(`[data-id="${id}"]`);
+  const buttons = card?.querySelectorAll('button');
+  buttons?.forEach(b => b.disabled = true);
+  try {
+    await authedFetch(`/api/learnings/${id}/review`, { method: 'POST', body: JSON.stringify(body) });
+    renderList();
+  } catch (e) {
+    buttons?.forEach(b => b.disabled = false);
+    alert(`Error: ${e.message}`);
+  }
 }
 
 async function doReject(id) {
@@ -74,14 +82,21 @@ async function doEdit(l) {
 }
 
 async function renderList() {
-  const status = document.getElementById('statusFilter').value;
-  const project = document.getElementById('projectFilter').value.trim();
-  const params = new URLSearchParams({ status, ...(project ? { project } : {}) });
-  const { learnings } = await authedFetch(`/api/learnings?${params}`);
   const list = document.getElementById('list');
-  list.textContent = '';
-  if (!learnings.length) { renderEmpty(list); return; }
-  for (const l of learnings) renderCard(list, l);
+  try {
+    const status = document.getElementById('statusFilter').value;
+    const project = document.getElementById('projectFilter').value.trim();
+    const params = new URLSearchParams({ status, ...(project ? { project } : {}) });
+    const { learnings } = await authedFetch(`/api/learnings?${params}`);
+    list.textContent = '';
+    if (!learnings.length) { renderEmpty(list); return; }
+    for (const l of learnings) renderCard(list, l);
+  } catch (e) {
+    list.textContent = '';
+    const err = el('p', { text: `Load failed: ${e.message}` });
+    err.style.color = 'red';
+    list.appendChild(err);
+  }
 }
 
 document.getElementById('refresh').addEventListener('click', renderList);
@@ -91,4 +106,10 @@ document.getElementById('logout').addEventListener('click', () => {
 });
 document.getElementById('statusFilter').addEventListener('change', renderList);
 document.getElementById('projectFilter').addEventListener('change', renderList);
-renderList();
+
+if (localStorage.getItem(KEY)) {
+  renderList();
+} else {
+  requestToken();
+  if (localStorage.getItem(KEY)) renderList();
+}
