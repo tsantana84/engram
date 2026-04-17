@@ -1,0 +1,9 @@
+body { font: 14px/1.5 system-ui, sans-serif; margin: 0; background: #fafaf9; color: #222; }
+header { padding: 1rem 2rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+main { padding: 1rem 2rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1rem; }
+.card { background: #fff; border: 1px solid #e5e5e5; border-radius: 6px; padding: 1rem; }
+.card .meta { display: flex; gap: .5rem; font-size: 12px; color: #888; margin-bottom: .5rem; }
+.card .conf { background: #111; color: #fff; padding: 2px 6px; border-radius: 3px; }
+.actions { display: flex; gap: .5rem; margin-top: .75rem; }
+button { padding: .4rem .8rem; border: 1px solid #ccc; background: #fff; cursor: pointer; border-radius: 4px; }
+button:hover { background: #f0f0f0; }
