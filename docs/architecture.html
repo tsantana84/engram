@@ -78,6 +78,7 @@
       max-width: 1200px;
       margin: 0 auto;
       padding: 24px;
+      padding-bottom: 60px;
     }
 
     section {
@@ -208,7 +209,6 @@
       color: var(--text);
     }
 
-    main { padding-bottom: 60px; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
   <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
@@ -402,9 +402,9 @@ flowchart TD
             <ul class="component-list">
               <li><span class="component-name" style="color:var(--indigo)">observations</span><span class="component-desc">synced observation rows from all agents</span></li>
               <li><span class="component-name" style="color:var(--indigo)">sessions</span><span class="component-desc">synced session metadata</span></li>
-              <li><span class="component-name" style="color:var(--indigo)">summaries</span><span class="component-desc">synced session summaries</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">session_summaries</span><span class="component-desc">synced session summaries</span></li>
               <li><span class="component-name" style="color:var(--indigo)">learnings</span><span class="component-desc">extracted learnings with status: pending | approved | rejected</span></li>
-              <li><span class="component-name" style="color:var(--indigo)">agent_keys</span><span class="component-desc">bearer tokens for API authentication</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">agents</span><span class="component-desc">bearer tokens for API authentication (agent keys)</span></li>
             </ul>
           </div>
         </div>
