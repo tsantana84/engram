@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>engram architecture</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #161b22;
+      --border: #21262d;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --blue: #7dd3fc;
+      --blue-bg: #0c1a2e;
+      --blue-border: #1e3a5f;
+      --green: #86efac;
+      --green-bg: #0c2318;
+      --green-border: #14532d;
+      --purple: #c4b5fd;
+      --purple-bg: #1e1237;
+      --purple-border: #3b1f6b;
+      --orange: #fdba74;
+      --orange-bg: #200d03;
+      --orange-border: #7c2d12;
+      --emerald: #6ee7b7;
+      --emerald-bg: #022c22;
+      --emerald-border: #065f46;
+      --teal: #67e8f9;
+      --teal-bg: #082832;
+      --teal-border: #164e63;
+      --indigo: #a5b4fc;
+      --indigo-bg: #1e1b4b;
+      --indigo-border: #3730a3;
+      --pink: #f9a8d4;
+      --pink-bg: #2d0a1e;
+      --pink-border: #831843;
+      --slate: #94a3b8;
+      --slate-bg: #0f172a;
+      --slate-border: #1e293b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      font-family: ui-monospace, "SF Mono", monospace;
+    }
+
+    header span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    section > h2 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 16px;
+      font-family: ui-monospace, "SF Mono", monospace;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>engram architecture</h1>
+    <span>interactive reference · fork of claude-mem v12.1.0</span>
+  </header>
+  <main>
+    <section id="dataflow">
+      <h2>Data Flow</h2>
+      <!-- Mermaid diagram — Task 2 -->
+    </section>
+    <section id="subsystems">
+      <h2>Subsystems</h2>
+      <!-- Panel grid — Tasks 3–6 -->
+    </section>
+    <section id="integrations">
+      <h2>Integrations</h2>
+      <!-- Badges strip — Task 7 -->
+    </section>
+  </main>
+</body>
+</html>
