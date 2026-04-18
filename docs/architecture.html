@@ -365,7 +365,66 @@ flowchart TD
           </div>
         </div>
 
-        <!-- placeholder for task 6 -->
+        <!-- Supabase -->
+        <div class="panel" style="background: var(--indigo-bg); border-color: var(--indigo-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--indigo)"></div>
+              Supabase
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--indigo)">observations</span><span class="component-desc">synced observation rows from all agents</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">sessions</span><span class="component-desc">synced session metadata</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">summaries</span><span class="component-desc">synced session summaries</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">learnings</span><span class="component-desc">extracted learnings with status: pending | approved | rejected</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">agent_keys</span><span class="component-desc">bearer tokens for API authentication</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Review Dashboard -->
+        <div class="panel" style="background: var(--pink-bg); border-color: var(--pink-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--pink)"></div>
+              Review Dashboard
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--pink)">public/dashboard/</span><span class="component-desc">DOM-safe HTML/JS UI served by Vercel</span></li>
+              <li><span class="component-name" style="color:var(--pink)">Auth</span><span class="component-desc">bearer token (agent key) — no Supabase Auth for POC</span></li>
+              <li><span class="component-name" style="color:var(--pink)">Approve action</span><span class="component-desc">runs ConflictDetector server-side, promotes learning to approved</span></li>
+              <li><span class="component-name" style="color:var(--pink)">Reject action</span><span class="component-desc">marks learning as rejected, removes from search corpus</span></li>
+              <li><span class="component-name" style="color:var(--pink)">Edit action</span><span class="component-desc">inline claim editing before approve; buttons disabled during in-flight requests</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Viewer UI -->
+        <div class="panel" style="background: var(--slate-bg); border-color: var(--slate-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--slate)"></div>
+              Viewer UI
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--slate)">React SPA</span><span class="component-desc">served at localhost:37777, built to plugin/ui/viewer.html</span></li>
+              <li><span class="component-name" style="color:var(--slate)">Feed</span><span class="component-desc">paginated stream of observations and summaries</span></li>
+              <li><span class="component-name" style="color:var(--slate)">ObservationCard / SummaryCard</span><span class="component-desc">typed entry renderers with icons and metadata</span></li>
+              <li><span class="component-name" style="color:var(--slate)">SSE stream</span><span class="component-desc">real-time updates pushed from SSEBroadcaster</span></li>
+              <li><span class="component-name" style="color:var(--slate)">SearchRoutes</span><span class="component-desc">local search UI backed by worker search API</span></li>
+              <li><span class="component-name" style="color:var(--slate)">ContextSettingsModal</span><span class="component-desc">configure context injection parameters</span></li>
+            </ul>
+          </div>
+        </div>
       </div>
     </section>
     <section id="integrations">
