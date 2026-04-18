@@ -303,7 +303,69 @@ flowchart TD
           </div>
         </div>
 
-        <!-- placeholder for tasks 5–6 -->
+        <!-- Sync Pipeline -->
+        <div class="panel" style="background: var(--orange-bg); border-color: var(--orange-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--orange)"></div>
+              Sync Pipeline
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--orange)">SyncQueue</span><span class="component-desc">behavior layer — enqueue/dequeue outbound sync items</span></li>
+              <li><span class="component-name" style="color:var(--orange)">SyncClient</span><span class="component-desc">HTTP client that pushes queue items to Vercel backend</span></li>
+              <li><span class="component-name" style="color:var(--orange)">SyncWorker</span><span class="component-desc">tick-based worker; drains queue, triggers extraction on SessionEnd</span></li>
+              <li><span class="component-name" style="color:var(--orange)">LearningExtractor</span><span class="component-desc">LLM distillation → {claim, evidence, scope, confidence} structs</span></li>
+              <li><span class="component-name" style="color:var(--orange)">ConflictDetector</span><span class="component-desc">LLM dedup on approval path; runs server-side via Vercel</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Chroma / Vector Search -->
+        <div class="panel" style="background: var(--emerald-bg); border-color: var(--emerald-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--emerald)"></div>
+              Chroma / Vector Search
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--emerald)">ChromaSync</span><span class="component-desc">writes observation embeddings to local Chroma store in parallel with SQLite</span></li>
+              <li><span class="component-name" style="color:var(--emerald)">ChromaMcpManager</span><span class="component-desc">MCP interface exposing Chroma to external tools</span></li>
+              <li><span class="component-name" style="color:var(--emerald)">HybridSearchStrategy</span><span class="component-desc">merges SQLite full-text results with Chroma vector results</span></li>
+              <li><span class="component-name" style="color:var(--emerald)">ChromaSearchStrategy</span><span class="component-desc">semantic similarity search against the embedding store</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Vercel API -->
+        <div class="panel" style="background: var(--teal-bg); border-color: var(--teal-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--teal)"></div>
+              Vercel API
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--teal)">push.ts</span><span class="component-desc">receives sync payloads from agents</span></li>
+              <li><span class="component-name" style="color:var(--teal)">status.ts</span><span class="component-desc">returns queue depth and sync health</span></li>
+              <li><span class="component-name" style="color:var(--teal)">invalidate.ts</span><span class="component-desc">marks a learning as invalidated</span></li>
+              <li><span class="component-name" style="color:var(--teal)">search.ts</span><span class="component-desc">unified search across observations + approved learnings</span></li>
+              <li><span class="component-name" style="color:var(--teal)">timeline.ts</span><span class="component-desc">timeline queries against Supabase</span></li>
+              <li><span class="component-name" style="color:var(--teal)">agents/ (create, revoke, list)</span><span class="component-desc">agent key management — bearer tokens for API auth</span></li>
+              <li><span class="component-name" style="color:var(--teal)">learnings/review</span><span class="component-desc">approve/reject/edit pending learnings from dashboard</span></li>
+              <li><span class="component-name" style="color:var(--teal)">health.ts / db-check.ts</span><span class="component-desc">ops endpoints for uptime and DB connectivity checks</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- placeholder for task 6 -->
       </div>
     </section>
     <section id="integrations">
