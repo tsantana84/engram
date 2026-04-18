@@ -1,0 +1,742 @@
+# Engram Architecture HTML Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Build a single self-contained `docs/architecture.html` file — a dark-themed interactive architecture reference with a Mermaid data-flow diagram and 9 expandable subsystem panels.
+
+**Architecture:** Single HTML file with inline CSS and JS. Mermaid.js loaded from cdnjs for one diagram. Pure CSS grid for the panel layout; vanilla JS class toggle for expand/collapse. No build step, no dependencies beyond the Mermaid CDN.
+
+**Tech Stack:** HTML5, CSS3 (custom properties, grid, transitions), vanilla JS, Mermaid.js 10.9.1 (cdnjs)
+
+---
+
+## File Map
+
+| Action | Path | Responsibility |
+|--------|------|----------------|
+| Create | `docs/architecture.html` | Complete architecture reference — all HTML, CSS, JS inline |
+
+Single file, zero additional files.
+
+---
+
+### Task 1: HTML shell with dark theme and sticky header
+
+**Files:**
+- Create: `docs/architecture.html`
+
+- [ ] **Step 1: Create the file with base structure**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>engram architecture</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #161b22;
+      --border: #21262d;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --blue: #7dd3fc;
+      --blue-bg: #0c1a2e;
+      --blue-border: #1e3a5f;
+      --green: #86efac;
+      --green-bg: #0c2318;
+      --green-border: #14532d;
+      --purple: #c4b5fd;
+      --purple-bg: #1e1237;
+      --purple-border: #3b1f6b;
+      --orange: #fdba74;
+      --orange-bg: #200d03;
+      --orange-border: #7c2d12;
+      --emerald: #6ee7b7;
+      --emerald-bg: #022c22;
+      --emerald-border: #065f46;
+      --teal: #67e8f9;
+      --teal-bg: #082832;
+      --teal-border: #164e63;
+      --indigo: #a5b4fc;
+      --indigo-bg: #1e1b4b;
+      --indigo-border: #3730a3;
+      --pink: #f9a8d4;
+      --pink-bg: #2d0a1e;
+      --pink-border: #831843;
+      --slate: #94a3b8;
+      --slate-bg: #0f172a;
+      --slate-border: #1e293b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      font-family: ui-monospace, "SF Mono", monospace;
+    }
+
+    header span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    section > h2 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 16px;
+      font-family: ui-monospace, "SF Mono", monospace;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>engram architecture</h1>
+    <span>interactive reference · fork of claude-mem v12.1.0</span>
+  </header>
+  <main>
+    <section id="dataflow">
+      <h2>Data Flow</h2>
+      <!-- Mermaid diagram — Task 2 -->
+    </section>
+    <section id="subsystems">
+      <h2>Subsystems</h2>
+      <!-- Panel grid — Tasks 3–6 -->
+    </section>
+    <section id="integrations">
+      <h2>Integrations</h2>
+      <!-- Badges strip — Task 7 -->
+    </section>
+  </main>
+</body>
+</html>
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Open `docs/architecture.html` in a browser. Verify:
+- Dark background (#0f1117)
+- Sticky header shows "engram architecture" + subtitle
+- Three empty section headings visible: DATA FLOW, SUBSYSTEMS, INTEGRATIONS
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/architecture.html
+git commit -m "feat: scaffold architecture.html with dark theme and sticky header"
+```
+
+---
+
+### Task 2: Mermaid data-flow diagram
+
+**Files:**
+- Modify: `docs/architecture.html` — add Mermaid CDN, diagram, diagram CSS
+
+- [ ] **Step 1: Add Mermaid CDN script before `</head>`**
+
+Insert before the closing `</head>` tag:
+
+```html
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
+```
+
+- [ ] **Step 2: Add diagram CSS inside `<style>`**
+
+Append inside the existing `<style>` block:
+
+```css
+    .mermaid-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    .mermaid svg {
+      max-width: 100%;
+    }
+```
+
+- [ ] **Step 3: Replace the dataflow section content**
+
+Replace `<!-- Mermaid diagram — Task 2 -->` with:
+
+```html
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+flowchart TD
+    CC["Claude Code"] --> H["Hook layer\n5 types · tag-stripping at edge"]
+    H --> W["Worker :37777\nExpress · Bun"]
+    W --> CH["ChromaSync\nvector embeddings · parallel write"]
+    W --> DB["SQLite\nlocal DB"]
+    DB --> SQ["SyncQueue\noutbound items"]
+    SQ --> SW["SyncWorker\ntick-based drain"]
+    SW --> LE["LearningExtractor\nSessionEnd → LLM distillation"]
+    LE --> HC{"confidence\n≥ threshold?"}
+    HC -->|yes| SC["SyncClient"]
+    HC -->|no| PL["pending learnings"]
+    SC --> VA["Vercel API\nserverless functions"]
+    VA --> SB["Supabase\ncloud DB"]
+    PL --> DB2["Review Dashboard\napprove · reject · edit"]
+    DB2 --> CD["ConflictDetector\nLLM dedup"]
+    CD --> SB
+
+    style CC fill:#1e3a5f,stroke:#7dd3fc,color:#e2e8f0
+    style H fill:#1e3a5f,stroke:#7dd3fc,color:#e2e8f0
+    style W fill:#14532d,stroke:#86efac,color:#e2e8f0
+    style CH fill:#022c22,stroke:#065f46,color:#e2e8f0
+    style DB fill:#3b1f6b,stroke:#c4b5fd,color:#e2e8f0
+    style SQ fill:#3b1f6b,stroke:#c4b5fd,color:#e2e8f0
+    style SW fill:#7c2d12,stroke:#fdba74,color:#e2e8f0
+    style LE fill:#7c2d12,stroke:#fdba74,color:#e2e8f0
+    style HC fill:#161b22,stroke:#64748b,color:#e2e8f0
+    style SC fill:#7c2d12,stroke:#fdba74,color:#e2e8f0
+    style VA fill:#164e63,stroke:#67e8f9,color:#e2e8f0
+    style SB fill:#1e1b4b,stroke:#a5b4fc,color:#e2e8f0
+    style PL fill:#2d0a1e,stroke:#831843,color:#e2e8f0
+    style DB2 fill:#2d0a1e,stroke:#831843,color:#e2e8f0
+    style CD fill:#7c2d12,stroke:#fdba74,color:#e2e8f0
+        </pre>
+      </div>
+```
+
+- [ ] **Step 4: Open in browser and verify**
+
+Reload `docs/architecture.html`. Verify:
+- Mermaid diagram renders (not raw text)
+- All nodes visible with color coding
+- Diamond decision node for confidence threshold visible
+- Two paths from diamond: one to Vercel/Supabase, one to Dashboard
+
+If diagram shows as raw text: confirm internet access for CDN, check browser console for errors.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add docs/architecture.html
+git commit -m "feat: add Mermaid data-flow diagram to architecture.html"
+```
+
+---
+
+### Task 3: Panel grid CSS and expand/collapse JS
+
+**Files:**
+- Modify: `docs/architecture.html` — add grid CSS, panel CSS, toggle JS, one placeholder panel
+
+- [ ] **Step 1: Add panel CSS inside `<style>`**
+
+Append inside the existing `<style>` block:
+
+```css
+    .panel-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .panel {
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+
+    .panel:hover { border-color: var(--muted); }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      user-select: none;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .panel-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .panel-chevron {
+      color: var(--muted);
+      font-size: 10px;
+      transition: transform 0.2s;
+    }
+
+    .panel.open .panel-chevron { transform: rotate(180deg); }
+
+    .panel-body {
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .panel.open .panel-body { display: block; }
+
+    .component-list {
+      list-style: none;
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .component-list li {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .component-name {
+      font-family: ui-monospace, "SF Mono", monospace;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .component-desc {
+      font-size: 12px;
+      color: var(--muted);
+    }
+```
+
+- [ ] **Step 2: Add toggle JS before `</body>`**
+
+Insert before the closing `</body>` tag:
+
+```html
+  <script>
+    document.querySelectorAll('.panel').forEach(panel => {
+      panel.querySelector('.panel-header').addEventListener('click', () => {
+        panel.classList.toggle('open');
+      });
+    });
+  </script>
+```
+
+- [ ] **Step 3: Replace `<!-- Panel grid — Tasks 3–6 -->` with a test placeholder**
+
+```html
+      <div class="panel-grid">
+        <div class="panel" style="background: var(--blue-bg); border-color: var(--blue-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--blue)"></div>
+              Test Panel
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li>
+                <span class="component-name" style="color: var(--blue)">TestComponent</span>
+                <span class="component-desc">verifying expand/collapse works</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+```
+
+- [ ] **Step 4: Open in browser and verify**
+
+Reload. Verify:
+- Blue panel card visible under SUBSYSTEMS
+- Click panel → expands showing TestComponent
+- Click again → collapses
+- Chevron rotates on open/close
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add docs/architecture.html
+git commit -m "feat: add panel grid CSS and expand/collapse JS"
+```
+
+---
+
+### Task 4: Hooks, Worker Service, SQLite panels
+
+**Files:**
+- Modify: `docs/architecture.html` — replace placeholder grid with first 3 real panels
+
+- [ ] **Step 1: Replace the entire `<div class="panel-grid">` block with the first 3 panels**
+
+```html
+      <div class="panel-grid">
+
+        <!-- Hooks -->
+        <div class="panel" style="background: var(--blue-bg); border-color: var(--blue-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--blue)"></div>
+              Hooks
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--blue)">SessionStart</span><span class="component-desc">injects past context into the prompt before Claude responds</span></li>
+              <li><span class="component-name" style="color:var(--blue)">UserPromptSubmit</span><span class="component-desc">strips privacy tags, enqueues prompt to worker for storage</span></li>
+              <li><span class="component-name" style="color:var(--blue)">PostToolUse</span><span class="component-desc">captures tool call results as observations</span></li>
+              <li><span class="component-name" style="color:var(--blue)">Summary</span><span class="component-desc">stores the session summary generated by Claude</span></li>
+              <li><span class="component-name" style="color:var(--blue)">SessionEnd</span><span class="component-desc">triggers learning extraction pipeline on session close</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Worker Service -->
+        <div class="panel" style="background: var(--green-bg); border-color: var(--green-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--green)"></div>
+              Worker Service
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--green)">worker-service.ts</span><span class="component-desc">Express entrypoint on :37777, managed by Bun</span></li>
+              <li><span class="component-name" style="color:var(--green)">SessionManager</span><span class="component-desc">tracks active sessions and their lifecycle state</span></li>
+              <li><span class="component-name" style="color:var(--green)">SearchManager</span><span class="component-desc">orchestrates local + team search, injects SyncClient</span></li>
+              <li><span class="component-name" style="color:var(--green)">SSEBroadcaster</span><span class="component-desc">pushes real-time events to Viewer UI over SSE</span></li>
+              <li><span class="component-name" style="color:var(--green)">GeminiAgent / SDKAgent / OpenRouterAgent</span><span class="component-desc">pluggable LLM providers for AI processing tasks</span></li>
+              <li><span class="component-name" style="color:var(--green)">ResponseProcessor</span><span class="component-desc">normalizes and stores LLM agent output</span></li>
+              <li><span class="component-name" style="color:var(--green)">SessionCompletionHandler</span><span class="component-desc">finalizes session state on close</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- SQLite / Local DB -->
+        <div class="panel" style="background: var(--purple-bg); border-color: var(--purple-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--purple)"></div>
+              SQLite / Local DB
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--purple)">Database</span><span class="component-desc">SQLite3 connection manager at ~/.claude-mem/claude-mem.db</span></li>
+              <li><span class="component-name" style="color:var(--purple)">SessionStore</span><span class="component-desc">session CRUD; injects items into SyncQueue after writes</span></li>
+              <li><span class="component-name" style="color:var(--purple)">Observations</span><span class="component-desc">stores per-turn observation records</span></li>
+              <li><span class="component-name" style="color:var(--purple)">Summaries</span><span class="component-desc">stores session summaries</span></li>
+              <li><span class="component-name" style="color:var(--purple)">Prompts</span><span class="component-desc">stores user prompts</span></li>
+              <li><span class="component-name" style="color:var(--purple)">Sessions</span><span class="component-desc">session metadata rows</span></li>
+              <li><span class="component-name" style="color:var(--purple)">SyncQueue</span><span class="component-desc">outbound sync items table (storage layer; behavior in Sync Pipeline)</span></li>
+              <li><span class="component-name" style="color:var(--purple)">MigrationRunner</span><span class="component-desc">versioned schema migrations, auto-runs on startup</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- placeholder for tasks 5–6 -->
+      </div>
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Reload. Verify:
+- Three panels visible: Hooks (blue), Worker Service (green), SQLite (purple)
+- Each expands to show correct component names and descriptions
+- Hover changes border color slightly
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/architecture.html
+git commit -m "feat: add Hooks, Worker Service, SQLite panels"
+```
+
+---
+
+### Task 5: Sync Pipeline, Chroma, Vercel API panels
+
+**Files:**
+- Modify: `docs/architecture.html` — add panels 4–6, remove placeholder comment
+
+- [ ] **Step 1: Replace `<!-- placeholder for tasks 5–6 -->` with the next 3 panels**
+
+```html
+        <!-- Sync Pipeline -->
+        <div class="panel" style="background: var(--orange-bg); border-color: var(--orange-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--orange)"></div>
+              Sync Pipeline
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--orange)">SyncQueue</span><span class="component-desc">behavior layer — enqueue/dequeue outbound sync items</span></li>
+              <li><span class="component-name" style="color:var(--orange)">SyncClient</span><span class="component-desc">HTTP client that pushes queue items to Vercel backend</span></li>
+              <li><span class="component-name" style="color:var(--orange)">SyncWorker</span><span class="component-desc">tick-based worker; drains queue, triggers extraction on SessionEnd</span></li>
+              <li><span class="component-name" style="color:var(--orange)">LearningExtractor</span><span class="component-desc">LLM distillation → {claim, evidence, scope, confidence} structs</span></li>
+              <li><span class="component-name" style="color:var(--orange)">ConflictDetector</span><span class="component-desc">LLM dedup on approval path; runs server-side via Vercel</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Chroma / Vector Search -->
+        <div class="panel" style="background: var(--emerald-bg); border-color: var(--emerald-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--emerald)"></div>
+              Chroma / Vector Search
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--emerald)">ChromaSync</span><span class="component-desc">writes observation embeddings to local Chroma store in parallel with SQLite</span></li>
+              <li><span class="component-name" style="color:var(--emerald)">ChromaMcpManager</span><span class="component-desc">MCP interface exposing Chroma to external tools</span></li>
+              <li><span class="component-name" style="color:var(--emerald)">HybridSearchStrategy</span><span class="component-desc">merges SQLite full-text results with Chroma vector results</span></li>
+              <li><span class="component-name" style="color:var(--emerald)">ChromaSearchStrategy</span><span class="component-desc">semantic similarity search against the embedding store</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Vercel API -->
+        <div class="panel" style="background: var(--teal-bg); border-color: var(--teal-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--teal)"></div>
+              Vercel API
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--teal)">push.ts</span><span class="component-desc">receives sync payloads from agents</span></li>
+              <li><span class="component-name" style="color:var(--teal)">status.ts</span><span class="component-desc">returns queue depth and sync health</span></li>
+              <li><span class="component-name" style="color:var(--teal)">invalidate.ts</span><span class="component-desc">marks a learning as invalidated</span></li>
+              <li><span class="component-name" style="color:var(--teal)">search.ts</span><span class="component-desc">unified search across observations + approved learnings</span></li>
+              <li><span class="component-name" style="color:var(--teal)">timeline.ts</span><span class="component-desc">timeline queries against Supabase</span></li>
+              <li><span class="component-name" style="color:var(--teal)">agents/ (create, revoke, list)</span><span class="component-desc">agent key management — bearer tokens for API auth</span></li>
+              <li><span class="component-name" style="color:var(--teal)">learnings/review</span><span class="component-desc">approve/reject/edit pending learnings from dashboard</span></li>
+              <li><span class="component-name" style="color:var(--teal)">health.ts / db-check.ts</span><span class="component-desc">ops endpoints for uptime and DB connectivity checks</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- placeholder for task 6 -->
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Reload. Verify 6 panels now visible (3 new: orange Sync, emerald Chroma, teal Vercel API). All expand correctly.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/architecture.html
+git commit -m "feat: add Sync Pipeline, Chroma, Vercel API panels"
+```
+
+---
+
+### Task 6: Supabase, Review Dashboard, Viewer UI panels
+
+**Files:**
+- Modify: `docs/architecture.html` — add final 3 panels, remove placeholder comment
+
+- [ ] **Step 1: Replace `<!-- placeholder for task 6 -->` with the last 3 panels**
+
+```html
+        <!-- Supabase -->
+        <div class="panel" style="background: var(--indigo-bg); border-color: var(--indigo-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--indigo)"></div>
+              Supabase
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--indigo)">observations</span><span class="component-desc">synced observation rows from all agents</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">sessions</span><span class="component-desc">synced session metadata</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">summaries</span><span class="component-desc">synced session summaries</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">learnings</span><span class="component-desc">extracted learnings with status: pending | approved | rejected</span></li>
+              <li><span class="component-name" style="color:var(--indigo)">agent_keys</span><span class="component-desc">bearer tokens for API authentication</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Review Dashboard -->
+        <div class="panel" style="background: var(--pink-bg); border-color: var(--pink-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--pink)"></div>
+              Review Dashboard
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--pink)">public/dashboard/</span><span class="component-desc">DOM-safe HTML/JS UI served by Vercel</span></li>
+              <li><span class="component-name" style="color:var(--pink)">Auth</span><span class="component-desc">bearer token (agent key) — no Supabase Auth for POC</span></li>
+              <li><span class="component-name" style="color:var(--pink)">Approve action</span><span class="component-desc">runs ConflictDetector server-side, promotes learning to approved</span></li>
+              <li><span class="component-name" style="color:var(--pink)">Reject action</span><span class="component-desc">marks learning as rejected, removes from search corpus</span></li>
+              <li><span class="component-name" style="color:var(--pink)">Edit action</span><span class="component-desc">inline claim editing before approve; buttons disabled during in-flight requests</span></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Viewer UI -->
+        <div class="panel" style="background: var(--slate-bg); border-color: var(--slate-border);">
+          <div class="panel-header">
+            <div class="panel-title">
+              <div class="panel-dot" style="background: var(--slate)"></div>
+              Viewer UI
+            </div>
+            <span class="panel-chevron">▼</span>
+          </div>
+          <div class="panel-body">
+            <ul class="component-list">
+              <li><span class="component-name" style="color:var(--slate)">React SPA</span><span class="component-desc">served at localhost:37777, built to plugin/ui/viewer.html</span></li>
+              <li><span class="component-name" style="color:var(--slate)">Feed</span><span class="component-desc">paginated stream of observations and summaries</span></li>
+              <li><span class="component-name" style="color:var(--slate)">ObservationCard / SummaryCard</span><span class="component-desc">typed entry renderers with icons and metadata</span></li>
+              <li><span class="component-name" style="color:var(--slate)">SSE stream</span><span class="component-desc">real-time updates pushed from SSEBroadcaster</span></li>
+              <li><span class="component-name" style="color:var(--slate)">SearchRoutes</span><span class="component-desc">local search UI backed by worker search API</span></li>
+              <li><span class="component-name" style="color:var(--slate)">ContextSettingsModal</span><span class="component-desc">configure context injection parameters</span></li>
+            </ul>
+          </div>
+        </div>
+```
+
+- [ ] **Step 2: Open in browser and verify**
+
+Reload. Verify all 9 panels visible. Open all 9 simultaneously — they should all stay open independently. Check indigo Supabase, pink Dashboard, slate Viewer expand correctly.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add docs/architecture.html
+git commit -m "feat: add Supabase, Review Dashboard, Viewer UI panels"
+```
+
+---
+
+### Task 7: Integrations strip and final polish
+
+**Files:**
+- Modify: `docs/architecture.html` — add integrations badges, final CSS polish
+
+- [ ] **Step 1: Add badge CSS inside `<style>`**
+
+Append inside the `<style>` block:
+
+```css
+    .badge-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .badge {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-family: ui-monospace, "SF Mono", monospace;
+      color: var(--muted);
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .badge:hover {
+      border-color: var(--text);
+      color: var(--text);
+    }
+```
+
+- [ ] **Step 2: Replace integrations section content**
+
+Replace `<!-- Badges strip — Task 7 -->` with:
+
+```html
+      <div class="badge-strip">
+        <span class="badge">Cursor</span>
+        <span class="badge">Gemini CLI</span>
+        <span class="badge">Windsurf</span>
+        <span class="badge">OpenCode</span>
+        <span class="badge">OpenClaw</span>
+        <span class="badge">Codex CLI</span>
+      </div>
+```
+
+- [ ] **Step 3: Add bottom padding to body**
+
+Append to `<style>`:
+
+```css
+    main { padding-bottom: 60px; }
+```
+
+- [ ] **Step 4: Full browser verification**
+
+Reload and verify the complete page:
+- [ ] Sticky header stays in place when scrolling
+- [ ] Mermaid diagram renders with all nodes and color coding
+- [ ] All 9 panels expand/collapse independently
+- [ ] All component names and one-liners correct
+- [ ] 6 integration badges at bottom
+- [ ] No horizontal scroll on 1200px+ viewport
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add docs/architecture.html
+git commit -m "feat: add integrations strip, complete architecture reference"
+```
