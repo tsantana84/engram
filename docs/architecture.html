@@ -93,7 +93,21 @@
       margin-bottom: 16px;
       font-family: ui-monospace, "SF Mono", monospace;
     }
+
+    .mermaid-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      overflow-x: auto;
+    }
+
+    .mermaid svg {
+      max-width: 100%;
+    }
   </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'dark' });</script>
 </head>
 <body>
   <header>
@@ -103,7 +117,42 @@
   <main>
     <section id="dataflow">
       <h2>Data Flow</h2>
-      <!-- Mermaid diagram — Task 2 -->
+      <div class="mermaid-wrap">
+        <pre class="mermaid">
+flowchart TD
+    CC["Claude Code"] --> H["Hook layer\n5 types · tag-stripping at edge"]
+    H --> W["Worker :37777\nExpress · Bun"]
+    W --> CH["ChromaSync\nvector embeddings · parallel write"]
+    W --> DB["SQLite\nlocal DB"]
+    DB --> SQ["SyncQueue\noutbound items"]
+    SQ --> SW["SyncWorker\ntick-based drain"]
+    SW --> LE["LearningExtractor\nSessionEnd → LLM distillation"]
+    LE --> HC{"confidence\n≥ threshold?"}
+    HC -->|yes| SC["SyncClient"]
+    HC -->|no| PL["pending learnings"]
+    SC --> VA["Vercel API\nserverless functions"]
+    VA --> SB["Supabase\ncloud DB"]
+    PL --> DB2["Review Dashboard\napprove · reject · edit"]
+    DB2 --> CD["ConflictDetector\nLLM dedup"]
+    CD --> SB
+
+    style CC fill:#1e3a5f,stroke:#7dd3fc,color:#e2e8f0
+    style H fill:#1e3a5f,stroke:#7dd3fc,color:#e2e8f0
+    style W fill:#14532d,stroke:#86efac,color:#e2e8f0
+    style CH fill:#022c22,stroke:#065f46,color:#e2e8f0
+    style DB fill:#3b1f6b,stroke:#c4b5fd,color:#e2e8f0
+    style SQ fill:#3b1f6b,stroke:#c4b5fd,color:#e2e8f0
+    style SW fill:#7c2d12,stroke:#fdba74,color:#e2e8f0
+    style LE fill:#7c2d12,stroke:#fdba74,color:#e2e8f0
+    style HC fill:#161b22,stroke:#64748b,color:#e2e8f0
+    style SC fill:#7c2d12,stroke:#fdba74,color:#e2e8f0
+    style VA fill:#164e63,stroke:#67e8f9,color:#e2e8f0
+    style SB fill:#1e1b4b,stroke:#a5b4fc,color:#e2e8f0
+    style PL fill:#2d0a1e,stroke:#831843,color:#e2e8f0
+    style DB2 fill:#2d0a1e,stroke:#831843,color:#e2e8f0
+    style CD fill:#7c2d12,stroke:#fdba74,color:#e2e8f0
+        </pre>
+      </div>
     </section>
     <section id="subsystems">
       <h2>Subsystems</h2>
