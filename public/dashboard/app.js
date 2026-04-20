@@ -14,9 +14,43 @@ async function authedFetch(path, opts = {}) {
   return r.json();
 }
 
+function showError(container, msg) {
+  const existing = container.querySelector('.inline-error');
+  if (existing) existing.remove();
+  const e = el('p', { className: 'inline-error error', text: `Error: ${msg}` });
+  container.appendChild(e);
+  setTimeout(() => e.remove(), 5000);
+}
+
 function requestToken() {
-  const t = prompt('Enter engram agent key:');
-  if (t) localStorage.setItem(KEY, t.trim());
+  const list = document.getElementById('list');
+  list.textContent = '';
+
+  const form = document.createElement('div');
+  form.className = 'token-form';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'edit-field';
+  const lbl = el('label', { text: 'ENGRAM AGENT KEY' });
+  const input = Object.assign(document.createElement('input'), { type: 'password', placeholder: 'cmem_ak_...' });
+  wrap.append(lbl, input);
+
+  const submit = el('button', { text: 'Connect' });
+  submit.style.cssText = 'background:#000;color:#fff;border-color:#000;margin-top:.5rem;';
+
+  form.append(wrap, submit);
+  list.appendChild(form);
+  input.focus();
+
+  function tryConnect() {
+    const t = input.value.trim();
+    if (!t) return;
+    localStorage.setItem(KEY, t);
+    renderList();
+  }
+
+  submit.addEventListener('click', tryConnect);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') tryConnect(); });
 }
 
 function el(tag, opts = {}) {
@@ -65,13 +99,55 @@ async function doReview(id, body) {
     renderList();
   } catch (e) {
     buttons?.forEach(b => b.disabled = false);
-    alert(`Error: ${e.message}`);
+    showError(card, e.message);
   }
 }
 
-async function doReject(id) {
-  const reason = prompt('Rejection reason?') ?? '';
-  await doReview(id, { action: 'reject', rejection_reason: reason });
+function doReject(id) {
+  const card = document.querySelector(`[data-id="${id}"]`);
+  if (!card || card.querySelector('.reject-form')) return;
+
+  card.querySelectorAll('h2, .evidence, .actions').forEach(n => n.style.display = 'none');
+
+  const form = document.createElement('div');
+  form.className = 'reject-form edit-form';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'edit-field';
+  const lbl = el('label', { text: 'REJECTION REASON (optional)' });
+  const input = Object.assign(document.createElement('textarea'), { rows: 2 });
+  wrap.append(lbl, input);
+
+  const btns = el('div', { className: 'actions' });
+  const confirm = el('button', { text: 'Confirm Reject' });
+  confirm.style.cssText = 'background:#ff2400;border-color:#ff2400;color:#fff;';
+  const cancel = el('button', { text: 'Cancel' });
+  btns.append(confirm, cancel);
+
+  form.append(wrap, btns);
+  card.appendChild(form);
+  input.focus();
+
+  cancel.addEventListener('click', () => {
+    form.remove();
+    card.querySelectorAll('h2, .evidence, .actions').forEach(n => n.style.display = '');
+  });
+
+  confirm.addEventListener('click', async () => {
+    confirm.disabled = true;
+    cancel.disabled = true;
+    try {
+      await authedFetch(`/api/learnings/${id}/review`, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'reject', rejection_reason: input.value.trim() || null }),
+      });
+      renderList();
+    } catch (e) {
+      confirm.disabled = false;
+      cancel.disabled = false;
+      showError(card, e.message);
+    }
+  });
 }
 
 function doEdit(l) {
@@ -130,7 +206,7 @@ function doEdit(l) {
     } catch (e) {
       save.disabled = false;
       cancel.disabled = false;
-      alert(`Error: ${e.message}`);
+      showError(form, e.message);
     }
   });
 }
