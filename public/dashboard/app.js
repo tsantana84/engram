@@ -32,29 +32,29 @@ function updateBulkBar() {
       updateBulkBar();
     });
 
-    approveAll.addEventListener('click', async () => {
+    async function bulkAction(action) {
       if (!selected.size) return;
+      const ids = [...selected];
       approveAll.disabled = true;
-      const ids = [...selected];
-      for (const id of ids) {
-        try { await authedFetch(`/api/learnings/${id}/review`, { method: 'POST', body: JSON.stringify({ action: 'approve' }) }); }
-        catch {}
-      }
-      selected.clear();
-      renderList();
-    });
-
-    rejectAll.addEventListener('click', async () => {
-      if (!selected.size) return;
       rejectAll.disabled = true;
-      const ids = [...selected];
-      for (const id of ids) {
-        try { await authedFetch(`/api/learnings/${id}/review`, { method: 'POST', body: JSON.stringify({ action: 'reject' }) }); }
+      countEl.textContent = `Processing 0 / ${ids.length}…`;
+
+      let done = 0;
+      await Promise.all(ids.map(async id => {
+        const card = document.querySelector(`[data-id="${id}"]`);
+        if (card) card.style.opacity = '0.4';
+        try { await authedFetch(`/api/learnings/${id}/review`, { method: 'POST', body: JSON.stringify({ action }) }); }
         catch {}
-      }
+        done++;
+        countEl.textContent = `Processing ${done} / ${ids.length}…`;
+      }));
+
       selected.clear();
       renderList();
-    });
+    }
+
+    approveAll.addEventListener('click', () => bulkAction('approve'));
+    rejectAll.addEventListener('click', () => bulkAction('reject'));
 
     bar.append(count, selectAll, clearAll, approveAll, rejectAll);
     document.body.appendChild(bar);
