@@ -51,6 +51,7 @@ function updateBulkBar() {
 
       selected.clear();
       renderList();
+      renderCounts();
     }
 
     approveAll.addEventListener('click', () => bulkAction('approve'));
@@ -322,7 +323,24 @@ async function renderList() {
   }
 }
 
-document.getElementById('refresh').addEventListener('click', renderList);
+async function renderCounts() {
+  const el = document.getElementById('counts');
+  if (!el) return;
+  try {
+    const project = document.getElementById('projectFilter').value.trim();
+    const params = project ? `?project=${encodeURIComponent(project)}` : '';
+    const c = await authedFetch(`/api/learnings/counts${params}`);
+    el.textContent = '';
+    [['pending', c.pending], ['approved', c.approved], ['rejected', c.rejected]].forEach(([s, n]) => {
+      const span = document.createElement('span');
+      span.className = `count-badge count-${s}`;
+      span.textContent = `${s}: ${n}`;
+      el.appendChild(span);
+    });
+  } catch {}
+}
+
+document.getElementById('refresh').addEventListener('click', () => { renderList(); renderCounts(); });
 document.getElementById('logout').addEventListener('click', () => {
   localStorage.removeItem(KEY);
   location.reload();
@@ -332,6 +350,7 @@ document.getElementById('projectFilter').addEventListener('change', renderList);
 
 if (localStorage.getItem(KEY)) {
   renderList();
+  renderCounts();
 } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
   renderMockList();
 } else {

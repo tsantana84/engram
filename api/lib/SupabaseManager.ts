@@ -427,6 +427,18 @@ export class SupabaseManager {
     return (data ?? []) as LearningRecord[];
   }
 
+  async countLearnings(project?: string): Promise<{ pending: number; approved: number; rejected: number }> {
+    const statuses = ['pending', 'approved', 'rejected'] as const;
+    const counts = await Promise.all(statuses.map(async status => {
+      let q = this.supabase.from('learnings').select('*', { count: 'exact', head: true }).eq('status', status);
+      if (project) q = q.eq('project', project);
+      const { count, error } = await q;
+      if (error) throw error;
+      return count ?? 0;
+    }));
+    return { pending: counts[0], approved: counts[1], rejected: counts[2] };
+  }
+
   async searchLearnings(query: string, project?: string, limit = 10): Promise<LearningRecord[]> {
     let q = this.supabase
       .from('learnings')

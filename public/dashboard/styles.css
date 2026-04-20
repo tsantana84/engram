@@ -48,6 +48,26 @@ header h1 {
   flex-wrap: wrap;
 }
 
+/* ── COUNTS ── */
+#counts {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.count-badge {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
+.count-pending  { background: var(--yellow); color: var(--black); }
+.count-approved { background: var(--green);  color: var(--white); }
+.count-rejected { background: var(--red);    color: var(--white); }
+
 select, input[type="text"], input:not([type]) {
   font-family: var(--font-mono);
   font-size: 13px;
