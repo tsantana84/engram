@@ -257,6 +257,57 @@ main > p {
   margin-top: 0.2rem;
 }
 
+/* ── CHECKBOX ── */
+.card-checkbox {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--black);
+  cursor: pointer;
+}
+
+.card { position: relative; }
+
+/* ── BULK BAR ── */
+.bulk-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--black);
+  color: var(--white);
+  padding: 0.75rem 2rem;
+  display: none;
+  align-items: center;
+  gap: 0.75rem;
+  border-top: 3px solid var(--yellow);
+  z-index: 100;
+}
+
+.bulk-count {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 0.5rem;
+  color: var(--yellow);
+}
+
+.bulk-bar button {
+  font-size: 11px;
+  border-color: #555;
+  color: var(--white);
+}
+
+.bulk-bar button:hover:not(:disabled) { background: #333; color: var(--white); }
+.bulk-approve { border-color: var(--green) !important; color: var(--green) !important; }
+.bulk-approve:hover:not(:disabled) { background: var(--green) !important; color: var(--white) !important; }
+.bulk-reject { border-color: var(--red) !important; color: var(--red) !important; }
+.bulk-reject:hover:not(:disabled) { background: var(--red) !important; color: var(--white) !important; }
+
 /* ── TOKEN FORM ── */
 .token-form {
   grid-column: 1 / -1;

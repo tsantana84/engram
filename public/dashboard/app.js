@@ -1,6 +1,74 @@
 // public/dashboard/app.js
 // IMPORTANT: never use innerHTML with server data. Always createElement + textContent.
 
+const selected = new Set();
+
+function updateBulkBar() {
+  let bar = document.getElementById('bulk-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'bulk-bar';
+    bar.className = 'bulk-bar';
+
+    const count = el('span', { className: 'bulk-count' });
+    const selectAll = el('button', { text: 'Select All' });
+    const clearAll = el('button', { text: 'Clear' });
+    const approveAll = el('button', { text: '✓ Approve All' });
+    approveAll.className = 'bulk-approve';
+    const rejectAll = el('button', { text: '✗ Reject All' });
+    rejectAll.className = 'bulk-reject';
+
+    selectAll.addEventListener('click', () => {
+      document.querySelectorAll('.card-checkbox').forEach(cb => {
+        cb.checked = true;
+        selected.add(Number(cb.dataset.id));
+      });
+      updateBulkBar();
+    });
+
+    clearAll.addEventListener('click', () => {
+      selected.clear();
+      document.querySelectorAll('.card-checkbox').forEach(cb => cb.checked = false);
+      updateBulkBar();
+    });
+
+    approveAll.addEventListener('click', async () => {
+      if (!selected.size) return;
+      approveAll.disabled = true;
+      const ids = [...selected];
+      for (const id of ids) {
+        try { await authedFetch(`/api/learnings/${id}/review`, { method: 'POST', body: JSON.stringify({ action: 'approve' }) }); }
+        catch {}
+      }
+      selected.clear();
+      renderList();
+    });
+
+    rejectAll.addEventListener('click', async () => {
+      if (!selected.size) return;
+      rejectAll.disabled = true;
+      const ids = [...selected];
+      for (const id of ids) {
+        try { await authedFetch(`/api/learnings/${id}/review`, { method: 'POST', body: JSON.stringify({ action: 'reject' }) }); }
+        catch {}
+      }
+      selected.clear();
+      renderList();
+    });
+
+    bar.append(count, selectAll, clearAll, approveAll, rejectAll);
+    document.body.appendChild(bar);
+  }
+
+  const countEl = bar.querySelector('.bulk-count');
+  if (selected.size > 0) {
+    countEl.textContent = `${selected.size} selected`;
+    bar.style.display = 'flex';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
 const API = location.origin;
 const KEY = 'engram_dashboard_token';
 
@@ -71,11 +139,21 @@ function renderCard(list, l) {
   const card = el('article', { className: 'card' });
   card.dataset.id = l.id;
 
+  const cb = Object.assign(document.createElement('input'), { type: 'checkbox', className: 'card-checkbox' });
+  cb.dataset.id = l.id;
+  cb.checked = selected.has(l.id);
+  cb.addEventListener('change', () => {
+    cb.checked ? selected.add(l.id) : selected.delete(l.id);
+    updateBulkBar();
+  });
+
   const meta = el('div', { className: 'meta' });
   const conf = el('span', { className: 'conf', text: `${(l.confidence * 100).toFixed(0)}%` });
   const proj = el('span', { className: 'proj', text: l.project ?? '' });
   const badge = el('span', { className: `status-badge status-${l.status ?? 'pending'}`, text: l.status ?? 'pending' });
   meta.append(conf, proj, badge);
+
+  card.appendChild(cb);
 
   const h2 = el('h2', { text: l.claim });
   const ev = el('p', { className: 'evidence', text: l.evidence ?? '' });
@@ -232,6 +310,8 @@ async function renderList() {
     const params = new URLSearchParams({ status, ...(project ? { project } : {}) });
     const { learnings } = await authedFetch(`/api/learnings?${params}`);
     list.textContent = '';
+    selected.clear();
+    updateBulkBar();
     if (!learnings.length) { renderEmpty(list); return; }
     for (const l of learnings) renderCard(list, l);
   } catch (e) {
