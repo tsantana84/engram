@@ -210,5 +210,52 @@ main > p {
 .status-rejected { background: var(--red); color: var(--white); }
 .status-pending { background: var(--yellow); color: var(--black); }
 
+/* ── INLINE EDIT FORM ── */
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.edit-field label {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.edit-field input,
+.edit-field textarea {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 0.4rem 0.5rem;
+  border: 2px solid var(--black);
+  background: #fffef0;
+  color: var(--black);
+  resize: vertical;
+  outline: none;
+  width: 100%;
+}
+
+.edit-field input:focus,
+.edit-field textarea:focus {
+  border-color: #555;
+  background: #fff;
+}
+
+.edit-form .actions {
+  border-top: 2px solid var(--black);
+  padding-top: 0.6rem;
+  margin-top: 0.2rem;
+}
+
 /* ── ERROR STATE ── */
 .error { color: var(--red); font-weight: bold; text-transform: uppercase; }
