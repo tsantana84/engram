@@ -116,6 +116,7 @@ function requestToken() {
     if (!t) return;
     localStorage.setItem(KEY, t);
     renderList();
+    renderCounts();
   }
 
   submit.addEventListener('click', tryConnect);
@@ -176,6 +177,7 @@ async function doReview(id, body) {
   try {
     await authedFetch(`/api/learnings/${id}/review`, { method: 'POST', body: JSON.stringify(body) });
     renderList();
+    renderCounts();
   } catch (e) {
     buttons?.forEach(b => b.disabled = false);
     showError(card, e.message);
@@ -221,6 +223,7 @@ function doReject(id) {
         body: JSON.stringify({ action: 'reject', rejection_reason: input.value.trim() || null }),
       });
       renderList();
+      renderCounts();
     } catch (e) {
       confirm.disabled = false;
       cancel.disabled = false;
@@ -282,6 +285,7 @@ function doEdit(l) {
         body: JSON.stringify({ action: 'edit_approve', edited }),
       });
       renderList();
+      renderCounts();
     } catch (e) {
       save.disabled = false;
       cancel.disabled = false;
@@ -346,7 +350,7 @@ document.getElementById('logout').addEventListener('click', () => {
   location.reload();
 });
 document.getElementById('statusFilter').addEventListener('change', renderList);
-document.getElementById('projectFilter').addEventListener('change', renderList);
+document.getElementById('projectFilter').addEventListener('change', () => { renderList(); renderCounts(); });
 
 if (localStorage.getItem(KEY)) {
   renderList();
