@@ -126,7 +126,7 @@ New column on `sync_queue` table:
 ALTER TABLE sync_queue ADD COLUMN last_error TEXT;
 ```
 
-`SyncWorker` must write the error message to `last_error` when marking an item failed. Requires a migration version bump.
+`SyncQueue.markFailed` signature changes to `markFailed(ids: number[], errorMsg?: string): void` — SQL updated to write `last_error = ?`. `SyncWorker.handlePushError` extracts `err.message` and passes it through. Requires a migration version bump.
 
 ## Error Handling & Edge Cases
 
