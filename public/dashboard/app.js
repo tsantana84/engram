@@ -40,7 +40,8 @@ function renderCard(list, l) {
   const meta = el('div', { className: 'meta' });
   const conf = el('span', { className: 'conf', text: `${(l.confidence * 100).toFixed(0)}%` });
   const proj = el('span', { className: 'proj', text: l.project ?? '' });
-  meta.append(conf, proj);
+  const badge = el('span', { className: `status-badge status-${l.status ?? 'pending'}`, text: l.status ?? 'pending' });
+  meta.append(conf, proj, badge);
 
   const h2 = el('h2', { text: l.claim });
   const ev = el('p', { className: 'evidence', text: l.evidence ?? '' });

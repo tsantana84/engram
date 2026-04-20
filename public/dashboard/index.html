@@ -1,22 +1,26 @@
 <!DOCTYPE html>
-<html><head>
+<html lang="en">
+<head>
   <meta charset="utf-8">
-  <title>Engram — Pending Learnings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ENGRAM — LEARNINGS</title>
   <link rel="stylesheet" href="./styles.css">
-</head><body>
+</head>
+<body>
   <header>
-    <h1>Pending Learnings</h1>
+    <h1>⬡ Engram / Learnings</h1>
     <div id="filters">
       <select id="statusFilter">
         <option value="pending">Pending</option>
         <option value="approved">Approved</option>
         <option value="rejected">Rejected</option>
       </select>
-      <input id="projectFilter" placeholder="Project (optional)">
-      <button id="refresh">Refresh</button>
-      <button id="logout">Reset key</button>
+      <input id="projectFilter" placeholder="Filter by project">
+      <button id="refresh">↻ Refresh</button>
+      <button id="logout">⌧ Reset key</button>
     </div>
   </header>
   <main id="list"></main>
   <script src="./app.js"></script>
-</body></html>
+</body>
+</html>
