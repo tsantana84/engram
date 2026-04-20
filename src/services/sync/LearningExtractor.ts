@@ -36,19 +36,26 @@ ${obsLines || '(none)'}
 SESSION SUMMARY:
 ${summaryBlock}
 
-Extract 0 to N learnings useful to other agents/engineers on this codebase.
-A learning is: a durable, generalizable, testable claim — NOT a play-by-play of what happened.
-Skip transient details, commit noise, environment-specific paths.
+Extract only learnings that pass ALL THREE of these gates:
+1. NON-OBVIOUS: an experienced engineer would not know this without hitting it themselves
+2. ACTIONABLE: implies a concrete "when X, do/avoid Y" rule for future work
+3. COSTLY TO FORGET: rediscovering it would waste >30 min
 
-For each learning, emit:
-  claim:      concise statement (one sentence)
-  evidence:   where/why this is known (short; cite file or fact)
+Reject anything that is:
+- Discoverable by reading the code (structure, field names, file locations, table schemas)
+- A one-time environment fix (missing env var, wrong path, local setup issue)
+- A description of what was built (belongs in commit message, not learnings)
+- A truism or generic best practice any engineer already knows
+
+For each learning that passes, emit:
+  claim:      concise actionable statement (one sentence, "when X, do/avoid Y" form preferred)
+  evidence:   where/why this is known (short; cite file, error, or incident)
   scope:      one of 'project', 'area', 'global' (or free-form short label)
-  confidence: 0.0–1.0 — how confident you are this generalizes beyond this session
+  confidence: 0.0–1.0 — how confident you are this generalizes and saves real time
 
 Respond with a JSON array. No prose, no code fences. Empty session -> [].
 Example:
-[{"claim":"Worker readiness depends on initialization completing","evidence":"worker-service.ts readiness path","scope":"area","confidence":0.9}]`;
+[{"claim":"MigrationRunner and SessionStore both own schema versions — check both before adding a new version number","evidence":"version collision bug between MigrationRunner v26 and SessionStore v26","scope":"project","confidence":0.95}]`;
 }
 
 function clamp(n: number): number {
@@ -95,7 +102,8 @@ export class LearningExtractor {
       const text = await this.config.llm(prompt);
       const parsed = parseArray(text);
       return parsed.slice(0, this.max);
-    } catch {
+    } catch (err) {
+      console.error('[LearningExtractor] extract error:', err);
       return [];
     }
   }
