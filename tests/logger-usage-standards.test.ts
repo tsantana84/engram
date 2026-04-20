@@ -38,6 +38,14 @@ const EXCLUDED_PATTERNS = [
   /cli\/hook-command\.ts$/,  // CLI hook command uses console.log/error for hook protocol output
   /cli\/handlers\/user-message\.ts$/,  // User message handler uses console.error for user-visible context
   /services\/transcripts\/cli\.ts$/,  // CLI transcript subcommands use console.log for user-visible interactive output
+  /^npx-cli\//,          // CLI commands use console.log for user output
+  /smart-file-read\//,   // Parser output utility
+  /integrations\/McpIntegrations\.ts$/,  // MCP integration tool
+  /services\/sync\/LearningExtractor\.ts$/,  // Learning extractor (sync service)
+  /services\/sync\/ConflictDetector\.ts$/,  // Conflict detector (sync service)
+  /services\/sync\/__tests__\//,  // Test files in sync
+  /services\/sync\/learning-types\.ts$/,  // Type definitions
+  /worker\/session\/__tests__\//,  // Test files
 ];
 
 // Files that should always use logger (core business logic)

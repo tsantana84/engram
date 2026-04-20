@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initSupabase } from '../lib/SupabaseManager.js';
 import { authenticateRequest } from '../auth.js';
 import type { LearningPushRequest, LearningPushResponse, LearningPushResult } from '../../src/services/sync/learning-types.js';
+import { ServerConflictDetector } from '../lib/ConflictDetector.js';
+import { getLlmClosure } from '../lib/llm.js';
 
 function setCors(res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -29,6 +31,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(500).json({ error: 'SUPABASE_URL or SUPABASE_ANON_KEY not configured' });
     return;
   }
+  if (body.target_status === 'approved' && !process.env.ANTHROPIC_API_KEY) {
+    res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    return;
+  }
+
   const db = await initSupabase(supabaseUrl, supabaseKey);
 
   // fetchSimilar receives { title, narrative } where `title` holds the claim text
@@ -41,6 +48,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       let targetId: number | null = null;
       let action: LearningPushResult['action'] = 'inserted';
+
+      if (body.target_status === 'approved') {
+        const detector = new ServerConflictDetector({
+          enabled: true,
+          llm: getLlmClosure(),
+          fetchSimilar: async (item) => db.fetchSimilarLearnings(item),
+        });
+        await detector.check({ title: learning.claim, narrative: learning.evidence });
+      }
 
       const ins = await db.insertLearning(
         { ...learning, source_agent_id: auth.agentId },

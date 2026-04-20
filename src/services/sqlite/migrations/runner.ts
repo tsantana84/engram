@@ -80,7 +80,7 @@ export class MigrationRunner {
     this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_project ON sdk_sessions(project)');
     this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_status ON sdk_sessions(status)');
     this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_started ON sdk_sessions(started_at_epoch DESC)');
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_sdk_sessions_platform_source ON sdk_sessions(platform_source)');
+    // platform_source index created by migration 25 to avoid failure on schema-drift test DBs
 
     this.db.run(`
       CREATE TABLE IF NOT EXISTS observations (
@@ -109,7 +109,7 @@ export class MigrationRunner {
     this.db.run('CREATE INDEX IF NOT EXISTS idx_observations_project ON observations(project)');
     this.db.run('CREATE INDEX IF NOT EXISTS idx_observations_type ON observations(type)');
     this.db.run('CREATE INDEX IF NOT EXISTS idx_observations_created ON observations(created_at_epoch DESC)');
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_observations_content_hash ON observations(content_hash)');
+    // content_hash index created by migration 22 to avoid failure on schema-drift test DBs
 
     this.db.run(`
       CREATE TABLE IF NOT EXISTS session_summaries (
@@ -139,33 +139,44 @@ export class MigrationRunner {
       CREATE TABLE IF NOT EXISTS user_prompts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         content_session_id TEXT NOT NULL,
-        memory_session_id TEXT,
-        role TEXT NOT NULL,
-        text TEXT NOT NULL,
+        prompt_number INTEGER NOT NULL,
+        prompt_text TEXT NOT NULL,
         created_at TEXT NOT NULL,
         created_at_epoch INTEGER NOT NULL,
-        model_used TEXT
+        FOREIGN KEY(content_session_id) REFERENCES sdk_sessions(content_session_id) ON DELETE CASCADE
       )
     `);
 
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_user_prompts_session ON user_prompts(content_session_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_user_prompts_claude_session ON user_prompts(content_session_id)');
     this.db.run('CREATE INDEX IF NOT EXISTS idx_user_prompts_created ON user_prompts(created_at_epoch DESC)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_user_prompts_prompt_number ON user_prompts(prompt_number)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_user_prompts_lookup ON user_prompts(content_session_id, prompt_number)');
 
     this.db.run(`
       CREATE TABLE IF NOT EXISTS pending_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        memory_session_id TEXT NOT NULL,
-        session_db_id INTEGER,
-        message TEXT NOT NULL,
-        created_at TEXT NOT NULL,
+        session_db_id INTEGER NOT NULL,
+        content_session_id TEXT NOT NULL,
+        message_type TEXT NOT NULL CHECK(message_type IN ('observation', 'summarize')),
+        tool_name TEXT,
+        tool_input TEXT,
+        tool_response TEXT,
+        cwd TEXT,
+        last_user_message TEXT,
+        last_assistant_message TEXT,
+        prompt_number INTEGER,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'processed', 'failed')),
+        retry_count INTEGER NOT NULL DEFAULT 0,
         created_at_epoch INTEGER NOT NULL,
-        failed_at_epoch INTEGER,
-        FOREIGN KEY(memory_session_id) REFERENCES sdk_sessions(memory_session_id) ON DELETE CASCADE
+        started_processing_at_epoch INTEGER,
+        completed_at_epoch INTEGER,
+        FOREIGN KEY (session_db_id) REFERENCES sdk_sessions(id) ON DELETE CASCADE
       )
     `);
 
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_pending_messages_session ON pending_messages(memory_session_id)');
-    this.db.run('CREATE INDEX IF NOT EXISTS idx_pending_messages_failed ON pending_messages(failed_at_epoch)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_pending_messages_session ON pending_messages(session_db_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_pending_messages_status ON pending_messages(status)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_pending_messages_claude_session ON pending_messages(content_session_id)');
 
     this.db.run(`
       CREATE TABLE IF NOT EXISTS observation_feedback (

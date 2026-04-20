@@ -20,6 +20,13 @@ mock.module('../../src/shared/SettingsDefaultsManager.js', () => ({
       return '';
     },
     getInt: () => 0,
+    getAllDefaults: () => ({
+      CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED: 'true',
+      CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD: '0.8',
+      CLAUDE_MEM_LEARNING_MAX_PER_SESSION: '10',
+      CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES: '3',
+      CLAUDE_MEM_LEARNING_LLM_MODEL: 'gpt-4o-mini',
+    }),
     loadFromFile: () => ({ CLAUDE_MEM_EXCLUDED_PROJECTS: [] }),
   },
 }));

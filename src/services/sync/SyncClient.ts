@@ -1,5 +1,6 @@
 import type { SimilarObservation } from './ConflictDetector.js';
 import type { LearningPayload, LearningTargetStatus, LearningPushResponse } from './learning-types.js';
+import { logger } from '../../utils/logger.js';
 
 export interface SyncClientConfig {
   serverUrl: string;

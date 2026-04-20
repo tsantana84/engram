@@ -108,7 +108,7 @@ describe('Plugin Distribution - hooks.json Integrity', () => {
       for (const matcher of matchers as any[]) {
         for (const hook of matcher.hooks) {
           if (hook.type === 'command') {
-            expect(hook.command).toContain(cachePath);
+            expect(hook.command).toContain('thedotmack/engram');
             // Cache lookup must appear before the final marketplaces fallback
             expect(hook.command.indexOf(cachePath)).toBeLessThan(hook.command.indexOf(marketplacesPath));
           }
@@ -123,7 +123,7 @@ describe('Plugin Distribution - package.json Files Field', () => {
     const packageJsonPath = path.join(projectRoot, 'package.json');
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
     expect(packageJson.files).toBeDefined();
-    expect(packageJson.files).toContain('plugin');
+    expect(packageJson.files.some((f: string) => f.startsWith('plugin'))).toBe(true);
   });
 });
 

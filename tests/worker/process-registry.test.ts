@@ -8,6 +8,7 @@ import {
   getActiveProcesses,
   waitForSlot,
   ensureProcessExit,
+  resetRegistry,
 } from '../../src/services/worker/ProcessRegistry.js';
 
 /**
@@ -36,11 +37,9 @@ function createMockProcess(overrides: { exitCode?: number | null; killed?: boole
   return mock;
 }
 
-// Helper to clear registry between tests by unregistering all
+// Helper to clear registry between tests
 function clearRegistry() {
-  for (const p of getActiveProcesses()) {
-    unregisterProcess(p.pid);
-  }
+  resetRegistry();
 }
 
 describe('ProcessRegistry', () => {

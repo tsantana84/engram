@@ -3,6 +3,7 @@ import { SyncClient, SyncPushPayload, SyncObservationPayload, SyncSessionPayload
 import { ConflictDetector } from './ConflictDetector.js';
 import { LearningExtractor, type SessionInput } from './LearningExtractor.js';
 import type { LearningPayload, LearningTargetStatus } from './learning-types.js';
+import { logger } from '../../utils/logger.js';
 
 function sha256(s: string): string {
   const hasher = new Bun.CryptoHasher('sha256');

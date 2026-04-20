@@ -87,7 +87,7 @@ describe('Install Non-TTY Support', () => {
     });
 
     it('uses console.log for intro in non-interactive mode', () => {
-      expect(installSource).toContain("console.log('claude-mem install')");
+      expect(installSource).toContain("console.log('engram install')");
     });
 
     it('uses console.log for note/summary in non-interactive mode', () => {

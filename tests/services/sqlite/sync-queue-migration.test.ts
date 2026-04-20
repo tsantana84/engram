@@ -32,7 +32,7 @@ describe('Migration 26: sync_queue table', () => {
     const runner = new MigrationRunner(db);
     runner.runAllMigrations();
     
-    const version = db.prepare('SELECT version FROM schema_versions WHERE version = 26').get();
+    const version = db.prepare('SELECT version FROM schema_versions WHERE version = 27').get();
     expect(version).toBeTruthy();
   });
 

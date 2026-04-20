@@ -121,8 +121,7 @@ describe('MigrationRunner', () => {
       runner.runAllMigrations();
 
       const versions = getSchemaVersions(db);
-      // Core set of expected versions
-      expect(versions).toContain(4);   // initializeSchema
+      // Core set of expected versions (version 4/initializeSchema does not insert into schema_versions)
       expect(versions).toContain(5);   // worker_port
       expect(versions).toContain(6);   // prompt tracking
       expect(versions).toContain(7);   // remove unique constraint

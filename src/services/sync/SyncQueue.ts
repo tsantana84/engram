@@ -1,5 +1,6 @@
 import { Database } from 'bun:sqlite';
 import type { LearningPayload, LearningTargetStatus } from './learning-types.js';
+import { logger } from '../../utils/logger.js';
 
 export interface SyncQueueItem {
   id: number;

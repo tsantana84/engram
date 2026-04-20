@@ -100,6 +100,15 @@ export function getActiveCount(): number {
   return getSupervisor().getRegistry().getAll().filter(record => record.type === 'sdk').length;
 }
 
+/**
+ * Clear all sdk-type entries from the registry — for use in tests only
+ */
+export function resetRegistry(): void {
+  for (const record of getSupervisor().getRegistry().getAll().filter(r => r.type === 'sdk')) {
+    getSupervisor().unregisterProcess(record.id);
+  }
+}
+
 // Waiters for pool slots - resolved when a process exits and frees a slot
 const slotWaiters: Array<() => void> = [];
 
