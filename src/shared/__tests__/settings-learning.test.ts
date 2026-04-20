@@ -8,7 +8,7 @@ describe('learning extraction settings defaults', () => {
     expect(SettingsDefaultsManager.getAllDefaults().CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED).toBe('true');
   });
   test('threshold default 0.8', () => {
-    expect(SettingsDefaultsManager.getAllDefaults().CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD).toBe('0.8');
+    expect(SettingsDefaultsManager.getAllDefaults().CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD).toBe('0.9');
   });
   test('max per session default 10', () => {
     expect(SettingsDefaultsManager.getAllDefaults().CLAUDE_MEM_LEARNING_MAX_PER_SESSION).toBe('10');

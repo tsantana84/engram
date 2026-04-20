@@ -46,6 +46,10 @@ Reject anything that is:
 - A one-time environment fix (missing env var, wrong path, local setup issue)
 - A description of what was built (belongs in commit message, not learnings)
 - A truism or generic best practice any engineer already knows
+- An observation about the AI assistant's behavior, tone, process, or how it should respond
+- A workflow or process preference (belongs in team norms, not code knowledge)
+
+Deduplication: if multiple observations convey the same underlying principle, emit it ONCE with the highest confidence. Do not emit near-duplicate claims.
 
 For each learning that passes, emit:
   claim:      concise actionable statement (one sentence, "when X, do/avoid Y" form preferred)
