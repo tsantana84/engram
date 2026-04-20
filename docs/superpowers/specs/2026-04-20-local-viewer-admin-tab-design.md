@@ -14,29 +14,30 @@ Engram's local worker (port 37777) runs sync, learning extraction, and Chroma/Su
 Local Viewer (React, port 37777)
   └── Admin tab (new)
         └── polls GET /api/admin every 10s
-              └── AdminController (worker-service.ts)
-                    ├── SyncQueue.getStatus()         → queue depth, failed items, last flush
-                    ├── LearningExtractor.getStatus() → enabled, threshold, last run stats
-                    ├── HealthChecker (new)            → uptime, Chroma ping, Supabase ping
-                    └── ErrorStore (new, in-memory)    → last 50 errors from worker logger
+              └── AdminRoutes (registered late, in initializeBackground)
+                    ├── SyncQueue.getStatus() + getFailedItems()  → queue depth, failed items
+                    ├── SyncWorker.getExtractionStats()           → last run metadata
+                    ├── HealthChecker (new)                       → uptime, Chroma ping, sync server ping
+                    └── ErrorStore (new, in-memory)               → last 50 errors via Logger sink
 ```
 
 ### New backend pieces
 
 | Piece | Location | Notes |
 |---|---|---|
-| `GET /api/admin` | `worker-service.ts` or new `AdminRoutes.ts` | Aggregates all 4 groups |
-| `SyncQueue.getStatus()` | `src/services/sync/SyncQueue.ts` | Read method on existing queue |
-| `LearningExtractor.getStatus()` | `src/services/sync/LearningExtractor.ts` | Expose last run metadata |
-| `HealthChecker` | `src/services/admin/HealthChecker.ts` | Pings Chroma + Supabase, reads uptime |
-| `ErrorStore` | `src/services/admin/ErrorStore.ts` | In-memory ring buffer, wired into logger |
+| `GET /api/admin` | `src/services/admin/AdminRoutes.ts` | Registered late inside `initializeBackground()` (CorpusRoutes pattern) |
+| `SyncQueue.getFailedItems(limit)` | `src/services/sync/SyncQueue.ts` | New method; `getStatus()` already exists with different shape. Add `last_error` column to `sync_queue` schema |
+| `SyncWorker.getExtractionStats()` | `src/services/sync/SyncWorker.ts` | SyncWorker has call context after each `extractSessionLearnings()` run — track stats there, not in LearningExtractor |
+| `HealthChecker` | `src/services/admin/HealthChecker.ts` | Chroma: delegates to `ChromaMcpManager.isHealthy()`. Sync server: HTTP GET to `CLAUDE_MEM_SYNC_SERVER_URL/api/health`. Worker uptime via `process.uptime()` |
+| `ErrorStore` | `src/services/admin/ErrorStore.ts` | In-memory ring buffer (cap 50). Wired via new `Logger.addSink(fn)` method |
+| `Logger.addSink(fn)` | `src/utils/logger.ts` | Optional subscriber list; called on `warn`/`error` level writes |
 
 ### New frontend pieces
 
-| Piece | Location |
-|---|---|
-| `AdminTab.tsx` | `src/ui/viewer/components/AdminTab.tsx` |
-| Tab entry in `App.tsx` | Alongside Sessions, Search tabs |
+| Piece | Location | Notes |
+|---|---|---|
+| Tab infrastructure | `src/ui/viewer/App.tsx` | App.tsx has no tabs today — must build `activeTab` state + tab bar from scratch |
+| `AdminTab.tsx` | `src/ui/viewer/components/AdminTab.tsx` | New component; existing content moves to `SessionsTab.tsx` |
 
 ## API Contract
 
@@ -66,7 +67,7 @@ Local Viewer (React, port 37777)
   "health": {
     "uptimeSeconds": 3600,
     "chroma": "ok",
-    "supabase": "ok",
+    "syncServer": "ok",
     "workerVersion": "12.1.0"
   },
   "errors": [
@@ -76,22 +77,26 @@ Local Viewer (React, port 37777)
 }
 ```
 
-**Constraints**:
-- `failedItems` capped at 10
-- `errors` ring buffer capped at 50, `warn`+`error` level only
-- `chroma` / `supabase` values: `"ok" | "error" | "unavailable"`
-- Sections with fetch failures return `null` (partial data still returned)
+**Field notes**:
+- `failedItems` capped at 10. Requires new `last_error TEXT` column in `sync_queue` table (migration needed)
+- `errors` ring buffer capped at 50, `warn`+`error` level only, in-memory (resets on worker restart)
+- `chroma`: `"ok" | "error" | "unavailable"` — unavailable when `CLAUDE_MEM_CHROMA_ENABLED=false` or manager not initialized; delegates to `ChromaMcpManager.isHealthy()`
+- `syncServer`: `"ok" | "error" | "unavailable"` — HTTP GET to `CLAUDE_MEM_SYNC_SERVER_URL/api/health`; unavailable when sync disabled. **Not a direct Supabase connection** — worker has no Supabase client
+- `extraction`: `null` when sync is fully disabled (syncWorker not instantiated)
+- Sections with fetch failures return `null`; partial data still returned from other sections
 
 ## UI Layout
 
-New "Admin" tab alongside existing tabs. Auto-polls every 10s. Visible "last updated X seconds ago" counter.
+New "Admin" tab alongside Sessions. Auto-polls every 10s. Visible "last updated X seconds ago" counter.
+
+**Tab bar must be built** — App.tsx currently has no tab infrastructure.
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ Sessions | Search | Admin                        │
+│ Sessions | Admin                                 │
 ├─────────────────────────────────────────────────┤
 │ SYSTEM HEALTH              last updated 3s ago  │
-│ Worker 1h 2m up  Chroma ✓  Supabase ✓  v12.1.0  │
+│ Worker 1h 2m up  Chroma ✓  Sync server ✓  v12.1 │
 ├─────────────────────────────────────────────────┤
 │ SYNC QUEUE                                       │
 │ 4 pending  1 failed  last flush 2 min ago        │
@@ -111,17 +116,37 @@ New "Admin" tab alongside existing tabs. Auto-polls every 10s. Visible "last upd
 - Health badges: green/red per status
 - Failed items: collapsible
 - Errors: scrollable, newest first
+- `extraction` section hidden when null (sync disabled)
+
+## Schema Change
+
+New column on `sync_queue` table:
+
+```sql
+ALTER TABLE sync_queue ADD COLUMN last_error TEXT;
+```
+
+`SyncWorker` must write the error message to `last_error` when marking an item failed. Requires a migration version bump.
 
 ## Error Handling & Edge Cases
 
 | Scenario | Behavior |
 |---|---|
 | Worker not running | Tab shows "Worker unavailable — retrying", poll continues |
-| Chroma/Supabase ping fails | Red badge + error message, endpoint still returns partial data |
-| ErrorStore on cold start | Empty (in-memory only, not persisted). Pre-restart errors in log file |
-| SyncQueue DB failure | `syncQueue: null`, UI shows "unavailable" for that section |
+| Chroma manager null | `chroma: "unavailable"` |
+| Chroma ping throws | `chroma: "error"` |
+| Sync disabled | `syncServer: "unavailable"`, `extraction: null` |
+| Sync server HTTP ping fails | `syncServer: "error"` |
+| ErrorStore on cold start | Empty (in-memory only). Pre-restart errors in log file |
+| SyncQueue DB failure | `syncQueue: null`, UI shows "unavailable" for section |
 | Extraction never run | `lastRunAt: null`, `lastRunStats: null`, UI shows "no runs yet" |
-| Admin tab not active | Poll pauses (Visibility API), resumes on tab focus |
+| Admin tab not active | Poll pauses (Visibility API), resumes on focus |
+
+## Implementation Notes
+
+- `AdminRoutes` must be registered inside `initializeBackground()`, not the constructor — follows `CorpusRoutes` precedent so service refs are available
+- `Logger.addSink()` must be called before worker init completes, so ErrorStore captures early startup errors
+- Tab infrastructure in App.tsx: add `activeTab: 'sessions' | 'admin'` state, render tab bar, move current content into `SessionsTab` component
 
 ## Out of Scope (Phase 1)
 
