@@ -36,7 +36,7 @@ function removeMarketplaceDirectory(): boolean {
 }
 
 function removeCacheDirectory(): boolean {
-  const cacheDirectory = join(pluginsDirectory(), 'cache', 'thedotmack', 'claude-mem');
+  const cacheDirectory = join(pluginsDirectory(), 'cache', 'thedotmack', 'engram');
   if (existsSync(cacheDirectory)) {
     rmSync(cacheDirectory, { recursive: true, force: true });
     return true;
@@ -54,16 +54,16 @@ function removeFromKnownMarketplaces(): void {
 
 function removeFromInstalledPlugins(): void {
   const installedPlugins = readJsonSafe<Record<string, any>>(installedPluginsPath(), {});
-  if (installedPlugins.plugins?.['claude-mem@thedotmack']) {
-    delete installedPlugins.plugins['claude-mem@thedotmack'];
+  if (installedPlugins.plugins?.['engram@thedotmack']) {
+    delete installedPlugins.plugins['engram@thedotmack'];
     writeJsonFileAtomic(installedPluginsPath(), installedPlugins);
   }
 }
 
 function removeFromClaudeSettings(): void {
   const settings = readJsonSafe<Record<string, any>>(claudeSettingsPath(), {});
-  if (settings.enabledPlugins?.['claude-mem@thedotmack'] !== undefined) {
-    delete settings.enabledPlugins['claude-mem@thedotmack'];
+  if (settings.enabledPlugins?.['engram@thedotmack'] !== undefined) {
+    delete settings.enabledPlugins['engram@thedotmack'];
     writeJsonFileAtomic(claudeSettingsPath(), settings);
   }
 }
@@ -73,10 +73,10 @@ function removeFromClaudeSettings(): void {
 // ---------------------------------------------------------------------------
 
 export async function runUninstallCommand(): Promise<void> {
-  p.intro(pc.bgRed(pc.white(' claude-mem uninstall ')));
+  p.intro(pc.bgRed(pc.white(' engram uninstall ')));
 
   if (!isPluginInstalled()) {
-    p.log.warn('claude-mem does not appear to be installed.');
+    p.log.warn('engram does not appear to be installed.');
 
     // Still offer to clean up partial state
     if (process.stdin.isTTY) {
@@ -95,7 +95,7 @@ export async function runUninstallCommand(): Promise<void> {
     }
   } else if (process.stdin.isTTY) {
     const shouldContinue = await p.confirm({
-      message: 'Are you sure you want to uninstall claude-mem?',
+      message: 'Are you sure you want to uninstall engram?',
       initialValue: false,
     });
 
@@ -214,5 +214,5 @@ export async function runUninstallCommand(): Promise<void> {
     'Note',
   );
 
-  p.outro(pc.green('claude-mem has been uninstalled.'));
+  p.outro(pc.green('engram has been uninstalled.'));
 }

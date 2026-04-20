@@ -1,6 +1,6 @@
 ---
 name: mem-search
-description: Search claude-mem's persistent cross-session memory database. Use when user asks "did we already solve this?", "how did we do X last time?", or needs work from previous sessions.
+description: Search engram's persistent cross-session memory database. Use when user asks "did we already solve this?", "how did we do X last time?", or needs work from previous sessions.
 ---
 
 # Memory Search
@@ -142,9 +142,9 @@ Markdown files get structure-aware parsing beyond generic tree-sitter:
 - **Code block detection** -- fenced code blocks are surfaced as `code` symbols with language annotation
 - **Section-aware unfold** -- `smart_unfold` on a heading returns the full section content (heading through all subsections until the next heading of equal or higher level)
 
-### User-Installable Grammars via `.claude-mem.json`
+### User-Installable Grammars via `.engram.json`
 
-Add custom tree-sitter grammars for languages not in the bundled set. Place `.claude-mem.json` in the project root:
+Add custom tree-sitter grammars for languages not in the bundled set. Place `.engram.json` in the project root:
 
 ```json
 {
@@ -156,7 +156,7 @@ Add custom tree-sitter grammars for languages not in the bundled set. Place `.cl
     "protobuf": {
       "package": "tree-sitter-proto",
       "extensions": [".proto"],
-      "query": ".claude-mem/queries/proto.scm"
+      "query": ".engram/queries/proto.scm"
     }
   }
 }
@@ -172,7 +172,7 @@ Add custom tree-sitter grammars for languages not in the bundled set. Place `.cl
 
 - User grammars do NOT override bundled languages. If a language is already bundled, the entry is ignored.
 - The npm package must be installed in the project (`npm install tree-sitter-gleam`).
-- Config is cached per project root. Changes to `.claude-mem.json` take effect on next worker restart.
+- Config is cached per project root. Changes to `.engram.json` take effect on next worker restart.
 
 ## Knowledge Agents
 

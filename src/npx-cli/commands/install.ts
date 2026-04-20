@@ -143,7 +143,7 @@ async function setupIDEs(selectedIDEs: string[]): Promise<string[]> {
           if (mcpResult === 0) {
             log.success('Cursor: hooks + MCP installed.');
           } else {
-            log.success('Cursor: hooks installed (MCP setup failed — run `npx claude-mem cursor mcp` to retry).');
+            log.success('Cursor: hooks installed (MCP setup failed — run `npx engram cursor mcp` to retry).');
           }
         } else {
           log.error('Cursor: hook installation failed.');
@@ -391,9 +391,9 @@ export async function runInstallCommand(options: InstallOptions = {}): Promise<v
   const version = readPluginVersion();
 
   if (isInteractive) {
-    p.intro(pc.bgCyan(pc.black(' claude-mem install ')));
+    p.intro(pc.bgCyan(pc.black(' engram install ')));
   } else {
-    console.log('claude-mem install');
+    console.log('engram install');
   }
   log.info(`Version: ${pc.cyan(version)}`);
   log.info(`Platform: ${process.platform} (${process.arch})`);
@@ -541,24 +541,24 @@ export async function runInstallCommand(options: InstallOptions = {}): Promise<v
     'Open Claude Code and start a conversation -- memory is automatic!',
     `View your memories: ${pc.underline(`http://localhost:${workerPort}`)}`,
     `Search past work: use ${pc.bold('/mem-search')} in Claude Code`,
-    `Start worker: ${pc.bold('npx claude-mem start')}`,
+    `Start worker: ${pc.bold('npx engram start')}`,
   ];
 
   if (isInteractive) {
     p.note(nextSteps.join('\n'), 'Next Steps');
     if (failedIDEs.length > 0) {
-      p.outro(pc.yellow('claude-mem installed with some IDE setup failures.'));
+      p.outro(pc.yellow('engram installed with some IDE setup failures.'));
     } else {
-      p.outro(pc.green('claude-mem installed successfully!'));
+      p.outro(pc.green('engram installed successfully!'));
     }
   } else {
     console.log('\n  Next Steps');
     nextSteps.forEach(l => console.log(`  ${l}`));
     if (failedIDEs.length > 0) {
-      console.log('\nclaude-mem installed with some IDE setup failures.');
+      console.log('\nengram installed with some IDE setup failures.');
       process.exitCode = 1;
     } else {
-      console.log('\nclaude-mem installed successfully!');
+      console.log('\nengram installed successfully!');
     }
   }
 }
