@@ -139,27 +139,34 @@ export function buildStatusOutput(status: 'ready' | 'error', message?: string): 
  * LearningExtractor's try/catch then returns [] gracefully and SyncWorker
  * falls back to marking extraction_status='failed'.
  */
-export function buildLearningLlmClosure(model: string): (prompt: string) => Promise<string> {
+export function buildLearningLlmClosure(
+  model: string,
+  provider: 'anthropic' | 'openai' = 'anthropic',
+  apiKey?: string
+): (prompt: string) => Promise<string> {
   return async (prompt: string): Promise<string> => {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error('ANTHROPIC_API_KEY missing');
+    const key = apiKey ?? (provider === 'openai' ? process.env.OPENAI_API_KEY : process.env.ANTHROPIC_API_KEY);
+    if (!key) throw new Error(`${provider.toUpperCase()}_API_KEY missing`);
+
+    if (provider === 'openai') {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({ model, max_tokens: 2048, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (!resp.ok) throw new Error(`OpenAI API ${resp.status}`);
+      const json = await resp.json() as any;
+      return String(json?.choices?.[0]?.message?.content ?? '');
+    }
+
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
-      }),
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model, max_tokens: 2048, messages: [{ role: 'user', content: prompt }] }),
     });
     if (!resp.ok) throw new Error(`Anthropic API ${resp.status}`);
     const json = await resp.json() as any;
-    const text = json?.content?.[0]?.text ?? '';
-    return String(text);
+    return String(json?.content?.[0]?.text ?? '');
   };
 }
 
@@ -466,11 +473,13 @@ export class WorkerService {
           // Learning extraction wiring (Task 14)
           const learningExtractionEnabled = settings.CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED === 'true';
           const learningConfidenceThreshold = parseFloat(settings.CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD ?? '0.8');
-          const learningModel = settings.CLAUDE_MEM_LEARNING_LLM_MODEL ?? 'claude-sonnet-4-6';
+          const learningModel = settings.CLAUDE_MEM_LEARNING_LLM_MODEL ?? 'gpt-4o-mini';
+          const learningProvider = (settings.CLAUDE_MEM_LEARNING_LLM_PROVIDER ?? 'openai') as 'anthropic' | 'openai';
+          const learningApiKey = settings.CLAUDE_MEM_OPENAI_API_KEY || settings.CLAUDE_MEM_ANTHROPIC_API_KEY || undefined;
           const learningMaxPerSession = parseInt(settings.CLAUDE_MEM_LEARNING_MAX_PER_SESSION ?? '10', 10);
           const learningMaxRetries = parseInt(settings.CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES ?? '3', 10);
 
-          const llm = buildLearningLlmClosure(learningModel);
+          const llm = buildLearningLlmClosure(learningModel, learningProvider, learningApiKey);
 
           const extractor = new LearningExtractor({
             enabled: learningExtractionEnabled,

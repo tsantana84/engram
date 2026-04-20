@@ -39,8 +39,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // approve / edit_approve
-  if (!process.env.ANTHROPIC_API_KEY) {
-    res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured — cannot run conflict detector' });
+  if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+    res.status(500).json({ error: 'ANTHROPIC_API_KEY or OPENAI_API_KEY not configured — cannot run conflict detector' });
     return;
   }
 

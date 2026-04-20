@@ -1,8 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { initSupabase } from '../lib/SupabaseManager.js';
 import { authenticateRequest } from '../auth.js';
-import { ServerConflictDetector } from '../lib/ConflictDetector.js';
-import { getLlmClosure } from '../lib/llm.js';
 import type { LearningPushRequest, LearningPushResponse, LearningPushResult } from '../../src/services/sync/learning-types.js';
 
 function setCors(res: VercelResponse) {
@@ -31,41 +29,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(500).json({ error: 'SUPABASE_URL or SUPABASE_ANON_KEY not configured' });
     return;
   }
-  if (body.target_status === 'approved' && !process.env.ANTHROPIC_API_KEY) {
-    res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured — cannot run conflict detector on approved path' });
-    return;
-  }
-
   const db = await initSupabase(supabaseUrl, supabaseKey);
 
   // fetchSimilar receives { title, narrative } where `title` holds the claim text
   // (set on the .check() call below). db.fetchSimilarLearnings searches by claim,
   // so we pass title through as-is. Keep this mapping if the detector's item shape
   // evolves.
-  const detector = new ServerConflictDetector({
-    enabled: body.target_status === 'approved',
-    llm: getLlmClosure(),
-    fetchSimilar: (item) => db.fetchSimilarLearnings(item.title ?? '', 5),
-  });
-
   const results: LearningPushResult[] = [];
 
   for (const learning of body.learnings) {
     try {
       let targetId: number | null = null;
       let action: LearningPushResult['action'] = 'inserted';
-
-      if (body.target_status === 'approved') {
-        const decision = await detector.check({ title: learning.claim, narrative: learning.evidence });
-        if (decision.decision === 'NOOP') {
-          results.push({ content_hash: learning.content_hash, action: 'dedupe_noop' });
-          continue;
-        }
-        if ((decision.decision === 'UPDATE' || decision.decision === 'INVALIDATE') && decision.targetId) {
-          targetId = decision.targetId;
-          action = decision.decision === 'UPDATE' ? 'updated_target' : 'invalidated_target';
-        }
-      }
 
       const ins = await db.insertLearning(
         { ...learning, source_agent_id: auth.agentId },

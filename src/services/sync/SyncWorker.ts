@@ -179,7 +179,13 @@ export class SyncWorker {
     this.sessionStore.markExtractionInProgress(sessionDbId);
     try {
       const input = this.buildSessionInput(session);
+      const { appendFileSync } = await import('fs');
+      const { homedir } = await import('os');
+      const { join } = await import('path');
+      const dbg = join(homedir(), '.engram', 'extraction-debug.log');
+      appendFileSync(dbg, `[${new Date().toISOString()}] session=${sessionDbId} obs=${input.observations.length} hasSummary=${!!input.summary}\n`);
       const learnings = await this.extractor.extract(input);
+      appendFileSync(dbg, `[${new Date().toISOString()}] session=${sessionDbId} learnings=${learnings.length}\n`);
       const threshold = this.confidenceThreshold;
       for (const l of learnings) {
         const payload: LearningPayload = {
