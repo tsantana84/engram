@@ -1,4 +1,8 @@
-import pkg from '../../../package.json' with { type: 'json' };
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { fetchWithTimeout } from '../../shared/worker-utils.js';
+const _pkg = JSON.parse(readFileSync(join(import.meta.dirname, '../../../package.json'), 'utf8'));
+const _version: string = _pkg.version;
 
 type HealthStatus = 'ok' | 'error' | 'unavailable';
 
@@ -22,7 +26,7 @@ export class HealthChecker {
       uptimeSeconds: Math.floor(process.uptime()),
       chroma: await this.checkChroma(),
       syncServer: await this.checkSyncServer(),
-      workerVersion: pkg.version,
+      workerVersion: _version,
     };
   }
 
@@ -39,7 +43,7 @@ export class HealthChecker {
   private async checkSyncServer(): Promise<HealthStatus> {
     if (!this.config.syncServerUrl) return 'unavailable';
     try {
-      const res = await fetch(`${this.config.syncServerUrl}/api/health`, { signal: AbortSignal.timeout(3000) });
+      const res = await fetchWithTimeout(`${this.config.syncServerUrl}/api/health`, {}, 3000);
       return res.ok ? 'ok' : 'error';
     } catch {
       return 'error';
