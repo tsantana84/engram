@@ -4,7 +4,7 @@
   "outputDirectory": ".",
   "installCommand": "npm install",
   "framework": null,
-  "rewrites": [
-    { "source": "/dashboard/:path*", "destination": "/public/dashboard/:path*" }
+  "routes": [
+    { "src": "/dashboard/(.*)", "dest": "/public/dashboard/$1" }
   ]
 }
