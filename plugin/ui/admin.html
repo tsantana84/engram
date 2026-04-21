@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ENGRAM — ADMIN</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black: #000; --white: #fff; --yellow: #f5e400;
+  --red: #ff2400; --green: #00b300;
+  --border: 3px solid #000;
+  --mono: 'Courier New', Courier, monospace;
+  --sans: 'Arial Black', Arial, sans-serif;
+}
+body { font-family: var(--mono); font-size: 14px; background: var(--white); color: var(--black); min-height: 100vh; }
+
+/* NAV */
+.g-nav { display:flex; align-items:stretch; background:#000; border-bottom:3px solid #000; font-family:var(--sans); }
+.g-nav-brand { font-size:1rem; font-weight:900; text-transform:uppercase; letter-spacing:.15em; color:#fff; padding:.9rem 1.5rem; border-right:3px solid #222; white-space:nowrap; }
+.g-nav-brand span { color:#f5e400; }
+.g-nav-links { display:flex; }
+.g-nav-link { font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.12em; padding:0 1.25rem; display:flex; align-items:center; color:#aaa; text-decoration:none; border-right:2px solid #222; border-bottom:3px solid transparent; }
+.g-nav-link:hover { color:#fff; background:#111; }
+.g-nav-link--active { color:#f5e400; background:#111; border-bottom-color:#f5e400; }
+.g-nav-right { margin-left:auto; display:flex; align-items:center; padding:0 1rem; border-left:2px solid #222; }
+.g-nav-status { font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; padding:3px 9px; }
+.g-nav-status--ok { background:#00b300; color:#fff; }
+.g-nav-status--err { background:#ff2400; color:#fff; }
+.g-nav-status--loading { background:#666; color:#fff; }
+
+/* PAGE HEADER */
+.page-hdr { padding:1.25rem 2rem; border-bottom:var(--border); display:flex; align-items:center; justify-content:space-between; }
+.page-hdr-title { font-family:var(--sans); font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.15em; color:#555; }
+#last-updated { font-size:11px; color:#888; }
+
+/* GRID */
+main { padding:2rem; display:grid; grid-template-columns:1fr 1fr; gap:0; }
+
+/* PANEL */
+.panel { border:var(--border); margin:-1px 0 0 -1px; padding:1.25rem; }
+.panel-full { grid-column:1/-1; }
+.panel-title { font-family:var(--sans); font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.15em; border-bottom:2px solid var(--black); padding-bottom:.5rem; margin-bottom:1rem; }
+
+/* HEALTH */
+.health-row { display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
+.badge { font-family:var(--sans); font-size:10px; font-weight:900; padding:2px 8px; text-transform:uppercase; letter-spacing:.05em; white-space:nowrap; }
+.badge-ok { background:var(--green); color:var(--white); }
+.badge-err { background:var(--red); color:var(--white); }
+.badge-na { background:#ccc; color:#444; }
+.uptime { font-size:13px; font-weight:bold; }
+.version { font-size:11px; color:#777; }
+
+/* SYNC QUEUE */
+.stat-row { display:flex; gap:2rem; margin-bottom:.75rem; }
+.stat { display:flex; flex-direction:column; }
+.stat-val { font-family:var(--sans); font-size:1.8rem; font-weight:900; }
+.stat-val-zero { color:#ccc; }
+.stat-val-err { color:var(--red); }
+.stat-label { font-family:var(--sans); font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.1em; color:#888; }
+.failed-list { margin-top:.75rem; display:flex; flex-direction:column; gap:.25rem; }
+.failed-item { border-left:3px solid var(--red); padding:.35rem .6rem; font-size:11px; background:#fff5f5; display:flex; gap:.5rem; align-items:baseline; }
+.failed-type { font-family:var(--sans); font-size:9px; font-weight:900; text-transform:uppercase; background:var(--red); color:var(--white); padding:1px 5px; white-space:nowrap; }
+.failed-err { color:#555; flex:1; word-break:break-word; }
+.failed-retries { color:#aaa; font-size:10px; white-space:nowrap; }
+
+/* EXTRACTION */
+.ext-meta { display:flex; gap:.5rem; align-items:center; margin-bottom:.75rem; flex-wrap:wrap; font-size:12px; }
+.ext-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.5rem; }
+.ext-cell { border:2px solid var(--black); padding:.5rem; text-align:center; }
+.ext-val { font-family:var(--sans); font-size:1.2rem; font-weight:900; }
+.ext-val-err { color:var(--red); }
+.ext-lbl { font-family:var(--sans); font-size:8px; text-transform:uppercase; letter-spacing:.08em; color:#888; }
+
+/* ERRORS */
+.error-log { display:flex; flex-direction:column; gap:0; }
+.error-entry { display:grid; grid-template-columns:52px 52px 88px 1fr; gap:.4rem; padding:.35rem 0; border-bottom:1px solid #eee; align-items:baseline; font-size:11px; }
+.err-time { color:#888; }
+.err-level { font-family:var(--sans); font-size:9px; font-weight:900; padding:1px 5px; text-transform:uppercase; white-space:nowrap; }
+.level-error { background:var(--red); color:var(--white); }
+.level-warn  { background:var(--yellow); color:var(--black); }
+.level-info  { background:#ccc; color:#333; }
+.err-ctx { font-weight:bold; font-size:10px; text-transform:uppercase; letter-spacing:.05em; }
+.err-msg { color:#333; word-break:break-word; }
+
+/* STATES */
+.unavailable { color:#aaa; font-size:12px; font-style:italic; }
+.no-items { color:#aaa; font-size:12px; }
+.worker-down { padding:4rem 2rem; text-align:center; font-family:var(--sans); font-size:14px; font-weight:900; text-transform:uppercase; letter-spacing:.1em; color:var(--red); }
+</style>
+</head>
+<body>
+
+<nav class="g-nav">
+  <div class="g-nav-brand">⬡ Engram <span>Worker</span></div>
+  <div class="g-nav-links">
+    <a class="g-nav-link" href="/">Sessions</a>
+    <a class="g-nav-link g-nav-link--active" href="/admin">Admin</a>
+    <a class="g-nav-link" href="/ticks">Ticks</a>
+  </div>
+  <div class="g-nav-right">
+    <span class="g-nav-status g-nav-status--loading" id="g-nav-status">…</span>
+  </div>
+</nav>
+
+<div class="page-hdr">
+  <span class="page-hdr-title">Admin — System Status</span>
+  <span id="last-updated"></span>
+</div>
+
+<div id="content"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  var secondsAgo = 0;
+  var ticker = null;
+
+  function esc(s){ return String(s == null ? '' : s); }
+  function txt(s){ return document.createTextNode(esc(s)); }
+  function el(tag, cls){ var e = document.createElement(tag); if(cls) e.className = cls; return e; }
+
+  function formatUptime(s){
+    var h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+    return h > 0 ? h+'h '+m+'m up' : m+'m up';
+  }
+  function formatRelative(iso){
+    var diff = Math.floor((Date.now() - new Date(iso).getTime())/1000);
+    if(diff < 60) return diff+'s ago';
+    if(diff < 3600) return Math.floor(diff/60)+'m ago';
+    return Math.floor(diff/3600)+'h ago';
+  }
+  function formatTime(iso){
+    return new Date(iso).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  }
+
+  function badge(status, label){
+    var cls = status === 'ok' ? 'badge-ok' : status === 'unavailable' ? 'badge-na' : 'badge-err';
+    var sym = status === 'ok' ? '✓' : status === 'unavailable' ? '—' : '✗';
+    var sp = el('span', 'badge ' + cls);
+    sp.appendChild(txt(label + ' ' + sym));
+    return sp;
+  }
+
+  function renderHealth(h){
+    var div = el('div','panel');
+    div.appendChild(Object.assign(el('div','panel-title'), {textContent:'System Health'}));
+    if(!h){ div.appendChild(Object.assign(el('p','unavailable'),{textContent:'unavailable'})); return div; }
+    var row = el('div','health-row');
+    row.appendChild(Object.assign(el('span','uptime'),{textContent:formatUptime(h.uptimeSeconds)}));
+    row.appendChild(badge(h.chroma, 'Chroma'));
+    row.appendChild(badge(h.syncServer, 'Sync Server'));
+    row.appendChild(Object.assign(el('span','version'),{textContent:'v'+esc(h.workerVersion)}));
+    div.appendChild(row);
+    return div;
+  }
+
+  function renderQueue(q){
+    var div = el('div','panel');
+    div.appendChild(Object.assign(el('div','panel-title'),{textContent:'Sync Queue'}));
+    if(!q){ div.appendChild(Object.assign(el('p','unavailable'),{textContent:'unavailable'})); return div; }
+    var failed = (q.failed || 0) + (q.permanently_failed || 0);
+    var row = el('div','stat-row');
+
+    var ps = el('div','stat');
+    var pv = el('span','stat-val' + (q.pending === 0 ? ' stat-val-zero' : ''));
+    pv.appendChild(txt(q.pending));
+    ps.appendChild(pv);
+    ps.appendChild(Object.assign(el('span','stat-label'),{textContent:'Pending'}));
+
+    var fs = el('div','stat');
+    var fv = el('span','stat-val' + (failed > 0 ? ' stat-val-err' : ' stat-val-zero'));
+    fv.appendChild(txt(failed));
+    fs.appendChild(fv);
+    fs.appendChild(Object.assign(el('span','stat-label'),{textContent:'Failed'}));
+
+    row.appendChild(ps); row.appendChild(fs);
+    div.appendChild(row);
+
+    if(q.failedItems && q.failedItems.length > 0){
+      var list = el('div','failed-list');
+      q.failedItems.forEach(function(item){
+        var fi = el('div','failed-item');
+        var typ = el('span','failed-type'); typ.appendChild(txt(item.type)); fi.appendChild(typ);
+        var err = el('span','failed-err'); err.appendChild(txt(item.lastError || 'unknown')); fi.appendChild(err);
+        var ret = el('span','failed-retries'); ret.appendChild(txt(item.retries + ' retries')); fi.appendChild(ret);
+        list.appendChild(fi);
+      });
+      div.appendChild(list);
+    }
+    return div;
+  }
+
+  function renderExtraction(e){
+    var div = el('div','panel');
+    div.appendChild(Object.assign(el('div','panel-title'),{textContent:'Learning Extraction'}));
+    if(!e){ div.appendChild(Object.assign(el('p','unavailable'),{textContent:'not configured'})); return div; }
+    var meta = el('div','ext-meta');
+    meta.appendChild(badge(e.enabled ? 'ok' : 'err', e.enabled ? 'Enabled' : 'Disabled'));
+    meta.appendChild(txt('threshold ' + e.threshold + (e.lastRunAt ? ' · last run ' + formatRelative(e.lastRunAt) : '')));
+    div.appendChild(meta);
+    if(e.lastRunStats){
+      var s = e.lastRunStats;
+      var grid = el('div','ext-grid');
+      [['observationsProcessed','Processed'],['extracted','Extracted'],['skipped','Skipped'],['failed','Failed']].forEach(function(pair){
+        var cell = el('div','ext-cell');
+        var val = s[pair[0]] || 0;
+        var v = el('div','ext-val' + (pair[0] === 'failed' && val > 0 ? ' ext-val-err' : ''));
+        v.appendChild(txt(val));
+        var l = el('div','ext-lbl'); l.appendChild(txt(pair[1]));
+        cell.appendChild(v); cell.appendChild(l); grid.appendChild(cell);
+      });
+      div.appendChild(grid);
+    } else {
+      div.appendChild(Object.assign(el('p','no-items'),{textContent:'no runs yet'}));
+    }
+    return div;
+  }
+
+  function renderErrors(errors){
+    var div = el('div','panel panel-full');
+    div.appendChild(Object.assign(el('div','panel-title'),{textContent:'Recent Errors'}));
+    if(!errors || errors.length === 0){
+      div.appendChild(Object.assign(el('p','no-items'),{textContent:'no errors'}));
+      return div;
+    }
+    var log = el('div','error-log');
+    errors.forEach(function(e){
+      var row = el('div','error-entry');
+      var t = el('span','err-time'); t.appendChild(txt(formatTime(e.ts))); row.appendChild(t);
+      var lv = el('span','err-level level-' + esc(e.level)); lv.appendChild(txt(e.level.toUpperCase())); row.appendChild(lv);
+      var ctx = el('span','err-ctx'); ctx.appendChild(txt(e.ctx)); row.appendChild(ctx);
+      var msg = el('span','err-msg'); msg.appendChild(txt(e.msg)); row.appendChild(msg);
+      log.appendChild(row);
+    });
+    div.appendChild(log);
+    return div;
+  }
+
+  function render(data){
+    var content = document.getElementById('content');
+    while(content.firstChild) content.removeChild(content.firstChild);
+    var main = el('main');
+    main.appendChild(renderHealth(data.health));
+    main.appendChild(renderQueue(data.syncQueue));
+    if(data.extraction !== undefined){
+      main.appendChild(renderExtraction(data.extraction));
+    }
+    main.appendChild(renderErrors(data.errors));
+    content.appendChild(main);
+    document.getElementById('last-updated').textContent = 'Updated 0s ago';
+    secondsAgo = 0;
+    if(ticker) clearInterval(ticker);
+    ticker = setInterval(function(){
+      secondsAgo++;
+      var el2 = document.getElementById('last-updated');
+      if(el2) el2.textContent = 'Updated ' + secondsAgo + 's ago';
+    }, 1000);
+  }
+
+  function renderDown(){
+    var content = document.getElementById('content');
+    while(content.firstChild) content.removeChild(content.firstChild);
+    var d = el('div','worker-down');
+    d.appendChild(txt('Worker unavailable — retrying'));
+    content.appendChild(d);
+  }
+
+  function fetchData(){
+    fetch('/api/admin')
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(render)
+      .catch(renderDown);
+  }
+
+  fetchData();
+  setInterval(fetchData, 10000);
+})();
+</script>
+
+<script>
+(function(){
+  fetch('/health').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+    var navEl = document.getElementById('g-nav-status');
+    if(d){ navEl.textContent='OK'; navEl.className='g-nav-status g-nav-status--ok'; }
+    else { navEl.textContent='DOWN'; navEl.className='g-nav-status g-nav-status--err'; }
+  }).catch(function(){
+    var navEl = document.getElementById('g-nav-status');
+    navEl.textContent='DOWN'; navEl.className='g-nav-status g-nav-status--err';
+  });
+})();
+</script>
+
+</body>
+</html>
