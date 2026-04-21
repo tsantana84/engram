@@ -92,6 +92,9 @@ function renderAgents(agents, syncHealth) {
     return;
   }
 
+  if (!syncHealth) {
+    syncEl.appendChild(makeEl('p', 'unavailable', 'Sync data unavailable'));
+  }
   const syncMap = new Map((syncHealth ?? []).map(s => [s.agentId, s.lastSyncAt]));
 
   for (const agent of agents) {
