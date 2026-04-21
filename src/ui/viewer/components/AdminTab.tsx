@@ -1,3 +1,4 @@
+import React from 'react';
 import { useEffect, useRef, useState } from 'react';
 
 interface SyncQueueData {
@@ -66,7 +67,7 @@ export function AdminTab() {
     try {
       const res = await fetch('/api/admin');
       if (res.ok) {
-        setData(await res.json());
+        setData(await res.json() as AdminData);
         setSecondsAgo(0);
         setWorkerDown(false);
       } else {
@@ -84,11 +85,15 @@ export function AdminTab() {
       if (!document.hidden) fetchData();
     }, 10_000);
 
+    const onVisible = () => { if (!document.hidden) fetchData(); };
+    document.addEventListener('visibilitychange', onVisible);
+
     tickerRef.current = setInterval(() => setSecondsAgo(s => s + 1), 1000);
 
     return () => {
       clearInterval(intervalRef.current);
       clearInterval(tickerRef.current);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 
@@ -173,7 +178,7 @@ export function AdminTab() {
         ) : (
           <ul className="admin-errors">
             {data.errors.map((e, i) => (
-              <li key={i} className="admin-error-entry">
+              <li key={`${e.ts}-${e.ctx}-${i}`} className="admin-error-entry">
                 <span className="admin-error-time">{formatTime(e.ts)}</span>
                 <span className={`admin-error-level admin-error-level--${e.level}`}>[{e.level}]</span>
                 <span className="admin-error-ctx">{e.ctx}</span>

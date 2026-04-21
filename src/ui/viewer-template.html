@@ -3018,6 +3018,22 @@
     .admin-error-ctx { color: #9ca3af; min-width: 80px; }
     .admin-error-msg { color: #e0e0e0; }
     .admin-status { padding: 2rem; text-align: center; color: #888; font-size: 0.875rem; }
+
+    /* Admin tab — light theme overrides */
+    [data-theme="light"] .tab-bar { border-bottom-color: var(--color-border-primary); }
+    [data-theme="light"] .tab { color: var(--color-text-muted); }
+    [data-theme="light"] .tab.active { color: var(--color-text-primary); border-bottom-color: var(--color-accent-success); }
+    [data-theme="light"] .tab:hover { color: var(--color-text-primary); }
+    [data-theme="light"] .admin-section { background: var(--color-bg-card); border-color: var(--color-border-primary); }
+    [data-theme="light"] .admin-section h3 { color: var(--color-text-tertiary); }
+    [data-theme="light"] .admin-fetched { color: var(--color-text-muted); }
+    [data-theme="light"] .admin-unavailable,
+    [data-theme="light"] .admin-muted { color: var(--color-text-muted); }
+    [data-theme="light"] .admin-error-entry { border-bottom-color: var(--color-border-secondary); }
+    [data-theme="light"] .admin-error-time { color: var(--color-text-muted); }
+    [data-theme="light"] .admin-error-ctx { color: var(--color-text-tertiary); }
+    [data-theme="light"] .admin-error-msg { color: var(--color-text-primary); }
+    [data-theme="light"] .admin-status { color: var(--color-text-muted); }
   </style>
 </head>
 
