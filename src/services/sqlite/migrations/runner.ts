@@ -1180,7 +1180,7 @@ export class MigrationRunner {
     this.db.run(`CREATE INDEX IF NOT EXISTS idx_briefings_session_consumed
       ON session_briefings(memory_session_id, consumed_at)`);
     this.db
-      .prepare('INSERT OR REPLACE INTO schema_versions(version, applied_at) VALUES (?, ?)')
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
       .run(32, new Date().toISOString());
     logger.debug('DB', 'Migration 32 applied: session_briefings table created');
   }
