@@ -56,6 +56,13 @@ export class SyncWorker {
   private confidenceThreshold: number;
   private extractionEnabled: boolean;
   private extractionMaxRetries: number;
+  private lastExtractionAt: string | null = null;
+  private lastExtractionStats: {
+    observationsProcessed: number;
+    extracted: number;
+    skipped: number;
+    failed: number;
+  } | null = null;
 
   constructor(config: SyncWorkerConfig) {
     this.enabled = config.enabled;
@@ -80,6 +87,21 @@ export class SyncWorker {
       llm: config.llm,
       enabled: true,
     });
+  }
+
+  getExtractionStats(): {
+    enabled: boolean;
+    threshold: number;
+    lastRunAt: string | null;
+    lastRunStats: typeof this.lastExtractionStats;
+  } | null {
+    if (!this.extractionEnabled) return null;
+    return {
+      enabled: true,
+      threshold: this.confidenceThreshold,
+      lastRunAt: this.lastExtractionAt,
+      lastRunStats: this.lastExtractionStats,
+    };
   }
 
   start(): void {
@@ -188,6 +210,8 @@ export class SyncWorker {
       const learnings = await this.extractor.extract(input);
       appendFileSync(dbg, `[${new Date().toISOString()}] session=${sessionDbId} learnings=${learnings.length}\n`);
       const threshold = this.confidenceThreshold;
+      let extracted = 0;
+      let skipped = 0;
       for (const l of learnings) {
         const payload: LearningPayload = {
           ...l,
@@ -198,9 +222,28 @@ export class SyncWorker {
         const target: LearningTargetStatus =
           l.confidence >= threshold ? 'approved' : 'pending';
         this.queue.enqueueLearning(payload, target);
+        if (l.confidence >= threshold) {
+          extracted++;
+        } else {
+          skipped++;
+        }
       }
+      this.lastExtractionAt = new Date().toISOString();
+      this.lastExtractionStats = {
+        observationsProcessed: input.observations.length,
+        extracted,
+        skipped,
+        failed: 0,
+      };
       this.sessionStore.markExtractionDone(sessionDbId);
     } catch (err) {
+      this.lastExtractionAt = new Date().toISOString();
+      this.lastExtractionStats = {
+        observationsProcessed: 0,
+        extracted: 0,
+        skipped: 0,
+        failed: 1,
+      };
       this.sessionStore.markExtractionFailed(sessionDbId, this.extractionMaxRetries);
     }
   }
@@ -241,7 +284,7 @@ export class SyncWorker {
     if (statusCode >= 400 && statusCode < 500) {
       this.queue.markFailedPermanently(ids);
     } else {
-      this.queue.markFailed(ids);
+      this.queue.markFailed(ids, error?.message ?? 'unknown error');
     }
   }
 
