@@ -19,6 +19,17 @@ import { parseFileList } from './observations/files.js';
 import { DEFAULT_PLATFORM_SOURCE, normalizePlatformSource, sortPlatformSources } from '../../shared/platform-source.js';
 import type { SyncQueue } from '../sync/SyncQueue.js';
 
+export interface TickRecord {
+  agent_name: string;
+  duration_ms: number;
+  sessions_extracted: number;
+  learnings_enqueued: number;
+  items_pushed: number;
+  items_failed: number;
+  queue_depth_after: number;
+  errors: string[];
+}
+
 function resolveCreateSessionArgs(
   customTitle?: string,
   platformSource?: string
@@ -78,6 +89,7 @@ export class SessionStore {
     this.widenSyncQueueForLearnings();
     this.addLastErrorColumn();
     this.createSessionBriefingsTable();
+    this.createTickLogTable();
   }
 
   /**
@@ -2978,5 +2990,77 @@ export class SessionStore {
       .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
       .run(32, new Date().toISOString());
     logger.debug('DB', 'Migration 32 applied: session_briefings table created');
+  }
+
+  /**
+   * Create tick_log table (migration 33)
+   */
+  private createTickLogTable(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(33) as SchemaVersion | undefined;
+    if (applied) return;
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS tick_log (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticked_at           INTEGER NOT NULL DEFAULT (unixepoch()),
+        agent_name          TEXT    NOT NULL DEFAULT '',
+        duration_ms         INTEGER NOT NULL,
+        sessions_extracted  INTEGER NOT NULL DEFAULT 0,
+        learnings_enqueued  INTEGER NOT NULL DEFAULT 0,
+        items_pushed        INTEGER NOT NULL DEFAULT 0,
+        items_failed        INTEGER NOT NULL DEFAULT 0,
+        queue_depth_after   INTEGER NOT NULL DEFAULT 0,
+        errors              TEXT
+      )
+    `);
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(33, new Date().toISOString());
+    logger.debug('DB', 'Migration 33 applied: tick_log table created');
+  }
+
+  insertTickLog(record: TickRecord): void {
+    this.db.prepare(`
+      INSERT INTO tick_log
+        (agent_name, duration_ms, sessions_extracted, learnings_enqueued,
+         items_pushed, items_failed, queue_depth_after, errors)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      record.agent_name,
+      record.duration_ms,
+      record.sessions_extracted,
+      record.learnings_enqueued,
+      record.items_pushed,
+      record.items_failed,
+      record.queue_depth_after,
+      record.errors.length > 0 ? JSON.stringify(record.errors) : null,
+    );
+    // Retention: keep last 1000 rows
+    this.db.run(
+      `DELETE FROM tick_log WHERE id < (SELECT MAX(id) - 999 FROM tick_log)`
+    );
+  }
+
+  getTickLog(limit: number): Array<TickRecord & { id: number; ticked_at: number }> {
+    const rows = this.db.prepare(`
+      SELECT id, ticked_at, agent_name, duration_ms, sessions_extracted,
+             learnings_enqueued, items_pushed, items_failed, queue_depth_after, errors
+      FROM tick_log ORDER BY ticked_at DESC, id DESC LIMIT ?
+    `).all(limit) as Array<any>;
+
+    return rows.map((r) => ({
+      id: r.id,
+      ticked_at: r.ticked_at,
+      agent_name: r.agent_name,
+      duration_ms: r.duration_ms,
+      sessions_extracted: r.sessions_extracted,
+      learnings_enqueued: r.learnings_enqueued,
+      items_pushed: r.items_pushed,
+      items_failed: r.items_failed,
+      queue_depth_after: r.queue_depth_after,
+      errors: r.errors ? JSON.parse(r.errors) : [],
+    }));
   }
 }
