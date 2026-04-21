@@ -43,7 +43,9 @@ Gated by `CLAUDE_MEM_AMNESIA_RECOVERY_ENABLED=true`. Off by default.
 - **SessionStart injection** — extend existing `src/cli/handlers/context.ts`. Check for pending briefing before returning normal context.
 - **BriefingGenerator** — `src/services/briefing/BriefingGenerator.ts`. Hybrid template + LLM. Injectable `llm` abstraction, same pattern as `ConflictDetector` / `LearningExtractor`.
 - **Briefing repo** — SQLite CRUD helpers for `session_briefings`.
-- **Worker endpoints** — `POST /api/briefings/generate`, `GET /api/briefings/pending`.
+- **Worker endpoints** — `POST /api/briefings/generate`, `GET /api/briefings/pending` (atomically marks returned briefing consumed in the same request).
+- **Observability** — worker emits counters: `briefings.generated`, `briefings.consumed`, `briefings.llm_fallback`, `briefings.latency_ms` (gen + injection). Reuses existing worker metrics pipeline. Used to gate the default-on rollout.
+- **Cleanup** — periodic sweep inside existing worker cleanup job (same host as worker service): delete `session_briefings` rows where `consumed_at IS NULL AND created_at < now - 7 days`. No new cron process.
 
 ## Data Model
 
@@ -58,7 +60,7 @@ CREATE TABLE session_briefings (
   token_estimate  INTEGER NOT NULL,
   created_at      INTEGER NOT NULL,  -- unix ms, PreCompact time
   consumed_at     INTEGER,           -- unix ms, SessionStart injection time (NULL = unconsumed)
-  trigger         TEXT NOT NULL      -- 'pre_compact' (future: 'manual', 'periodic')
+  trigger         TEXT NOT NULL      -- only 'pre_compact' in v1; column kept flexible for future triggers
 );
 
 CREATE INDEX idx_briefings_session ON session_briefings(session_id, consumed_at);
@@ -75,7 +77,8 @@ Flow:
 ```
 1. Read input: { session_id, transcript_path, cwd }
 2. Flag check: if !CLAUDE_MEM_AMNESIA_RECOVERY_ENABLED → exit 0 silently
-3. Project filter: if cwd in excluded projects → exit 0
+3. Project filter: reuse isProjectExcluded(cwd, settings.CLAUDE_MEM_EXCLUDED_PROJECTS)
+   from src/utils/project-filter.ts. If excluded → exit 0.
 4. Call worker: POST /api/briefings/generate
    Body: { session_id, project, transcript_path }
 5. Timeout: 8s hard cap. On failure → exit 0 (never block compaction)
