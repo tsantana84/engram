@@ -532,4 +532,56 @@ export class SupabaseManager {
     if (error) throw error;
     return data as LearningRecord;
   }
+
+  async getSyncHealth(): Promise<Array<{ agentId: string; lastSyncAt: string | null }>> {
+    const { data, error } = await this.supabase
+      .from('observations')
+      .select('agent_id, synced_at')
+      .not('synced_at', 'is', null);
+    if (error) throw error;
+
+    const byAgent = new Map<string, string>();
+    for (const row of data ?? []) {
+      const current = byAgent.get(row.agent_id);
+      if (!current || row.synced_at > current) {
+        byAgent.set(row.agent_id, row.synced_at);
+      }
+    }
+
+    return Array.from(byAgent.entries()).map(([agentId, lastSyncAt]) => ({ agentId, lastSyncAt }));
+  }
+
+  async getLearningQuality(): Promise<{
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    approvalRate: number | null;
+    confidenceDistribution: { high: number; medium: number; low: number };
+  }> {
+    const { data, error } = await this.supabase
+      .from('learnings')
+      .select('status, confidence');
+    if (error) throw error;
+
+    const rows = data ?? [];
+    const counts = { pending: 0, approved: 0, rejected: 0 };
+    const dist = { high: 0, medium: 0, low: 0 };
+
+    for (const row of rows) {
+      counts[row.status as keyof typeof counts]++;
+      const c = row.confidence ?? 0;
+      if (c >= 0.9) dist.high++;
+      else if (c >= 0.7) dist.medium++;
+      else dist.low++;
+    }
+
+    const reviewed = counts.approved + counts.rejected;
+    return {
+      total: rows.length,
+      ...counts,
+      approvalRate: reviewed > 0 ? counts.approved / reviewed : null,
+      confidenceDistribution: dist,
+    };
+  }
 }
