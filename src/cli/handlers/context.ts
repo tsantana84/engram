@@ -66,12 +66,30 @@ const apiPath = `/api/context/inject?projects=${encodeURIComponent(projectsParam
         colorResponse?.ok ? colorResponse.text() : Promise.resolve('')
       ]);
 
-      const additionalContext = contextResult.trim();
+      let additionalContext = contextResult.trim();
       const coloredTimeline = colorResult.trim();
       const platform = input.platform;
 
-      // Use colored timeline for display if available, otherwise fall back to 
-      // plain markdown context (especially useful for platforms like Gemini 
+      // Amnesia Recovery: prepend pending briefing if available
+      if (settings.CLAUDE_MEM_AMNESIA_RECOVERY_ENABLED === 'true') {
+        try {
+          const resp = await workerHttpRequest(
+            `/api/briefings/pending?project=${encodeURIComponent(cwd)}`,
+            { timeoutMs: 3000 }
+          );
+          const briefingRes = await resp.json() as { briefing: string | null };
+          if (briefingRes?.briefing) {
+            const header = '---\n## 🧠 Session Resumed (Amnesia Recovery)\n';
+            additionalContext = `${header}${briefingRes.briefing}\n---\n\n${additionalContext}`;
+            logger.debug('HOOK', 'amnesia recovery: briefing injected', { project: cwd });
+          }
+        } catch (err) {
+          logger.debug('HOOK', 'amnesia recovery: briefing fetch failed (suppressed)', { err: String(err) });
+        }
+      }
+
+      // Use colored timeline for display if available, otherwise fall back to
+      // plain markdown context (especially useful for platforms like Gemini
       // where we want to ensure visibility even if colors aren't fetched).
       const displayContent = coloredTimeline || (platform === 'gemini-cli' || platform === 'gemini' ? additionalContext : '');
 
