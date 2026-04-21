@@ -97,6 +97,11 @@ import { LogsRoutes } from './worker/http/routes/LogsRoutes.js';
 import { MemoryRoutes } from './worker/http/routes/MemoryRoutes.js';
 import { CorpusRoutes } from './worker/http/routes/CorpusRoutes.js';
 
+// Admin observability
+import { ErrorStore } from './admin/ErrorStore.js';
+import { HealthChecker } from './admin/HealthChecker.js';
+import { AdminRoutes } from './worker/http/routes/AdminRoutes.js';
+
 // Knowledge agent services
 import { CorpusStore } from './worker/knowledge/CorpusStore.js';
 import { CorpusBuilder } from './worker/knowledge/CorpusBuilder.js';
@@ -198,6 +203,9 @@ export class WorkerService {
   // Chroma MCP manager (lazy - connects on first use)
   private chromaMcpManager: ChromaMcpManager | null = null;
 
+  // Admin observability
+  private errorStore: ErrorStore;
+
   // Transcript watcher for Codex and other transcript-based clients
   private transcriptWatcher: TranscriptWatcher | null = null;
 
@@ -281,6 +289,11 @@ export class WorkerService {
 
     // Register route handlers
     this.registerRoutes();
+
+    // Wire ErrorStore to logger sink — must happen BEFORE initializeBackground
+    // so startup errors are captured
+    this.errorStore = new ErrorStore();
+    logger.addSink((entry) => this.errorStore.push(entry));
 
     // Register signal handlers early to ensure cleanup even if start() hasn't completed
     this.registerSignalHandlers();
@@ -446,6 +459,9 @@ export class WorkerService {
       const syncApiKey = settings.CLAUDE_MEM_SYNC_API_KEY;
       const syncAgentName = settings.CLAUDE_MEM_SYNC_AGENT_NAME;
 
+      // Hoisted so AdminRoutes can reference it regardless of sync branch taken
+      let syncQueueForAdmin: import('./sync/SyncQueue.js').SyncQueue | null = null;
+
       if (syncEnabled && syncUrl && syncApiKey && syncAgentName) {
         try {
           const { SyncQueue } = await import('./sync/SyncQueue.js');
@@ -455,6 +471,7 @@ export class WorkerService {
 
           const sessionStore = this.dbManager.getSessionStore();
           const syncQueue = new SyncQueue(sessionStore.db);
+          syncQueueForAdmin = syncQueue;
           sessionStore.setSyncQueue(syncQueue);
 
           const intervalMs = parseInt(settings.CLAUDE_MEM_SYNC_INTERVAL_MS || '30000', 10);
@@ -537,6 +554,19 @@ export class WorkerService {
       const knowledgeAgent = new KnowledgeAgent(this.corpusStore);
       this.server.registerRoutes(new CorpusRoutes(this.corpusStore, corpusBuilder, knowledgeAgent));
       logger.info('WORKER', 'CorpusRoutes registered');
+
+      // Register admin observability routes (follows CorpusRoutes late-registration pattern)
+      const healthChecker = new HealthChecker({
+        chromaManager: this.chromaMcpManager,
+        syncServerUrl: syncEnabled && syncUrl ? syncUrl : null,
+      });
+      this.server.registerRoutes(new AdminRoutes({
+        queue: syncQueueForAdmin,
+        syncWorker: this.syncWorker,
+        healthChecker,
+        errorStore: this.errorStore,
+      }));
+      logger.info('WORKER', 'AdminRoutes registered');
 
       // DB and search are ready — mark initialization complete so hooks can proceed.
       // MCP connection is tracked separately via mcpReady and is NOT required for

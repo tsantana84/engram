@@ -28,11 +28,15 @@ interface LogContext {
 // Inlined here to avoid circular dependency with SettingsDefaultsManager
 const DEFAULT_DATA_DIR = join(homedir(), '.engram');
 
-class Logger {
+export type LogSinkEntry = { ts: string; level: 'warn' | 'error'; ctx: string; msg: string };
+type LogSink = (entry: LogSinkEntry) => void;
+
+export class Logger {
   private level: LogLevel | null = null;
   private useColor: boolean;
   private logFilePath: string | null = null;
   private logFileInitialized: boolean = false;
+  private sinks: LogSink[] = [];
 
   constructor() {
     // Disable colors when output is not a TTY (e.g., PM2 logs)
@@ -300,6 +304,21 @@ class Logger {
     }
   }
 
+  addSink(fn: LogSink): void {
+    this.sinks.push(fn);
+  }
+
+  removeSink(fn: LogSink): void {
+    this.sinks = this.sinks.filter(s => s !== fn);
+  }
+
+  private notifySinks(level: 'warn' | 'error', ctx: string, msg: string): void {
+    const entry: LogSinkEntry = { ts: new Date().toISOString(), level, ctx, msg };
+    for (const sink of this.sinks) {
+      try { sink(entry); } catch { /* sink errors must not crash logger */ }
+    }
+  }
+
   // Public logging methods
   debug(component: Component, message: string, context?: LogContext, data?: any): void {
     this.log(LogLevel.DEBUG, component, message, context, data);
@@ -311,10 +330,12 @@ class Logger {
 
   warn(component: Component, message: string, context?: LogContext, data?: any): void {
     this.log(LogLevel.WARN, component, message, context, data);
+    this.notifySinks('warn', component, message);
   }
 
   error(component: Component, message: string, context?: LogContext, data?: any): void {
     this.log(LogLevel.ERROR, component, message, context, data);
+    this.notifySinks('error', component, message);
   }
 
   /**

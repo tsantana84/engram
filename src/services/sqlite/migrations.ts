@@ -596,6 +596,9 @@ export const migration010: Migration = {
 
 /**
  * All migrations in order
+ *
+ * TODO: SessionStore inline migration path does not apply version 31+ migrations;
+ * using MigrationRunner exclusively for schema changes
  */
 export const migrations: Migration[] = [
   migration001,
@@ -607,5 +610,5 @@ export const migrations: Migration[] = [
   migration007,
   migration008,
   migration009,
-  migration010
+  migration010,
 ];

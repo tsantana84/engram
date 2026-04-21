@@ -73,12 +73,31 @@ export class SyncQueue {
     ).run(...ids);
   }
 
-  markFailed(ids: number[]): void {
+  markFailed(ids: number[], errorMsg?: string): void {
     if (ids.length === 0) return;
     const placeholders = ids.map(() => '?').join(',');
-    this.db.prepare(
-      `UPDATE sync_queue SET attempts = attempts + 1, status = CASE WHEN attempts + 1 >= ? THEN 'failed' ELSE 'pending' END WHERE id IN (${placeholders})`
-    ).run(this.maxRetries, ...ids);
+    if (errorMsg !== undefined) {
+      this.db.prepare(
+        `UPDATE sync_queue SET attempts = attempts + 1, last_error = ?, status = CASE WHEN attempts + 1 >= ? THEN 'failed' ELSE 'pending' END WHERE id IN (${placeholders})`
+      ).run(errorMsg, this.maxRetries, ...ids);
+    } else {
+      this.db.prepare(
+        `UPDATE sync_queue SET attempts = attempts + 1, status = CASE WHEN attempts + 1 >= ? THEN 'failed' ELSE 'pending' END WHERE id IN (${placeholders})`
+      ).run(this.maxRetries, ...ids);
+    }
+  }
+
+  getFailedItems(limit: number): Array<{
+    id: number;
+    type: string;
+    retries: number;
+    lastError: string | null;
+  }> {
+    return this.db.prepare(
+      `SELECT id, entity_type as type, attempts as retries, last_error as lastError
+       FROM sync_queue WHERE status = 'failed'
+       ORDER BY created_at DESC LIMIT ?`
+    ).all(limit) as Array<{ id: number; type: string; retries: number; lastError: string | null }>;
   }
 
   markFailedPermanently(ids: number[]): void {
