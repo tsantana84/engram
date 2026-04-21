@@ -56,6 +56,7 @@ export class SyncWorker {
   private confidenceThreshold: number;
   private extractionEnabled: boolean;
   private extractionMaxRetries: number;
+  private agentName: string;
   private lastExtractionAt: string | null = null;
   private lastExtractionStats: {
     observationsProcessed: number;
@@ -74,6 +75,7 @@ export class SyncWorker {
     this.confidenceThreshold = config.confidenceThreshold ?? 0.8;
     this.extractionEnabled = config.extractionEnabled ?? false;
     this.extractionMaxRetries = config.extractionMaxRetries ?? 3;
+    this.agentName = config.agentName;
 
     this.client = new SyncClient({
       serverUrl: config.serverUrl,
@@ -134,56 +136,81 @@ export class SyncWorker {
   async tick(): Promise<void> {
     if (!this.enabled || this.paused) return;
 
-    // 1. Extract pending/retryable sessions into queued learnings.
-    if (this.extractionEnabled && this.extractor) {
-      const sessions = this.sessionStore.getPendingExtractionSessions(5);
-      for (const s of sessions) {
-        await this.extractSessionLearnings(s.id);
+    const startMs = Date.now();
+    const record = {
+      agent_name: this.agentName,
+      duration_ms: 0,
+      sessions_extracted: 0,
+      learnings_enqueued: 0,
+      items_pushed: 0,
+      items_failed: 0,
+      queue_depth_after: 0,
+      errors: [] as string[],
+    };
+
+    try {
+      // 1. Extract pending/retryable sessions into queued learnings.
+      if (this.extractionEnabled && this.extractor) {
+        const sessions = this.sessionStore.getPendingExtractionSessions(5);
+        for (const s of sessions) {
+          try {
+            const enqueued = await this.extractSessionLearnings(s.id);
+            record.sessions_extracted++;
+            record.learnings_enqueued += enqueued;
+          } catch { /* extractSessionLearnings handles its own errors */ }
+        }
       }
-    }
 
-    // 2. Drain the sync queue.
-    const pending = this.queue.getPending(this.batchSize);
-    if (pending.length === 0) return;
+      // 2. Drain the sync queue.
+      const pending = this.queue.getPending(this.batchSize);
 
-    const learningItems = pending.filter((p) => p.entity_type === 'learning');
-    const legacyItems = pending.filter((p) => p.entity_type !== 'learning');
+      const learningItems = pending.filter((p) => p.entity_type === 'learning');
+      const legacyItems = pending.filter((p) => p.entity_type !== 'learning');
 
-    const approvedItems = learningItems.filter((p) => p.target_status === 'approved');
-    const pendingItems = learningItems.filter((p) => p.target_status === 'pending');
+      const approvedItems = learningItems.filter((p) => p.target_status === 'approved');
+      const pendingItems = learningItems.filter((p) => p.target_status === 'pending');
 
-    for (const [group, status] of [
-      [approvedItems, 'approved'] as const,
-      [pendingItems, 'pending'] as const,
-    ]) {
-      if (group.length === 0) continue;
-      try {
-        await this.client.pushLearnings(
-          group.map((g) => g.payload!).filter(Boolean),
-          status
-        );
-        this.queue.markSynced(group.map((g) => g.id));
-      } catch (err: any) {
-        this.handlePushError(err, group.map((g) => g.id));
+      for (const [group, status] of [
+        [approvedItems, 'approved'] as const,
+        [pendingItems, 'pending'] as const,
+      ]) {
+        if (group.length === 0) continue;
+        try {
+          await this.client.pushLearnings(
+            group.map((g) => g.payload!).filter(Boolean),
+            status
+          );
+          this.queue.markSynced(group.map((g) => g.id));
+          record.items_pushed += group.length;
+        } catch (err: any) {
+          this.handlePushError(err, group.map((g) => g.id));
+          record.items_failed += group.length;
+          record.errors.push(err?.message ?? 'unknown error');
+        }
       }
-    }
 
-    // Legacy observation/session/summary path — kept behind the flag so the
-    // rollout can fall back without code changes.
-    if (!this.extractionEnabled && legacyItems.length > 0) {
-      const payload = this.buildPayload(legacyItems);
-      payload.observations = await this.processConflicts(payload.observations);
-      const ids = legacyItems.map((i) => i.id);
-      try {
-        await this.client.push(payload);
-        this.queue.markSynced(ids);
-      } catch (err: any) {
-        this.handlePushError(err, ids);
+      // Legacy observation/session/summary path.
+      if (!this.extractionEnabled && legacyItems.length > 0) {
+        const payload = this.buildPayload(legacyItems);
+        payload.observations = await this.processConflicts(payload.observations);
+        const ids = legacyItems.map((i) => i.id);
+        try {
+          await this.client.push(payload);
+          this.queue.markSynced(ids);
+          record.items_pushed += ids.length;
+        } catch (err: any) {
+          this.handlePushError(err, ids);
+          record.items_failed += ids.length;
+          record.errors.push(err?.message ?? 'unknown error');
+        }
+      } else if (legacyItems.length > 0) {
+        this.queue.markSynced(legacyItems.map((i) => i.id));
       }
-    } else if (legacyItems.length > 0) {
-      // Feature flag on, but legacy items snuck in (e.g., existing queue rows
-      // from before the flag flipped). Drop them to avoid double-push.
-      this.queue.markSynced(legacyItems.map((i) => i.id));
+
+      record.queue_depth_after = this.queue.countPending();
+    } finally {
+      record.duration_ms = Date.now() - startMs;
+      this.sessionStore.insertTickLog(record);
     }
   }
 
@@ -195,10 +222,10 @@ export class SyncWorker {
    * threshold enter the queue with target_status='approved'; below it, with
    * target_status='pending' for manual review.
    */
-  async extractSessionLearnings(sessionDbId: number): Promise<void> {
-    if (!this.extractionEnabled || !this.extractor) return;
+  async extractSessionLearnings(sessionDbId: number): Promise<number> {
+    if (!this.extractionEnabled || !this.extractor) return 0;
     const session = this.sessionStore.getSessionById(sessionDbId);
-    if (!session) return;
+    if (!session) return 0;
     this.sessionStore.markExtractionInProgress(sessionDbId);
     const sessionInput = this.buildSessionInput(session);
     const observationsCount = sessionInput.observations.length;
@@ -208,6 +235,7 @@ export class SyncWorker {
       const threshold = this.confidenceThreshold;
       let extracted = 0;
       let skipped = 0;
+      let enqueued = 0;
       for (const l of learnings) {
         const payload: LearningPayload = {
           ...l,
@@ -218,6 +246,7 @@ export class SyncWorker {
         const target: LearningTargetStatus =
           l.confidence >= threshold ? 'approved' : 'pending';
         this.queue.enqueueLearning(payload, target);
+        enqueued++;
         if (l.confidence >= threshold) {
           extracted++;
         } else {
@@ -232,6 +261,7 @@ export class SyncWorker {
         failed: 0,
       };
       this.sessionStore.markExtractionDone(sessionDbId);
+      return enqueued;
     } catch (err) {
       this.lastExtractionAt = new Date().toISOString();
       this.lastExtractionStats = {
@@ -241,6 +271,7 @@ export class SyncWorker {
         failed: 1,
       };
       this.sessionStore.markExtractionFailed(sessionDbId, this.extractionMaxRetries);
+      return 0;
     }
   }
 

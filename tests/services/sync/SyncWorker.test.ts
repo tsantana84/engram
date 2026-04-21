@@ -37,11 +37,16 @@ describe('SyncWorker', () => {
     expect(queue.getStatus().pending).toBe(0);
   });
 
-  it('should skip tick when queue is empty', async () => {
+  it('records a tick log row even when queue is empty', async () => {
+    const tickLogs: any[] = [];
     const worker = new SyncWorker({
       enabled: true,
       queue,
-      sessionStore: {},
+      sessionStore: {
+        getPendingExtractionSessions: () => [],
+        insertTickLog: (record: any) => { tickLogs.push(record); },
+        countPending: () => 0,
+      },
       serverUrl: 'http://localhost:9999',
       apiKey: 'cmem_ak_test',
       agentName: 'Test',
@@ -53,6 +58,8 @@ describe('SyncWorker', () => {
 
     await worker.tick();
     expect(queue.getStatus().pending).toBe(0);
+    expect(tickLogs).toHaveLength(1);
+    expect(tickLogs[0].items_pushed).toBe(0);
   });
 
   it('should be pausable and resumable', () => {

@@ -46,6 +46,7 @@ const EXCLUDED_PATTERNS = [
   /services\/sync\/__tests__\//,  // Test files in sync
   /services\/sync\/learning-types\.ts$/,  // Type definitions
   /worker\/session\/__tests__\//,  // Test files
+  /services\/sqlite\/__tests__\//,  // Test files in sqlite
 ];
 
 // Files that should always use logger (core business logic)
