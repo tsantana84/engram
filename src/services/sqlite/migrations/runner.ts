@@ -42,6 +42,7 @@ export class MigrationRunner {
     this.addExtractionStatusColumns();
     this.widenSyncQueueForLearnings();
     this.addLastErrorColumn();
+    this.createSessionBriefingsTable();
   }
 
   /**
@@ -1151,5 +1152,36 @@ export class MigrationRunner {
       .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
       .run(31, new Date().toISOString());
     logger.debug('DB', 'Migration 31 applied: last_error column on sync_queue');
+  }
+
+  /**
+   * Create session_briefings table (migration 32)
+   *
+   * Stores auto-generated briefings that help Claude recover from context compaction.
+   * Briefings are pre-compaction summaries, keyed by session and marked consumed when read.
+   */
+  private createSessionBriefingsTable(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(32) as SchemaVersion | undefined;
+    if (applied) return;
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS session_briefings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        memory_session_id TEXT NOT NULL,
+        project TEXT NOT NULL,
+        briefing_text TEXT NOT NULL,
+        trigger TEXT NOT NULL DEFAULT 'pre_compact',
+        consumed_at INTEGER,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_briefings_session_consumed
+      ON session_briefings(memory_session_id, consumed_at)`);
+    this.db
+      .prepare('INSERT OR REPLACE INTO schema_versions(version, applied_at) VALUES (?, ?)')
+      .run(32, new Date().toISOString());
+    logger.debug('DB', 'Migration 32 applied: session_briefings table created');
   }
 }
