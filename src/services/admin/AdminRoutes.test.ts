@@ -5,8 +5,8 @@ import { ErrorStore } from './ErrorStore';
 describe('GET /api/admin', () => {
   it('returns aggregated admin data', async () => {
     const mockQueue = {
-      getStatus: mock(async () => ({ pending: 2, failed: 1, synced: 10, permanently_failed: 0 })),
-      getFailedItems: mock(async () => [{ id: 1, type: 'observation', retries: 2, lastError: 'timeout' }]),
+      getStatus: mock(() => ({ pending: 2, failed: 1, synced: 10, permanently_failed: 0 })),
+      getFailedItems: mock(() => [{ id: 1, type: 'observation', retries: 2, lastError: 'timeout' }]),
     };
     const mockWorker = {
       getExtractionStats: mock(() => ({ enabled: true, threshold: 0.9, lastRunAt: null, lastRunStats: null })),
@@ -44,8 +44,8 @@ describe('GET /api/admin', () => {
 
   it('returns null syncQueue on queue failure', async () => {
     const mockQueue = {
-      getStatus: mock(async () => { throw new Error('db error'); }),
-      getFailedItems: mock(async () => []),
+      getStatus: mock(() => { throw new Error('db error'); }),
+      getFailedItems: mock(() => []),
     };
     const mockHealth = {
       check: mock(async () => ({ uptimeSeconds: 0, chroma: 'unavailable', syncServer: 'unavailable', workerVersion: '1.0.0' })),
@@ -71,8 +71,8 @@ describe('GET /api/admin', () => {
 
   it('returns null health when healthChecker throws', async () => {
     const mockQueue = {
-      getStatus: mock(async () => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
-      getFailedItems: mock(async () => []),
+      getStatus: mock(() => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
+      getFailedItems: mock(() => []),
     };
     const mockHealth = {
       check: mock(async () => { throw new Error('health check failed'); }),
@@ -97,14 +97,14 @@ describe('GET /api/admin', () => {
 
   it('includes errors from ErrorStore', async () => {
     const mockQueue = {
-      getStatus: mock(async () => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
-      getFailedItems: mock(async () => []),
+      getStatus: mock(() => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
+      getFailedItems: mock(() => []),
     };
     const mockHealth = {
       check: mock(async () => ({ uptimeSeconds: 10, chroma: 'ok', syncServer: 'ok', workerVersion: '1.0.0' })),
     };
     const errorStore = new ErrorStore(5);
-    errorStore.push({ level: 'error', message: 'something broke', ts: new Date().toISOString() });
+    errorStore.push({ level: 'error', ctx: 'TEST', msg: 'something broke', ts: new Date().toISOString() });
 
     const routes = new AdminRoutes({
       queue: mockQueue,
@@ -120,13 +120,13 @@ describe('GET /api/admin', () => {
 
     const result = mockRes.json.mock.calls[0][0];
     expect(result.errors).toHaveLength(1);
-    expect(result.errors[0].message).toBe('something broke');
+    expect(result.errors[0].msg).toBe('something broke');
   });
 
   it('returns null extraction when worker has extraction disabled', async () => {
     const mockQueue = {
-      getStatus: mock(async () => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
-      getFailedItems: mock(async () => []),
+      getStatus: mock(() => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
+      getFailedItems: mock(() => []),
     };
     const mockWorker = { getExtractionStats: mock(() => null) }; // non-null worker, but returns null
     const mockHealth = {
@@ -141,11 +141,11 @@ describe('GET /api/admin', () => {
     expect(result.extraction).toBeNull();
   });
 
-  it('registers GET /api/admin on the router', () => {
+  it('registers GET /api/admin via setupRoutes', () => {
     const errorStore = new ErrorStore(5);
     const mockQueue = {
-      getStatus: mock(async () => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
-      getFailedItems: mock(async () => []),
+      getStatus: mock(() => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
+      getFailedItems: mock(() => []),
     };
     const mockHealth = { check: mock(async () => ({ uptimeSeconds: 0, chroma: 'ok', syncServer: 'ok', workerVersion: '1.0.0' })) };
 
@@ -156,10 +156,16 @@ describe('GET /api/admin', () => {
       errorStore,
     });
 
-    // Router should have a stack with the /api/admin route registered
-    const stack = (routes.router as any).stack as Array<{ route?: { path: string; methods: Record<string, boolean> } }>;
-    const adminRoute = stack.find(layer => layer.route?.path === '/api/admin');
-    expect(adminRoute).toBeDefined();
-    expect(adminRoute?.route?.methods.get).toBe(true);
+    // Verify setupRoutes registers the /api/admin GET handler on the express app
+    const registeredRoutes: Array<{ method: string; path: string }> = [];
+    const mockApp = {
+      get: (path: string, _handler: unknown) => { registeredRoutes.push({ method: 'get', path }); },
+    } as any;
+
+    routes.setupRoutes(mockApp);
+
+    expect(registeredRoutes).toHaveLength(1);
+    expect(registeredRoutes[0].method).toBe('get');
+    expect(registeredRoutes[0].path).toBe('/api/admin');
   });
 });
