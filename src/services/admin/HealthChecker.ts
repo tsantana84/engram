@@ -1,8 +1,17 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { fetchWithTimeout } from '../../shared/worker-utils.js';
-const _pkg = JSON.parse(readFileSync(join(import.meta.dirname, '../../../package.json'), 'utf8'));
-const _version: string = _pkg.version;
+
+function readVersion(): string {
+  try {
+    const dir = import.meta.dirname;
+    if (!dir) return 'unknown';
+    return JSON.parse(readFileSync(join(dir, '../../../package.json'), 'utf8')).version;
+  } catch {
+    return 'unknown';
+  }
+}
+const _version = readVersion();
 
 type HealthStatus = 'ok' | 'error' | 'unavailable';
 
