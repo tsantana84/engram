@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ENGRAM — TICKS</title>
+  <style>
+    :root {
+      --black: #000;
+      --white: #fff;
+      --yellow: #f5e400;
+      --red: #ff2400;
+      --green: #00b300;
+      --dim: #666;
+      --bg: #f4f4f4;
+      --border: 3px solid #000;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background: var(--bg);
+      color: var(--black);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    header {
+      background: var(--black);
+      color: var(--white);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header h1 {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #status-line {
+      font-size: 11px;
+      color: #aaa;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    #refresh-btn {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+      background: var(--yellow);
+      color: var(--black);
+      border: 2px solid var(--white);
+      padding: 6px 14px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      transition: background 0.1s;
+    }
+
+    #refresh-btn:hover {
+      background: var(--white);
+    }
+
+    #refresh-btn:active {
+      background: var(--yellow);
+    }
+
+    .filter-bar {
+      background: var(--white);
+      border-bottom: var(--border);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-label {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-right: 4px;
+    }
+
+    .agent-tab {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      background: var(--bg);
+      color: var(--black);
+      border: 2px solid var(--black);
+      padding: 4px 12px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .agent-tab.active {
+      background: var(--black);
+      color: var(--white);
+    }
+
+    .agent-tab:hover:not(.active) {
+      background: var(--yellow);
+    }
+
+    main {
+      padding: 20px;
+    }
+
+    .empty-state {
+      border: var(--border);
+      background: var(--white);
+      padding: 40px;
+      text-align: center;
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+    }
+
+    .error-state {
+      border: 3px solid var(--red);
+      background: var(--white);
+      padding: 20px;
+      margin-bottom: 20px;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    .error-state-title {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--red);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: var(--border);
+      background: var(--white);
+    }
+
+    thead {
+      background: var(--black);
+      color: var(--white);
+    }
+
+    thead th {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 8px 10px;
+      text-align: left;
+      border-right: 1px solid #333;
+      white-space: nowrap;
+    }
+
+    thead th:last-child {
+      border-right: none;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #ddd;
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody tr.hidden {
+      display: none;
+    }
+
+    tbody tr:hover td {
+      background: #fafafa;
+    }
+
+    tbody td {
+      padding: 7px 10px;
+      border-right: 1px solid #eee;
+      vertical-align: top;
+    }
+
+    tbody td:last-child {
+      border-right: none;
+    }
+
+    /* First td left border by status */
+    tr.status-ok td:first-child {
+      border-left: 4px solid var(--green);
+    }
+
+    tr.status-partial td:first-child {
+      border-left: 4px solid var(--yellow);
+    }
+
+    tr.status-fail td:first-child {
+      border-left: 4px solid var(--red);
+    }
+
+    tr.status-idle td:first-child {
+      border-left: 4px solid transparent;
+    }
+
+    /* Status badge */
+    .badge {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 2px 7px;
+      display: inline-block;
+      border: 2px solid var(--black);
+    }
+
+    .badge-ok {
+      background: var(--green);
+      color: var(--white);
+      border-color: var(--green);
+    }
+
+    .badge-partial {
+      background: var(--yellow);
+      color: var(--black);
+      border-color: #c8b900;
+    }
+
+    .badge-fail {
+      background: var(--red);
+      color: var(--white);
+      border-color: var(--red);
+    }
+
+    .badge-idle {
+      background: var(--white);
+      color: var(--dim);
+      border-color: #ccc;
+    }
+
+    /* Dimmed zero values */
+    .dim {
+      color: var(--dim);
+    }
+
+    /* Red error counts */
+    .val-error {
+      color: var(--red);
+      font-weight: bold;
+    }
+
+    /* Agent name cell */
+    .agent-name {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    /* Time cell */
+    .time-cell {
+      white-space: nowrap;
+      color: #444;
+    }
+
+    /* Duration cell */
+    .duration-cell {
+      white-space: nowrap;
+      color: #444;
+    }
+
+    /* Error detail row */
+    tr.error-detail-row td {
+      background: #fff0ee;
+      border-left: 4px solid var(--red);
+      border-bottom: 2px solid var(--red);
+      padding: 6px 10px 6px 14px;
+      font-size: 11px;
+      color: #900;
+    }
+
+    tr.error-detail-row td .error-detail-label {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--red);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    tr.error-detail-row td .error-item {
+      display: block;
+      padding: 2px 0;
+      border-top: 1px solid #fcc;
+      word-break: break-all;
+    }
+
+    tr.error-detail-row td .error-item:first-of-type {
+      border-top: none;
+    }
+
+    .numeric {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⬡ ENGRAM / TICKS</h1>
+    <div class="header-right">
+      <span id="status-line">Loading…</span>
+      <button id="refresh-btn" type="button">↻ Refresh</button>
+    </div>
+  </header>
+
+  <div class="filter-bar" id="filter-bar">
+    <span class="filter-label">Agent:</span>
+  </div>
+
+  <main id="main-content">
+    <div class="empty-state" id="loading-state">Loading tick data…</div>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var activeAgent = 'ALL';
+      var refreshTimer = null;
+      var lastFetchedAt = null;
+      var allTicks = [];
+
+      // ── Status classification ──────────────────────────────────────────────
+
+      function classifyStatus(tick) {
+        var pushed = tick.items_pushed;
+        var failed = tick.items_failed;
+        var extracted = tick.sessions_extracted;
+
+        if (pushed === 0 && failed === 0 && extracted === 0) return 'IDLE';
+        if (failed === 0 && (pushed > 0 || extracted > 0)) return 'OK';
+        if (failed > 0 && pushed > 0) return 'PARTIAL';
+        return 'FAIL';
+      }
+
+      // ── Format helpers ─────────────────────────────────────────────────────
+
+      function formatDuration(ms) {
+        if (ms < 1000) return ms + 'ms';
+        return (ms / 1000).toFixed(1) + 's';
+      }
+
+      function formatTime(epochSeconds) {
+        return new Date(epochSeconds * 1000).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+      }
+
+      // ── DOM helpers ────────────────────────────────────────────────────────
+
+      function el(tag, attrs, children) {
+        var node = document.createElement(tag);
+        if (attrs) {
+          Object.keys(attrs).forEach(function (k) {
+            if (k === 'className') {
+              node.className = attrs[k];
+            } else {
+              node.setAttribute(k, attrs[k]);
+            }
+          });
+        }
+        if (children) {
+          children.forEach(function (child) {
+            if (child == null) return;
+            if (typeof child === 'string') {
+              node.appendChild(document.createTextNode(child));
+            } else {
+              node.appendChild(child);
+            }
+          });
+        }
+        return node;
+      }
+
+      function txt(str) {
+        return document.createTextNode(String(str));
+      }
+
+      function numCell(val) {
+        var td = document.createElement('td');
+        td.className = 'numeric';
+        if (val === 0) {
+          td.className += ' dim';
+        }
+        td.appendChild(txt(String(val)));
+        return td;
+      }
+
+      function errNumCell(val) {
+        var td = document.createElement('td');
+        td.className = 'numeric';
+        if (val === 0) {
+          td.className += ' dim';
+        } else {
+          td.className += ' val-error';
+        }
+        td.appendChild(txt(String(val)));
+        return td;
+      }
+
+      // ── Render agent filter tabs ───────────────────────────────────────────
+
+      function renderFilterBar(ticks) {
+        var bar = document.getElementById('filter-bar');
+        // Clear existing tabs (keep label)
+        var label = bar.querySelector('.filter-label');
+        while (bar.firstChild) bar.removeChild(bar.firstChild);
+        bar.appendChild(label);
+
+        var agents = ['ALL'];
+        ticks.forEach(function (t) {
+          if (t.agent_name && agents.indexOf(t.agent_name) === -1) {
+            agents.push(t.agent_name);
+          }
+        });
+
+        agents.forEach(function (agent) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'agent-tab' + (agent === activeAgent ? ' active' : '');
+          btn.appendChild(txt(agent));
+          btn.addEventListener('click', function () {
+            activeAgent = agent;
+            renderFilterBar(allTicks);
+            applyFilter();
+          });
+          bar.appendChild(btn);
+        });
+      }
+
+      // ── Apply client-side filter ───────────────────────────────────────────
+
+      function applyFilter() {
+        var rows = document.querySelectorAll('tbody tr[data-agent]');
+        rows.forEach(function (row) {
+          var agent = row.getAttribute('data-agent');
+          var show = activeAgent === 'ALL' || agent === activeAgent;
+          // Also show/hide paired error-detail rows
+          row.classList.toggle('hidden', !show);
+          var detailId = row.getAttribute('data-detail-for');
+          // error detail rows are siblings; handled by class on the row itself
+        });
+        // Show/hide error detail rows that belong to hidden tick rows
+        var detailRows = document.querySelectorAll('tbody tr.error-detail-row');
+        detailRows.forEach(function (drow) {
+          var tickId = drow.getAttribute('data-tick-id');
+          var tickRow = document.querySelector('tbody tr[data-tick-id="' + tickId + '"]');
+          if (tickRow) {
+            drow.classList.toggle('hidden', tickRow.classList.contains('hidden'));
+          }
+        });
+      }
+
+      // ── Render table ───────────────────────────────────────────────────────
+
+      function renderTable(ticks) {
+        var main = document.getElementById('main-content');
+        while (main.firstChild) main.removeChild(main.firstChild);
+
+        if (ticks.length === 0) {
+          var empty = document.createElement('div');
+          empty.className = 'empty-state';
+          empty.appendChild(txt('No ticks recorded yet.'));
+          main.appendChild(empty);
+          return;
+        }
+
+        var table = document.createElement('table');
+        table.setAttribute('cellspacing', '0');
+
+        // thead
+        var thead = document.createElement('thead');
+        var hr = document.createElement('tr');
+        ['Time', 'Agent', 'Status', 'Duration', 'Extracted', 'Enqueued', 'Pushed', 'Failed', 'Queue'].forEach(function (col) {
+          var th = document.createElement('th');
+          th.appendChild(txt(col));
+          hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+
+        // tbody
+        var tbody = document.createElement('tbody');
+
+        ticks.forEach(function (tick) {
+          var status = classifyStatus(tick);
+          var statusLower = status.toLowerCase();
+
+          // Main tick row
+          var tr = document.createElement('tr');
+          tr.className = 'status-' + statusLower;
+          tr.setAttribute('data-agent', tick.agent_name || '');
+          tr.setAttribute('data-tick-id', String(tick.id));
+
+          // Time
+          var tdTime = document.createElement('td');
+          tdTime.className = 'time-cell';
+          tdTime.appendChild(txt(formatTime(tick.ticked_at)));
+          tr.appendChild(tdTime);
+
+          // Agent
+          var tdAgent = document.createElement('td');
+          var agentSpan = document.createElement('span');
+          agentSpan.className = 'agent-name';
+          agentSpan.appendChild(txt(tick.agent_name || '—'));
+          tdAgent.appendChild(agentSpan);
+          tr.appendChild(tdAgent);
+
+          // Status badge
+          var tdStatus = document.createElement('td');
+          var badge = document.createElement('span');
+          badge.className = 'badge badge-' + statusLower;
+          badge.appendChild(txt(status));
+          tdStatus.appendChild(badge);
+          tr.appendChild(tdStatus);
+
+          // Duration
+          var tdDur = document.createElement('td');
+          tdDur.className = 'duration-cell';
+          tdDur.appendChild(txt(formatDuration(tick.duration_ms)));
+          tr.appendChild(tdDur);
+
+          // Extracted
+          tr.appendChild(numCell(tick.sessions_extracted));
+
+          // Enqueued
+          tr.appendChild(numCell(tick.learnings_enqueued));
+
+          // Pushed
+          tr.appendChild(numCell(tick.items_pushed));
+
+          // Failed
+          tr.appendChild(errNumCell(tick.items_failed));
+
+          // Queue depth
+          tr.appendChild(numCell(tick.queue_depth_after));
+
+          tbody.appendChild(tr);
+
+          // Error detail row (if errors exist)
+          if (tick.errors && tick.errors.length > 0) {
+            var errTr = document.createElement('tr');
+            errTr.className = 'error-detail-row';
+            errTr.setAttribute('data-tick-id', String(tick.id));
+
+            var errTd = document.createElement('td');
+            errTd.setAttribute('colspan', '9');
+
+            var labelSpan = document.createElement('span');
+            labelSpan.className = 'error-detail-label';
+            labelSpan.appendChild(txt('Errors (' + tick.errors.length + ')'));
+            errTd.appendChild(labelSpan);
+
+            tick.errors.forEach(function (errMsg) {
+              var errItem = document.createElement('span');
+              errItem.className = 'error-item';
+              errItem.appendChild(txt(errMsg));
+              errTd.appendChild(errItem);
+            });
+
+            errTr.appendChild(errTd);
+            tbody.appendChild(errTr);
+          }
+        });
+
+        table.appendChild(tbody);
+        main.appendChild(table);
+
+        applyFilter();
+      }
+
+      // ── Fetch and render ───────────────────────────────────────────────────
+
+      function updateStatusLine(msg) {
+        var line = document.getElementById('status-line');
+        while (line.firstChild) line.removeChild(line.firstChild);
+        line.appendChild(txt(msg));
+      }
+
+      function load() {
+        updateStatusLine('Fetching…');
+
+        fetch('/api/ticks?limit=100')
+          .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+          })
+          .then(function (data) {
+            allTicks = data.ticks || [];
+            lastFetchedAt = data.fetchedAt || new Date().toISOString();
+
+            renderFilterBar(allTicks);
+            renderTable(allTicks);
+
+            var timeStr = new Date(lastFetchedAt).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            });
+            updateStatusLine(allTicks.length + ' ticks · updated ' + timeStr);
+          })
+          .catch(function (err) {
+            updateStatusLine('Error: ' + err.message);
+
+            var main = document.getElementById('main-content');
+            // Prepend error state if not already there
+            var existing = main.querySelector('.error-state');
+            if (!existing) {
+              var errDiv = document.createElement('div');
+              errDiv.className = 'error-state';
+
+              var errTitle = document.createElement('div');
+              errTitle.className = 'error-state-title';
+              errTitle.appendChild(txt('Failed to fetch tick data'));
+              errDiv.appendChild(errTitle);
+
+              errDiv.appendChild(txt(err.message));
+              main.insertBefore(errDiv, main.firstChild);
+            }
+          });
+      }
+
+      // ── Auto-refresh ───────────────────────────────────────────────────────
+
+      function startTimer() {
+        if (refreshTimer) clearInterval(refreshTimer);
+        refreshTimer = setInterval(load, 60000);
+      }
+
+      // ── Init ───────────────────────────────────────────────────────────────
+
+      document.getElementById('refresh-btn').addEventListener('click', function () {
+        startTimer(); // reset interval
+        load();
+      });
+
+      // Remove loading placeholder and load real data
+      load();
+      startTimer();
+    })();
+  </script>
+</body>
+</html>
