@@ -34,6 +34,7 @@ export class ViewerRoutes extends BaseRouteHandler {
     app.get('/stream', this.handleSSEStream.bind(this));
     app.get('/api/ticks', this.handleGetTicks.bind(this));
     app.get('/ticks', this.handleTicksUI.bind(this));
+    app.get('/admin', this.handleAdminUI.bind(this));
   }
 
   /**
@@ -137,6 +138,24 @@ export class ViewerRoutes extends BaseRouteHandler {
       throw new Error('Ticks UI not found — run npm run build-and-sync');
     }
     const html = readFileSync(ticksPath, 'utf-8');
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  });
+
+  /**
+   * Serve admin UI
+   */
+  private handleAdminUI = this.wrapHandler((req: Request, res: Response): void => {
+    const packageRoot = getPackageRoot();
+    const candidates = [
+      path.join(packageRoot, 'ui', 'admin.html'),
+      path.join(packageRoot, 'plugin', 'ui', 'admin.html'),
+    ];
+    const adminPath = candidates.find(p => existsSync(p));
+    if (!adminPath) {
+      throw new Error('Admin UI not found — run npm run build-and-sync');
+    }
+    const html = readFileSync(adminPath, 'utf-8');
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   });
