@@ -259,7 +259,7 @@ Use the existing `authenticateRequest` from `api/auth.ts` — it handles bcrypt 
 // api/admin/overview.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { authenticateRequest } from '../auth';
-import { SupabaseManager } from '../lib/SupabaseManager';
+import { getSupabaseInstance } from '../lib/SupabaseManager';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).end();
@@ -267,7 +267,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const agent = await authenticateRequest(req);
   if (!agent) return res.status(401).json({ error: 'Invalid or missing token' });
 
-  const db = new SupabaseManager();
+  const db = getSupabaseInstance(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);
 
   const [agents, syncHealth, learningQuality] = await Promise.allSettled([
     db.getAgentActivity(),

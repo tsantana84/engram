@@ -375,7 +375,7 @@ this.lastExtractionStats = {
 
 Wrap in try/catch and set `failed: 1` if extraction throws (don't let stats tracking crash the worker).
 
-Add public getter:
+Add public getter (note: SyncWorker stores these as separate private fields — use `this.extractionEnabled` and `this.confidenceThreshold`, not `this.config.*`):
 ```typescript
 getExtractionStats(): {
   enabled: boolean;
@@ -383,10 +383,10 @@ getExtractionStats(): {
   lastRunAt: string | null;
   lastRunStats: typeof this.lastExtractionStats;
 } | null {
-  if (!this.config.enabled) return null;
+  if (!this.extractionEnabled) return null;
   return {
     enabled: true,
-    threshold: this.config.confidenceThreshold,
+    threshold: this.confidenceThreshold,
     lastRunAt: this.lastExtractionAt,
     lastRunStats: this.lastExtractionStats,
   };
