@@ -483,8 +483,6 @@
           var show = activeAgent === 'ALL' || agent === activeAgent;
           // Also show/hide paired error-detail rows
           row.classList.toggle('hidden', !show);
-          var detailId = row.getAttribute('data-detail-for');
-          // error detail rows are siblings; handled by class on the row itself
         });
         // Show/hide error detail rows that belong to hidden tick rows
         var detailRows = document.querySelectorAll('tbody tr.error-detail-row');
@@ -650,20 +648,19 @@
             updateStatusLine('Error: ' + err.message);
 
             var main = document.getElementById('main-content');
-            // Prepend error state if not already there
-            var existing = main.querySelector('.error-state');
-            if (!existing) {
-              var errDiv = document.createElement('div');
-              errDiv.className = 'error-state';
+            // Clear existing content before inserting error message
+            while (main.firstChild) main.removeChild(main.firstChild);
 
-              var errTitle = document.createElement('div');
-              errTitle.className = 'error-state-title';
-              errTitle.appendChild(txt('Failed to fetch tick data'));
-              errDiv.appendChild(errTitle);
+            var errDiv = document.createElement('div');
+            errDiv.className = 'error-state';
 
-              errDiv.appendChild(txt(err.message));
-              main.insertBefore(errDiv, main.firstChild);
-            }
+            var errTitle = document.createElement('div');
+            errTitle.className = 'error-state-title';
+            errTitle.appendChild(txt('Failed to fetch tick data'));
+            errDiv.appendChild(errTitle);
+
+            errDiv.appendChild(txt(err.message));
+            main.appendChild(errDiv);
           });
       }
 
