@@ -43,8 +43,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (const session of sessions) {
       try {
-        await db.insertSession({ ...session, agent_id: auth.agentId });
-        accepted++;
+        const result = await db.insertSession({ ...session, agent_id: auth.agentId });
+        if (result.inserted) accepted++;
+        else duplicates++;
       } catch (err: any) {
         errors.push(`session ${session.local_session_id}: ${err.message}`);
       }
@@ -52,13 +53,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     for (const summary of summaries) {
       try {
-        await db.insertSummary({ ...summary, agent_id: auth.agentId });
-        accepted++;
+        const result = await db.insertSummary({ ...summary, agent_id: auth.agentId });
+        if (result.inserted) accepted++;
+        else duplicates++;
       } catch (err: any) {
         errors.push(`summary ${summary.local_summary_id}: ${err.message}`);
       }
     }
 
+    await db.touchAgentSync(auth.agentId).catch(() => {});
     res.status(200).json({ accepted, duplicates, errors });
   } catch (err: any) {
     res.status(500).json({ error: 'Sync failed', detail: err?.message });

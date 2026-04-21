@@ -65,7 +65,6 @@ export interface SearchOptions {
   offset?: number;
   project?: string;
   type?: string;
-  agent?: string;
 }
 
 export interface ObservationSearchResult {
@@ -261,7 +260,10 @@ export class SupabaseManager {
 
     if (options.project) q = q.eq('project', options.project);
     if (options.type) q = q.eq('type', options.type);
-    if (query) q = q.or(`title.ilike.%${query}%,narrative.ilike.%${query}%`);
+    if (query) {
+      const safeQuery = query.replace(/[,()]/g, '');
+      if (safeQuery) q = q.or(`title.ilike.%${safeQuery}%,narrative.ilike.%${safeQuery}%`);
+    }
     q = q.is('invalidated_at', null);
 
     const { data, error } = await q;
@@ -300,6 +302,7 @@ export class SupabaseManager {
       .range(offset, offset + limit - 1);
 
     if (options.project) q = q.eq('project', options.project);
+    q = q.is('invalidated_at', null);
 
     const { data, error } = await q;
     if (error) throw error;
@@ -327,7 +330,7 @@ export class SupabaseManager {
     observation_count: number;
     session_count: number;
   }> {
-    const [{ count: obsCount }, { count: sessCount }] = await Promise.all([
+    const [obsResult, sessResult] = await Promise.all([
       this.supabase.from('observations').select('id', { count: 'exact', head: true }).eq('agent_id', agentId),
       this.supabase.from('sessions').select('id', { count: 'exact', head: true }).eq('agent_id', agentId),
     ]);
@@ -341,8 +344,8 @@ export class SupabaseManager {
 
     return {
       last_sync_at: lastSyncData?.[0]?.synced_at || null,
-      observation_count: obsCount || 0,
-      session_count: sessCount || 0,
+      observation_count: obsResult.count || 0,
+      session_count: sessResult.count || 0,
     };
   }
 
@@ -351,7 +354,7 @@ export class SupabaseManager {
     const { error } = await this.supabase
       .from('observations')
       .update({
-        invalidated_at: Date.now(),
+        invalidated_at: new Date().toISOString(),
         validation_status: 'invalidated',
       })
       .in('local_id', localIds)
@@ -476,29 +479,19 @@ export class SupabaseManager {
     if (error) throw error;
 
     return Promise.all((agents ?? []).map(async (agent: { id: string; name: string }) => {
-      const [obsResult, learningsResult] = await Promise.all([
-        this.supabase
-          .from('observations')
-          .select('created_at, session_id')
-          .eq('agent_id', agent.id),
-        this.supabase
-          .from('learnings')
-          .select('id', { count: 'exact', head: true })
-          .eq('source_agent_id', agent.id),
+      const [obsCountResult, lastSeenResult, sessionCountResult, learningsResult] = await Promise.all([
+        this.supabase.from('observations').select('id', { count: 'exact', head: true }).eq('agent_id', agent.id),
+        this.supabase.from('observations').select('created_at').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(1),
+        this.supabase.from('sessions').select('id', { count: 'exact', head: true }).eq('agent_id', agent.id),
+        this.supabase.from('learnings').select('id', { count: 'exact', head: true }).eq('source_agent_id', agent.id),
       ]);
-
-      const observations = obsResult.data ?? [];
-      const lastSeenAt = observations.length > 0
-        ? observations.reduce((max: string, o: { created_at: string }) => o.created_at > max ? o.created_at : max, observations[0].created_at)
-        : null;
-      const sessionCount = new Set(observations.map((o: { session_id: string }) => o.session_id)).size;
 
       return {
         id: agent.id,
         name: agent.name,
-        lastSeenAt,
-        observationCount: observations.length,
-        sessionCount,
+        lastSeenAt: lastSeenResult.data?.[0]?.created_at ?? null,
+        observationCount: obsCountResult.count ?? 0,
+        sessionCount: sessionCountResult.count ?? 0,
         learningCount: learningsResult.count ?? 0,
       };
     }));
@@ -533,22 +526,24 @@ export class SupabaseManager {
     return data as LearningRecord;
   }
 
+  async touchAgentSync(agentId: string): Promise<void> {
+    await this.supabase
+      .from('agents')
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq('id', agentId);
+  }
+
   async getSyncHealth(): Promise<Array<{ agentId: string; lastSyncAt: string | null }>> {
     const { data, error } = await this.supabase
-      .from('observations')
-      .select('agent_id, synced_at')
-      .not('synced_at', 'is', null);
+      .from('agents')
+      .select('id, last_synced_at')
+      .eq('status', 'active');
     if (error) throw error;
 
-    const byAgent = new Map<string, string>();
-    for (const row of data ?? []) {
-      const current = byAgent.get(row.agent_id);
-      if (!current || row.synced_at > current) {
-        byAgent.set(row.agent_id, row.synced_at);
-      }
-    }
-
-    return Array.from(byAgent.entries()).map(([agentId, lastSyncAt]) => ({ agentId, lastSyncAt }));
+    return (data ?? []).map((row: { id: string; last_synced_at: string | null }) => ({
+      agentId: row.id,
+      lastSyncAt: row.last_synced_at,
+    }));
   }
 
   async getLearningQuality(): Promise<{
