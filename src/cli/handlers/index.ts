@@ -15,6 +15,7 @@ import { userMessageHandler } from './user-message.js';
 import { fileEditHandler } from './file-edit.js';
 import { fileContextHandler } from './file-context.js';
 import { sessionCompleteHandler } from './session-complete.js';
+import { preCompactHandler } from './pre-compact.js';
 
 export type EventType =
   | 'context'           // SessionStart - inject context
@@ -24,7 +25,8 @@ export type EventType =
   | 'session-complete'  // Stop - complete session (phase 2) - fixes #842
   | 'user-message'      // SessionStart (parallel) - display to user
   | 'file-edit'         // Cursor afterFileEdit
-  | 'file-context';     // PreToolUse - inject file observation history
+  | 'file-context'      // PreToolUse - inject file observation history
+  | 'pre-compact';      // PreCompact - amnesia recovery briefing
 
 const handlers: Record<EventType, EventHandler> = {
   'context': contextHandler,
@@ -34,7 +36,8 @@ const handlers: Record<EventType, EventHandler> = {
   'session-complete': sessionCompleteHandler,
   'user-message': userMessageHandler,
   'file-edit': fileEditHandler,
-  'file-context': fileContextHandler
+  'file-context': fileContextHandler,
+  'pre-compact': preCompactHandler,
 };
 
 /**
@@ -69,3 +72,4 @@ export { userMessageHandler } from './user-message.js';
 export { fileEditHandler } from './file-edit.js';
 export { fileContextHandler } from './file-context.js';
 export { sessionCompleteHandler } from './session-complete.js';
+export { preCompactHandler } from './pre-compact.js';
