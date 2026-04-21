@@ -156,5 +156,36 @@ describe('SyncWorker', () => {
       expect(stats!.lastRunAt).toBeNull();
       expect(stats!.lastRunStats).toBeNull();
     });
+
+    it('returns populated stats after extraction run', () => {
+      const worker = new SyncWorker({
+        enabled: true,
+        queue,
+        sessionStore: {},
+        serverUrl: 'http://localhost:9999',
+        apiKey: 'cmem_ak_test',
+        agentName: 'Test',
+        intervalMs: 1000,
+        timeoutMs: 3000,
+        maxRetries: 5,
+        batchSize: 100,
+        extractionEnabled: true,
+        confidenceThreshold: 0.8,
+      });
+
+      const runStats = {
+        observationsProcessed: 10,
+        extracted: 3,
+        skipped: 7,
+        failed: 0,
+      };
+      (worker as any).lastExtractionAt = '2026-04-20T20:00:00Z';
+      (worker as any).lastExtractionStats = runStats;
+
+      const result = worker.getExtractionStats();
+      expect(result).not.toBeNull();
+      expect(result!.lastRunAt).toBe('2026-04-20T20:00:00Z');
+      expect(result!.lastRunStats).toEqual(runStats);
+    });
   });
 });

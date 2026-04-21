@@ -200,15 +200,11 @@ export class SyncWorker {
     const session = this.sessionStore.getSessionById(sessionDbId);
     if (!session) return;
     this.sessionStore.markExtractionInProgress(sessionDbId);
+    const sessionInput = this.buildSessionInput(session);
+    const observationsCount = sessionInput.observations.length;
     try {
-      const input = this.buildSessionInput(session);
-      const { appendFileSync } = await import('fs');
-      const { homedir } = await import('os');
-      const { join } = await import('path');
-      const dbg = join(homedir(), '.engram', 'extraction-debug.log');
-      appendFileSync(dbg, `[${new Date().toISOString()}] session=${sessionDbId} obs=${input.observations.length} hasSummary=${!!input.summary}\n`);
+      const input = sessionInput;
       const learnings = await this.extractor.extract(input);
-      appendFileSync(dbg, `[${new Date().toISOString()}] session=${sessionDbId} learnings=${learnings.length}\n`);
       const threshold = this.confidenceThreshold;
       let extracted = 0;
       let skipped = 0;
@@ -230,7 +226,7 @@ export class SyncWorker {
       }
       this.lastExtractionAt = new Date().toISOString();
       this.lastExtractionStats = {
-        observationsProcessed: input.observations.length,
+        observationsProcessed: observationsCount,
         extracted,
         skipped,
         failed: 0,
@@ -239,7 +235,7 @@ export class SyncWorker {
     } catch (err) {
       this.lastExtractionAt = new Date().toISOString();
       this.lastExtractionStats = {
-        observationsProcessed: 0,
+        observationsProcessed: observationsCount,
         extracted: 0,
         skipped: 0,
         failed: 1,
