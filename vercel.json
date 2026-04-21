@@ -3,5 +3,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".",
   "installCommand": "npm install",
-  "framework": null
+  "framework": null,
+  "rewrites": [
+    { "source": "/dashboard/:path*", "destination": "/public/dashboard/:path*" }
+  ]
 }
