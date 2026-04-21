@@ -110,9 +110,15 @@ export class ViewerRoutes extends BaseRouteHandler {
    * Get tick log endpoint
    */
   private handleGetTicks = this.wrapHandler((req: Request, res: Response): void => {
+    let store;
+    try {
+      store = this.dbManager.getSessionStore();
+    } catch {
+      res.status(503).json({ error: 'Service initializing' });
+      return;
+    }
     const limitParam = parseInt(String(req.query.limit ?? '100'), 10);
-    const limit = Number.isFinite(limitParam) ? Math.min(limitParam, 500) : 100;
-    const store = this.dbManager.getSessionStore();
+    const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 500) : 100;
     const ticks = store.getTickLog(limit);
     res.json({ ticks, fetchedAt: new Date().toISOString() });
   });
