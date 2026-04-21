@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Engram Admin</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Engram Admin</h1>
+      <nav>
+        <a href="/dashboard/" id="reviewLink">← Review</a>
+        <button id="refreshBtn">Refresh</button>
+      </nav>
+    </header>
+
+    <div id="tokenForm" style="display:none">
+      <form id="tokenFormEl">
+        <label for="tokenInput">API Key</label>
+        <input type="password" id="tokenInput" placeholder="Enter agent API key" />
+        <button type="submit">Connect</button>
+      </form>
+    </div>
+
+    <div id="content" style="display:none">
+      <p id="fetchedAt" class="fetched-at"></p>
+      <section id="learningQualitySection"><h2>Learning Quality</h2><div id="qualityContent"></div></section>
+      <section id="agentsSection"><h2>Agents</h2><div id="agentsContent"></div></section>
+      <section id="syncSection"><h2>Sync Health</h2><div id="syncContent"></div></section>
+    </div>
+
+    <p id="globalError" class="error" style="display:none"></p>
+  </div>
+  <script src="admin.js"></script>
+</body>
+</html>

@@ -462,6 +462,48 @@ export class SupabaseManager {
     return (data as LearningRecord) ?? null;
   }
 
+  async getAgentActivity(): Promise<Array<{
+    id: string;
+    name: string;
+    lastSeenAt: string | null;
+    observationCount: number;
+    sessionCount: number;
+    learningCount: number;
+  }>> {
+    const { data: agents, error } = await this.supabase
+      .from('agents')
+      .select('id, name');
+    if (error) throw error;
+
+    return Promise.all((agents ?? []).map(async (agent: { id: string; name: string }) => {
+      const [obsResult, learningsResult] = await Promise.all([
+        this.supabase
+          .from('observations')
+          .select('created_at, session_id')
+          .eq('agent_id', agent.id),
+        this.supabase
+          .from('learnings')
+          .select('id', { count: 'exact', head: true })
+          .eq('source_agent_id', agent.id),
+      ]);
+
+      const observations = obsResult.data ?? [];
+      const lastSeenAt = observations.length > 0
+        ? observations.reduce((max: string, o: { created_at: string }) => o.created_at > max ? o.created_at : max, observations[0].created_at)
+        : null;
+      const sessionCount = new Set(observations.map((o: { session_id: string }) => o.session_id)).size;
+
+      return {
+        id: agent.id,
+        name: agent.name,
+        lastSeenAt,
+        observationCount: observations.length,
+        sessionCount,
+        learningCount: learningsResult.count ?? 0,
+      };
+    }));
+  }
+
   async reviewLearning(
     id: number,
     patch: {
@@ -491,109 +533,55 @@ export class SupabaseManager {
     return data as LearningRecord;
   }
 
-  async getAgentActivity(): Promise<Array<{
-    agentId: string;
-    agentName: string;
-    observationCount: number;
-    sessionCount: number;
-    lastActivityAt: string | null;
-  }>> {
+  async getSyncHealth(): Promise<Array<{ agentId: string; lastSyncAt: string | null }>> {
     const { data, error } = await this.supabase
-      .from('agents')
-      .select(`
-        id, name,
-        observations(count),
-        sessions(count)
-      `)
-      .eq('status', 'active');
-
+      .from('observations')
+      .select('agent_id, synced_at')
+      .not('synced_at', 'is', null);
     if (error) throw error;
 
-    const agents = await Promise.all(
-      (data || []).map(async (agent: any) => {
-        const { data: lastObs } = await this.supabase
-          .from('observations')
-          .select('created_at')
-          .eq('agent_id', agent.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+    const byAgent = new Map<string, string>();
+    for (const row of data ?? []) {
+      const current = byAgent.get(row.agent_id);
+      if (!current || row.synced_at > current) {
+        byAgent.set(row.agent_id, row.synced_at);
+      }
+    }
 
-        return {
-          agentId: agent.id,
-          agentName: agent.name,
-          observationCount: agent.observations?.[0]?.count || 0,
-          sessionCount: agent.sessions?.[0]?.count || 0,
-          lastActivityAt: lastObs?.created_at || null,
-        };
-      })
-    );
-
-    return agents;
-  }
-
-  async getSyncHealth(): Promise<{
-    totalAgents: number;
-    activeAgents: number;
-    totalObservations: number;
-    totalSessions: number;
-    lastSyncTime: string | null;
-  }> {
-    const [
-      { count: totalAgents },
-      { count: activeAgentsCount },
-      { count: obsCount },
-      { count: sessCount },
-    ] = await Promise.all([
-      this.supabase.from('agents').select('*', { count: 'exact', head: true }),
-      this.supabase.from('agents').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-      this.supabase.from('observations').select('*', { count: 'exact', head: true }),
-      this.supabase.from('sessions').select('*', { count: 'exact', head: true }),
-    ]);
-
-    const { data: lastSync } = await this.supabase
-      .from('observations')
-      .select('synced_at')
-      .order('synced_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    return {
-      totalAgents: totalAgents || 0,
-      activeAgents: activeAgentsCount || 0,
-      totalObservations: obsCount || 0,
-      totalSessions: sessCount || 0,
-      lastSyncTime: lastSync?.synced_at || null,
-    };
+    return Array.from(byAgent.entries()).map(([agentId, lastSyncAt]) => ({ agentId, lastSyncAt }));
   }
 
   async getLearningQuality(): Promise<{
-    totalLearnings: number;
-    approvedLearnings: number;
-    pendingLearnings: number;
-    rejectedLearnings: number;
-    avgConfidence: number;
+    total: number;
+    pending: number;
+    approved: number;
+    rejected: number;
+    approvalRate: number | null;
+    confidenceDistribution: { high: number; medium: number; low: number };
   }> {
-    const counts = await this.countLearnings();
-
-    const { data: learnings, error } = await this.supabase
+    const { data, error } = await this.supabase
       .from('learnings')
-      .select('confidence')
-      .eq('status', 'approved')
-      .eq('invalidated', false);
-
+      .select('status, confidence');
     if (error) throw error;
 
-    const avgConfidence = (learnings?.length ?? 0) > 0
-      ? learnings!.reduce((sum: number, l: any) => sum + (l.confidence || 0), 0) / learnings!.length
-      : 0;
+    const rows = data ?? [];
+    const counts = { pending: 0, approved: 0, rejected: 0 };
+    const dist = { high: 0, medium: 0, low: 0 };
 
+    for (const row of rows) {
+      counts[row.status as keyof typeof counts]++;
+      const c = row.confidence ?? 0;
+      if (c >= 0.9) dist.high++;
+      else if (c >= 0.7) dist.medium++;
+      else dist.low++;
+    }
+
+    const reviewed = counts.approved + counts.rejected;
     return {
-      totalLearnings: counts.pending + counts.approved + counts.rejected,
-      approvedLearnings: counts.approved,
-      pendingLearnings: counts.pending,
-      rejectedLearnings: counts.rejected,
-      avgConfidence: Math.round(avgConfidence * 100) / 100,
+      total: rows.length,
+      ...counts,
+      approvalRate: reviewed > 0 ? counts.approved / reviewed : null,
+      confidenceDistribution: dist,
     };
   }
 }
