@@ -41,6 +41,7 @@ export class MigrationRunner {
     this.addProvenanceColumns();
     this.addExtractionStatusColumns();
     this.widenSyncQueueForLearnings();
+    this.addLastErrorColumn();
   }
 
   /**
@@ -1125,5 +1126,30 @@ export class MigrationRunner {
       this.db.run('ROLLBACK');
       throw err;
     }
+  }
+
+  /**
+   * Add last_error column to sync_queue (migration 31)
+   *
+   * Stores the error message from the most recent failed sync attempt.
+   * The admin endpoint calls SyncQueue.getFailedItems() to surface this in the UI.
+   */
+  private addLastErrorColumn(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(31) as SchemaVersion | undefined;
+    if (applied) return;
+
+    const cols = this.db
+      .prepare('PRAGMA table_info(sync_queue)')
+      .all() as Array<{ name: string }>;
+    if (!cols.some((c) => c.name === 'last_error')) {
+      this.db.run('ALTER TABLE sync_queue ADD COLUMN last_error TEXT');
+    }
+
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(31, new Date().toISOString());
+    logger.debug('DB', 'Migration 31 applied: last_error column on sync_queue');
   }
 }
