@@ -107,6 +107,10 @@ import { CorpusStore } from './worker/knowledge/CorpusStore.js';
 import { CorpusBuilder } from './worker/knowledge/CorpusBuilder.js';
 import { KnowledgeAgent } from './worker/knowledge/KnowledgeAgent.js';
 
+// Amnesia Recovery Protocol
+import { BriefingStore } from './sqlite/Briefings.js';
+import { BriefingGenerator } from './sync/BriefingGenerator.js';
+
 // Process management for zombie cleanup (Issue #737)
 import { startOrphanReaper, reapOrphanedProcesses, getProcessBySession, ensureProcessExit } from './worker/ProcessRegistry.js';
 
@@ -218,6 +222,10 @@ export class WorkerService {
 
   // Multi-agent sync worker
   private syncWorker: import('./sync/SyncWorker.js').SyncWorker | null = null;
+
+  // Amnesia Recovery Protocol
+  private briefingStore: BriefingStore | null = null;
+  private briefingGenerator: BriefingGenerator | null = null;
 
   // Stale session reaper interval (Issue #1168)
   private staleSessionReaperInterval: ReturnType<typeof setInterval> | null = null;
@@ -359,6 +367,60 @@ export class WorkerService {
     this.server.registerRoutes(new SettingsRoutes(this.settingsManager));
     this.server.registerRoutes(new LogsRoutes());
     this.server.registerRoutes(new MemoryRoutes(this.dbManager, 'claude-mem'));
+
+    // Amnesia Recovery Protocol routes
+    this.server.app.post('/api/briefings/generate', async (req, res) => {
+      if (!this.briefingStore || !this.briefingGenerator) {
+        res.status(503).json({ error: 'amnesia recovery disabled' });
+        return;
+      }
+      try {
+        const body = req.body as {
+          memorySessionId: string;
+          project: string;
+          transcriptTail: string;
+          recentFiles?: string[];
+          openTodos?: string[];
+          recentDecisions?: string[];
+          recentErrors?: string[];
+        };
+        const start = Date.now();
+        const result = await this.briefingGenerator.generate({
+          memorySessionId: body.memorySessionId,
+          project: body.project,
+          transcriptTail: body.transcriptTail,
+          recentFiles: body.recentFiles ?? [],
+          openTodos: body.openTodos ?? [],
+          recentDecisions: body.recentDecisions ?? [],
+          recentErrors: body.recentErrors ?? [],
+        });
+        const id = this.briefingStore.store({
+          memorySessionId: body.memorySessionId,
+          project: body.project,
+          briefingText: result.text,
+        });
+        const latencyMs = Date.now() - start;
+        logger.debug('WORKER', 'briefings.generated', { id, latencyMs });
+        if (!result.usedLlm) logger.debug('WORKER', 'briefings.llm_fallback', { id });
+        res.status(201).json({ id, latencyMs });
+      } catch (err) {
+        logger.error('WORKER', 'briefings.generate failed', {}, err as Error);
+        res.status(500).json({ error: 'generation failed' });
+      }
+    });
+
+    this.server.app.get('/api/briefings/pending', (req, res) => {
+      if (!this.briefingStore) {
+        res.status(200).json({ briefing: null });
+        return;
+      }
+      const project = (req.query.project as string) ?? '';
+      const row = this.briefingStore.getPendingAndConsume(project);
+      if (row) {
+        logger.debug('WORKER', 'briefings.consumed', { id: row.id, project });
+      }
+      res.status(200).json({ briefing: row?.briefingText ?? null });
+    });
   }
 
   /**
@@ -539,6 +601,19 @@ export class WorkerService {
         logger.info('SYNC', 'Multi-agent sync disabled or not configured');
       }
 
+      // Initialize Amnesia Recovery Protocol (briefing generation)
+      if (settings.CLAUDE_MEM_AMNESIA_RECOVERY_ENABLED === 'true') {
+        const sessionStore = this.dbManager.getSessionStore();
+        this.briefingStore = new BriefingStore(sessionStore.db);
+        const llmClosure = buildLearningLlmClosure(
+          settings.CLAUDE_MEM_MODEL ?? 'claude-haiku-4-5-20251001',
+          settings.CLAUDE_MEM_PROVIDER ?? 'anthropic',
+          settings.CLAUDE_MEM_API_KEY
+        );
+        this.briefingGenerator = new BriefingGenerator({ llm: llmClosure });
+        logger.info('WORKER', 'Amnesia Recovery Protocol initialized');
+      }
+
       // Register corpus routes (knowledge agents) — needs SearchOrchestrator from search module
       const { SearchOrchestrator } = await import('./worker/search/SearchOrchestrator.js');
       const corpusSearchOrchestrator = new SearchOrchestrator(
@@ -661,6 +736,10 @@ export class WorkerService {
           }
         } catch (e) {
           logger.error('SYSTEM', 'Stale session reaper error', { error: e instanceof Error ? e.message : String(e) });
+        }
+        if (this.briefingStore) {
+          const deleted = this.briefingStore.cleanup();
+          if (deleted > 0) logger.debug('WORKER', 'briefings.cleanup', { deleted });
         }
       }, 2 * 60 * 1000);
 
