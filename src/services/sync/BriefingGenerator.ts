@@ -1,3 +1,5 @@
+import { logger } from '../../utils/logger.js';
+
 export interface BriefingInput {
   memorySessionId: string;
   project: string;

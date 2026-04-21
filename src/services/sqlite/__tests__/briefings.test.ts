@@ -1,4 +1,5 @@
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
+import { logger } from '../../../utils/logger.js';
 import { Database } from 'bun:sqlite';
 import { MigrationRunner } from '../migrations/runner.js';
 import { BriefingStore } from '../Briefings.js';

@@ -1,4 +1,5 @@
 import type { Database } from 'bun:sqlite';
+import { logger } from '../../utils/logger.js';
 
 export interface StoreBriefingInput {
   memorySessionId: string;
