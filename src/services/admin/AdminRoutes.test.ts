@@ -71,7 +71,7 @@ describe('GET /api/admin', () => {
 
   it('returns null health when healthChecker throws', async () => {
     const mockQueue = {
-      getStatus: mock(async () => ({ pending: 0, failed: 0 })),
+      getStatus: mock(async () => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
       getFailedItems: mock(async () => []),
     };
     const mockHealth = {
@@ -97,7 +97,7 @@ describe('GET /api/admin', () => {
 
   it('includes errors from ErrorStore', async () => {
     const mockQueue = {
-      getStatus: mock(async () => ({ pending: 0, failed: 0 })),
+      getStatus: mock(async () => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
       getFailedItems: mock(async () => []),
     };
     const mockHealth = {
@@ -123,10 +123,28 @@ describe('GET /api/admin', () => {
     expect(result.errors[0].message).toBe('something broke');
   });
 
+  it('returns null extraction when worker has extraction disabled', async () => {
+    const mockQueue = {
+      getStatus: mock(async () => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
+      getFailedItems: mock(async () => []),
+    };
+    const mockWorker = { getExtractionStats: mock(() => null) }; // non-null worker, but returns null
+    const mockHealth = {
+      check: mock(async () => ({ uptimeSeconds: 0, chroma: 'unavailable', syncServer: 'unavailable', workerVersion: '1.0.0' })),
+    };
+    const errorStore = new ErrorStore(5);
+    const routes = new AdminRoutes({ queue: mockQueue, syncWorker: mockWorker, healthChecker: mockHealth as any, errorStore });
+
+    const mockRes = { json: mock((data: any) => data) };
+    await (routes as any).handle({}, mockRes);
+    const result = mockRes.json.mock.calls[0][0];
+    expect(result.extraction).toBeNull();
+  });
+
   it('registers GET /api/admin on the router', () => {
     const errorStore = new ErrorStore(5);
     const mockQueue = {
-      getStatus: mock(async () => ({ pending: 0, failed: 0 })),
+      getStatus: mock(async () => ({ pending: 0, failed: 0, synced: 0, permanently_failed: 0 })),
       getFailedItems: mock(async () => []),
     };
     const mockHealth = { check: mock(async () => ({ uptimeSeconds: 0, chroma: 'ok', syncServer: 'ok', workerVersion: '1.0.0' })) };

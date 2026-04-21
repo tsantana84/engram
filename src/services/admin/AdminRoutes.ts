@@ -1,10 +1,11 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import type { ErrorStore } from './ErrorStore';
 import type { HealthChecker } from './HealthChecker';
 
 interface AdminDeps {
   queue: {
-    getStatus(): Promise<{ pending: number; failed: number }>;
+    getStatus(): Promise<{ pending: number; synced: number; failed: number; permanently_failed: number }>;
     getFailedItems(limit: number): Promise<Array<{ id: number; type: string; retries: number; lastError: string | null }>>;
   };
   syncWorker: { getExtractionStats(): unknown } | null;
@@ -19,7 +20,7 @@ export class AdminRoutes {
     this.router.get('/api/admin', this.handle.bind(this));
   }
 
-  private async handle(req: any, res: any): Promise<void> {
+  private async handle(_req: Request, res: Response): Promise<void> {
     const [syncQueue, health, errors] = await Promise.all([
       this.getSyncQueue(),
       this.deps.healthChecker.check().catch(() => null),
