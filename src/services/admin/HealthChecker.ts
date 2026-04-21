@@ -1,12 +1,11 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { fetchWithTimeout } from '../../shared/worker-utils.js';
+import { MARKETPLACE_ROOT } from '../../shared/paths.js';
 
 function readVersion(): string {
   try {
-    const dir = import.meta.dirname;
-    if (!dir) return 'unknown';
-    return JSON.parse(readFileSync(join(dir, '../../../package.json'), 'utf8')).version;
+    return JSON.parse(readFileSync(join(MARKETPLACE_ROOT, 'package.json'), 'utf8')).version;
   } catch {
     return 'unknown';
   }
