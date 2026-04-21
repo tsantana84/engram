@@ -28,7 +28,7 @@ The existing Vercel dashboard (`/dashboard/`) is learning review only. There is 
 | `public/dashboard/admin/index.html` | Static page at `/dashboard/admin/` — directory pattern gives clean URL without vercel.json rewrites |
 | `public/dashboard/admin/admin.js` | Fetch + render; reuses `tryConnect()` / `showError()` pattern from `app.js` |
 | `api/admin/overview.ts` | Single Vercel function; aggregates all 3 data groups; partial failure returns null sections |
-| `SupabaseManager.getAgentActivity()` | Queries `agents` + `observations` + `sessions` + `learnings` |
+| `SupabaseManager.getAgentActivity()` | Queries `agents` + `observations` + `learnings`. `sessionCount` = `COUNT(DISTINCT session_id)` from `observations` — no server-side `sessions` table exists |
 | `SupabaseManager.getSyncHealth()` | Derives last sync per agent from `observations.synced_at` MAX — no server-side queue table exists. Pending/failed counts are local-only (visible in local admin tab) |
 | `SupabaseManager.getLearningQuality()` | Queries `learnings` grouped by status + confidence buckets |
 
