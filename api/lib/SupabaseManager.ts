@@ -462,6 +462,48 @@ export class SupabaseManager {
     return (data as LearningRecord) ?? null;
   }
 
+  async getAgentActivity(): Promise<Array<{
+    id: string;
+    name: string;
+    lastSeenAt: string | null;
+    observationCount: number;
+    sessionCount: number;
+    learningCount: number;
+  }>> {
+    const { data: agents, error } = await this.supabase
+      .from('agents')
+      .select('id, name');
+    if (error) throw error;
+
+    return Promise.all((agents ?? []).map(async (agent: { id: string; name: string }) => {
+      const [obsResult, learningsResult] = await Promise.all([
+        this.supabase
+          .from('observations')
+          .select('created_at, session_id')
+          .eq('agent_id', agent.id),
+        this.supabase
+          .from('learnings')
+          .select('id', { count: 'exact', head: true })
+          .eq('source_agent_id', agent.id),
+      ]);
+
+      const observations = obsResult.data ?? [];
+      const lastSeenAt = observations.length > 0
+        ? observations.reduce((max: string, o: { created_at: string }) => o.created_at > max ? o.created_at : max, observations[0].created_at)
+        : null;
+      const sessionCount = new Set(observations.map((o: { session_id: string }) => o.session_id)).size;
+
+      return {
+        id: agent.id,
+        name: agent.name,
+        lastSeenAt,
+        observationCount: observations.length,
+        sessionCount,
+        learningCount: learningsResult.count ?? 0,
+      };
+    }));
+  }
+
   async reviewLearning(
     id: number,
     patch: {
