@@ -32,6 +32,8 @@ export class ViewerRoutes extends BaseRouteHandler {
     app.get('/health', this.handleHealth.bind(this));
     app.get('/', this.handleViewerUI.bind(this));
     app.get('/stream', this.handleSSEStream.bind(this));
+    app.get('/api/ticks', this.handleGetTicks.bind(this));
+    app.get('/ticks', this.handleTicksUI.bind(this));
   }
 
   /**
@@ -102,5 +104,34 @@ export class ViewerRoutes extends BaseRouteHandler {
       isProcessing,
       queueDepth
     });
+  });
+
+  /**
+   * Get tick log endpoint
+   */
+  private handleGetTicks = this.wrapHandler((req: Request, res: Response): void => {
+    const limitParam = parseInt(String(req.query.limit ?? '100'), 10);
+    const limit = Number.isFinite(limitParam) ? Math.min(limitParam, 500) : 100;
+    const store = this.dbManager.getSessionStore();
+    const ticks = store.getTickLog(limit);
+    res.json({ ticks, fetchedAt: new Date().toISOString() });
+  });
+
+  /**
+   * Serve ticks UI
+   */
+  private handleTicksUI = this.wrapHandler((req: Request, res: Response): void => {
+    const packageRoot = getPackageRoot();
+    const candidates = [
+      path.join(packageRoot, 'ui', 'ticks.html'),
+      path.join(packageRoot, 'plugin', 'ui', 'ticks.html'),
+    ];
+    const ticksPath = candidates.find(p => existsSync(p));
+    if (!ticksPath) {
+      throw new Error('Ticks UI not found — run npm run build-and-sync');
+    }
+    const html = readFileSync(ticksPath, 'utf-8');
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
   });
 }
