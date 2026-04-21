@@ -2988,6 +2988,36 @@
         transform: translateX(16px);
       }
     }
+
+    /* Admin tab */
+    .tab-bar { display: flex; gap: 0; border-bottom: 1px solid #2a2a2a; margin-bottom: 1rem; }
+    .tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 0.5rem 1rem; cursor: pointer; color: #888; font-size: 0.875rem; }
+    .tab.active { color: #e0e0e0; border-bottom-color: #4ade80; }
+    .tab:hover { color: #e0e0e0; }
+    .admin-tab { padding: 0.5rem 0; }
+    .admin-header { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+    .admin-fetched { font-size: 0.75rem; color: #555; }
+    .admin-section { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 6px; padding: 0.75rem; margin-bottom: 0.75rem; }
+    .admin-section h3 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: #666; margin-bottom: 0.5rem; }
+    .admin-health { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; font-size: 0.875rem; }
+    .admin-badge { font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 3px; }
+    .admin-badge--green { background: #14532d; color: #4ade80; }
+    .admin-badge--red { background: #450a0a; color: #f87171; }
+    .admin-badge--gray { background: #1f2937; color: #9ca3af; }
+    .admin-unavailable, .admin-muted { color: #555; font-size: 0.875rem; }
+    .admin-failed-items { margin-top: 0.5rem; padding-left: 1rem; font-size: 0.8rem; color: #f87171; }
+    .admin-extraction-stats { font-size: 0.875rem; color: #9ca3af; margin-top: 0.25rem; }
+    .admin-status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.25rem; }
+    .admin-status-dot--green { background: #4ade80; }
+    .admin-status-dot--red { background: #f87171; }
+    .admin-errors { list-style: none; padding: 0; font-size: 0.8rem; font-family: monospace; }
+    .admin-error-entry { display: flex; gap: 0.5rem; padding: 0.2rem 0; border-bottom: 1px solid #1a1a1a; }
+    .admin-error-time { color: #555; min-width: 50px; }
+    .admin-error-level--error { color: #f87171; }
+    .admin-error-level--warn { color: #facc15; }
+    .admin-error-ctx { color: #9ca3af; min-width: 80px; }
+    .admin-error-msg { color: #e0e0e0; }
+    .admin-status { padding: 2rem; text-align: center; color: #888; font-size: 0.875rem; }
   </style>
 </head>
 

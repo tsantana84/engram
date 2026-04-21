@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
-import { Feed } from './components/Feed';
+import { SessionsTab } from './components/SessionsTab';
+import { AdminTab } from './components/AdminTab';
 import { ContextSettingsModal } from './components/ContextSettingsModal';
 import { LogsDrawer } from './components/LogsModal';
 import { useSSE } from './hooks/useSSE';
@@ -12,6 +13,7 @@ import { Observation, Summary, UserPrompt } from './types';
 import { mergeAndDeduplicateByProject } from './utils/data';
 
 export function App() {
+  const [activeTab, setActiveTab] = useState<'sessions' | 'admin'>('sessions');
   const [currentFilter, setCurrentFilter] = useState('');
   const [currentSource, setCurrentSource] = useState('all');
   const [contextPreviewOpen, setContextPreviewOpen] = useState(false);
@@ -124,14 +126,28 @@ export function App() {
         onContextPreviewToggle={toggleContextPreview}
       />
 
-      <Feed
-        observations={allObservations}
-        summaries={allSummaries}
-        prompts={allPrompts}
-        onLoadMore={handleLoadMore}
-        isLoading={pagination.observations.isLoading || pagination.summaries.isLoading || pagination.prompts.isLoading}
-        hasMore={pagination.observations.hasMore || pagination.summaries.hasMore || pagination.prompts.hasMore}
-      />
+      <div className="tab-bar">
+        <button
+          className={activeTab === 'sessions' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('sessions')}
+        >Sessions</button>
+        <button
+          className={activeTab === 'admin' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('admin')}
+        >Admin</button>
+      </div>
+      {activeTab === 'sessions' ? (
+        <SessionsTab
+          observations={allObservations}
+          summaries={allSummaries}
+          prompts={allPrompts}
+          onLoadMore={handleLoadMore}
+          isLoading={pagination.observations.isLoading || pagination.summaries.isLoading || pagination.prompts.isLoading}
+          hasMore={pagination.observations.hasMore || pagination.summaries.hasMore || pagination.prompts.hasMore}
+        />
+      ) : (
+        <AdminTab />
+      )}
 
       <ContextSettingsModal
         isOpen={contextPreviewOpen}
