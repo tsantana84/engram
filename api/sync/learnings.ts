@@ -31,8 +31,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(500).json({ error: 'SUPABASE_URL or SUPABASE_ANON_KEY not configured' });
     return;
   }
-  if (body.target_status === 'approved' && !process.env.ANTHROPIC_API_KEY) {
-    res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+  if (body.target_status === 'approved' && !process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+    res.status(500).json({ error: 'ANTHROPIC_API_KEY or OPENAI_API_KEY not configured' });
     return;
   }
 
