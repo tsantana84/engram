@@ -76,6 +76,7 @@ export class SessionStore {
     this.addProvenanceColumns();
     this.addExtractionStatusColumns();
     this.widenSyncQueueForLearnings();
+    this.addLastErrorColumn();
     this.createSessionBriefingsTable();
   }
 
@@ -2925,6 +2926,28 @@ export class SessionStore {
     );
 
     return { imported: true, id: result.lastInsertRowid as number };
+  }
+
+  /**
+   * Add last_error column to sync_queue (migration 31)
+   */
+  private addLastErrorColumn(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(31) as SchemaVersion | undefined;
+    if (applied) return;
+
+    const cols = this.db
+      .prepare('PRAGMA table_info(sync_queue)')
+      .all() as Array<{ name: string }>;
+    if (!cols.some((c) => c.name === 'last_error')) {
+      this.db.run('ALTER TABLE sync_queue ADD COLUMN last_error TEXT');
+    }
+
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(31, new Date().toISOString());
+    logger.debug('DB', 'Migration 31 applied: last_error column on sync_queue');
   }
 
   /**
