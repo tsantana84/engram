@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import { BaseRouteHandler } from '../BaseRouteHandler.js';
+import { logger } from '../../../../utils/logger.js';
 import type { ErrorStore } from '../../../admin/ErrorStore.js';
 import type { HealthChecker } from '../../../admin/HealthChecker.js';
 
@@ -24,6 +25,7 @@ export class AdminRoutes extends BaseRouteHandler {
   }
 
   private async handle(_req: Request, res: Response): Promise<void> {
+    logger.debug('WORKER', 'GET /api/admin');
     const [health, errors] = await Promise.all([
       this.deps.healthChecker.check().catch(() => null),
       Promise.resolve(this.deps.errorStore.getAll()),
