@@ -229,7 +229,7 @@ main { padding:2rem; display:grid; grid-template-columns:1fr 1fr; gap:0; }
     errors.forEach(function(e){
       var row = el('div','error-entry');
       var t = el('span','err-time'); t.appendChild(txt(formatTime(e.ts))); row.appendChild(t);
-      var lv = el('span','err-level level-' + esc(e.level)); lv.appendChild(txt(e.level.toUpperCase())); row.appendChild(lv);
+      var lv = el('span','err-level level-' + esc(e.level)); lv.appendChild(txt(esc(e.level).toUpperCase())); row.appendChild(lv);
       var ctx = el('span','err-ctx'); ctx.appendChild(txt(e.ctx)); row.appendChild(ctx);
       var msg = el('span','err-msg'); msg.appendChild(txt(e.msg)); row.appendChild(msg);
       log.appendChild(row);
