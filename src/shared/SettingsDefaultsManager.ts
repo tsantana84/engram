@@ -93,6 +93,8 @@ export interface SettingsDefaults {
   CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES: string;   // Max retries for failed extraction attempts
   CLAUDE_MEM_OPENAI_API_KEY: string;                    // OpenAI API key for learning extraction
   CLAUDE_MEM_ANTHROPIC_API_KEY: string;                 // Anthropic API key for learning extraction
+  // Amnesia Recovery Configuration
+  CLAUDE_MEM_AMNESIA_RECOVERY_ENABLED: string;          // 'true' | 'false' - enable amnesia recovery from sync
 }
 
 export class SettingsDefaultsManager {
@@ -181,6 +183,8 @@ export class SettingsDefaultsManager {
     CLAUDE_MEM_LEARNING_EXTRACTION_MAX_RETRIES: '3',
     CLAUDE_MEM_OPENAI_API_KEY: '',
     CLAUDE_MEM_ANTHROPIC_API_KEY: '',
+    // Amnesia Recovery Configuration
+    CLAUDE_MEM_AMNESIA_RECOVERY_ENABLED: 'false',
   };
 
   /**
