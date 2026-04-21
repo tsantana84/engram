@@ -76,6 +76,7 @@ export class SessionStore {
     this.addProvenanceColumns();
     this.addExtractionStatusColumns();
     this.widenSyncQueueForLearnings();
+    this.createSessionBriefingsTable();
   }
 
   /**
@@ -2924,5 +2925,35 @@ export class SessionStore {
     );
 
     return { imported: true, id: result.lastInsertRowid as number };
+  }
+
+  /**
+   * Create session_briefings table (migration 32)
+   *
+   * Stores auto-generated briefings for amnesia recovery after context compaction.
+   */
+  private createSessionBriefingsTable(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(32) as SchemaVersion | undefined;
+    if (applied) return;
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS session_briefings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        memory_session_id TEXT NOT NULL,
+        project TEXT NOT NULL,
+        briefing_text TEXT NOT NULL,
+        trigger TEXT NOT NULL DEFAULT 'pre_compact',
+        consumed_at INTEGER,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      )
+    `);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_briefings_project_consumed
+      ON session_briefings(project, consumed_at)`);
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(32, new Date().toISOString());
+    logger.debug('DB', 'Migration 32 applied: session_briefings table created');
   }
 }
