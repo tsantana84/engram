@@ -335,9 +335,85 @@
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
+
+    /* ── GLOBAL NAV ── */
+    .g-nav {
+      display: flex;
+      align-items: stretch;
+      background: #000;
+      border-bottom: 3px solid #000;
+      font-family: 'Arial Black', Arial, sans-serif;
+    }
+    .g-nav-brand {
+      font-size: 1rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #fff;
+      padding: 0.9rem 1.5rem;
+      border-right: 3px solid #222;
+      white-space: nowrap;
+    }
+    .g-nav-brand span { color: #f5e400; }
+    .g-nav-links { display: flex; }
+    .g-nav-link {
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 0 1.25rem;
+      display: flex;
+      align-items: center;
+      color: #aaa;
+      text-decoration: none;
+      border-right: 2px solid #222;
+      border-bottom: 3px solid transparent;
+    }
+    .g-nav-link:hover { color: #fff; background: #111; }
+    .g-nav-link--active { color: #f5e400; background: #111; border-bottom-color: #f5e400; }
+    .g-nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      border-left: 2px solid #222;
+    }
+    .g-nav-status {
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 3px 9px;
+    }
+    .g-nav-status--ok  { background: #00b300; color: #fff; }
+    .g-nav-status--err { background: #ff2400; color: #fff; }
+    .g-nav-status--loading { background: #666; color: #fff; }
   </style>
 </head>
 <body>
+  <nav class="g-nav">
+    <div class="g-nav-brand">⬡ Engram <span>Worker</span></div>
+    <div class="g-nav-links">
+      <a class="g-nav-link" href="/">Sessions</a>
+      <a class="g-nav-link" href="/admin">Admin</a>
+      <a class="g-nav-link g-nav-link--active" href="/ticks">Ticks</a>
+    </div>
+    <div class="g-nav-right">
+      <span class="g-nav-status g-nav-status--loading" id="g-nav-status">…</span>
+    </div>
+  </nav>
+  <script>
+  (function(){
+    fetch('/health').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+      var el = document.getElementById('g-nav-status');
+      if(d){ el.textContent='OK'; el.className='g-nav-status g-nav-status--ok'; }
+      else { el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err'; }
+    }).catch(function(){
+      var el=document.getElementById('g-nav-status');
+      el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err';
+    });
+  })();
+  </script>
   <header>
     <h1>⬡ ENGRAM / TICKS</h1>
     <div class="header-right">
