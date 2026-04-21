@@ -595,26 +595,10 @@ export const migration010: Migration = {
 };
 
 /**
- * Migration 011: Add last_error column to sync_queue
- *
- * Stores the error message from the most recent failed sync attempt.
- * The admin endpoint calls getFailedItems() to surface this in the UI.
- */
-export const migration011: Migration = {
-  version: 31,
-  up: (db: Database) => {
-    const cols = db.prepare('PRAGMA table_info(sync_queue)').all() as Array<{ name: string }>;
-    if (!cols.some((c) => c.name === 'last_error')) {
-      db.run(`ALTER TABLE sync_queue ADD COLUMN last_error TEXT`);
-    }
-  },
-  down: (_db: Database) => {
-    // SQLite does not support DROP COLUMN — no-op
-  },
-};
-
-/**
  * All migrations in order
+ *
+ * TODO: SessionStore inline migration path does not apply version 31+ migrations;
+ * using MigrationRunner exclusively for schema changes
  */
 export const migrations: Migration[] = [
   migration001,
@@ -627,5 +611,4 @@ export const migrations: Migration[] = [
   migration008,
   migration009,
   migration010,
-  migration011,
 ];
