@@ -402,18 +402,6 @@
       <span class="g-nav-status g-nav-status--loading" id="g-nav-status">…</span>
     </div>
   </nav>
-  <script>
-  (function(){
-    fetch('/health').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
-      var el = document.getElementById('g-nav-status');
-      if(d){ el.textContent='OK'; el.className='g-nav-status g-nav-status--ok'; }
-      else { el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err'; }
-    }).catch(function(){
-      var el=document.getElementById('g-nav-status');
-      el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err';
-    });
-  })();
-  </script>
   <header>
     <h1>⬡ ENGRAM / TICKS</h1>
     <div class="header-right">
@@ -758,6 +746,18 @@
       load();
       startTimer();
     })();
+  </script>
+  <script>
+  (function(){
+    fetch('/health').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+      var el = document.getElementById('g-nav-status');
+      if(d){ el.textContent='OK'; el.className='g-nav-status g-nav-status--ok'; }
+      else { el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err'; }
+    }).catch(function(){
+      var el=document.getElementById('g-nav-status');
+      el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err';
+    });
+  })();
   </script>
 </body>
 </html>
