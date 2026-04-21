@@ -1177,8 +1177,8 @@ export class MigrationRunner {
         created_at INTEGER NOT NULL DEFAULT (unixepoch())
       )
     `);
-    this.db.run(`CREATE INDEX IF NOT EXISTS idx_briefings_session_consumed
-      ON session_briefings(memory_session_id, consumed_at)`);
+    this.db.run(`CREATE INDEX IF NOT EXISTS idx_briefings_project_consumed
+      ON session_briefings(project, consumed_at)`);
     this.db
       .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
       .run(32, new Date().toISOString());
