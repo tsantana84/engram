@@ -100,7 +100,7 @@ import { CorpusRoutes } from './worker/http/routes/CorpusRoutes.js';
 // Admin observability
 import { ErrorStore } from './admin/ErrorStore.js';
 import { HealthChecker } from './admin/HealthChecker.js';
-import { AdminRoutes } from './admin/AdminRoutes.js';
+import { AdminRoutes } from './worker/http/routes/AdminRoutes.js';
 
 // Knowledge agent services
 import { CorpusStore } from './worker/knowledge/CorpusStore.js';

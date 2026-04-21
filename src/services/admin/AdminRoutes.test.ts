@@ -1,5 +1,5 @@
 import { describe, it, expect, mock } from 'bun:test';
-import { AdminRoutes } from './AdminRoutes';
+import { AdminRoutes } from '../worker/http/routes/AdminRoutes';
 import { ErrorStore } from './ErrorStore';
 
 describe('GET /api/admin', () => {

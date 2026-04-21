@@ -1,8 +1,8 @@
 import express from 'express';
 import type { Request, Response } from 'express';
-import { BaseRouteHandler } from '../worker/http/BaseRouteHandler.js';
-import type { ErrorStore } from './ErrorStore.js';
-import type { HealthChecker } from './HealthChecker.js';
+import { BaseRouteHandler } from '../BaseRouteHandler.js';
+import type { ErrorStore } from '../../../admin/ErrorStore.js';
+import type { HealthChecker } from '../../../admin/HealthChecker.js';
 
 interface AdminDeps {
   queue: {
