@@ -25,11 +25,11 @@ The existing Vercel dashboard (`/dashboard/`) is learning review only. There is 
 
 | Piece | Notes |
 |---|---|
-| `public/dashboard/admin.html` | Static page, same bearer token auth pattern as existing dashboard |
-| `public/dashboard/admin.js` | Fetch + render; reuses `tryConnect()` / `showError()` pattern from `app.js` |
+| `public/dashboard/admin/index.html` | Static page at `/dashboard/admin/` — directory pattern gives clean URL without vercel.json rewrites |
+| `public/dashboard/admin/admin.js` | Fetch + render; reuses `tryConnect()` / `showError()` pattern from `app.js` |
 | `api/admin/overview.ts` | Single Vercel function; aggregates all 3 data groups; partial failure returns null sections |
 | `SupabaseManager.getAgentActivity()` | Queries `agents` + `observations` + `sessions` + `learnings` |
-| `SupabaseManager.getSyncHealth()` | Queries `sync_queue` grouped by agent |
+| `SupabaseManager.getSyncHealth()` | Derives last sync per agent from `observations.synced_at` MAX — no server-side queue table exists. Pending/failed counts are local-only (visible in local admin tab) |
 | `SupabaseManager.getLearningQuality()` | Queries `learnings` grouped by status + confidence buckets |
 
 Navigation: both `/dashboard/` and `/dashboard/admin` link to each other.
@@ -53,8 +53,6 @@ Navigation: both `/dashboard/` and `/dashboard/admin` link to each other.
   "syncHealth": [
     {
       "agentId": "agent-abc",
-      "queuePending": 2,
-      "queueFailed": 0,
       "lastSyncAt": "2026-04-20T20:09:00Z"
     }
   ],
@@ -78,6 +76,7 @@ Navigation: both `/dashboard/` and `/dashboard/admin` link to each other.
 - `confidenceDistribution`: high ≥ 0.9, medium 0.7–0.9, low < 0.7
 - `approvalRate`: approved / (approved + rejected); excludes pending; null when no reviewed items
 - `lastSeenAt`: max `created_at` across agent's observations
+- `syncHealth[].lastSyncAt`: max `synced_at` from `observations` per agent — no pending/failed counts (queue is local SQLite only; use local admin tab for queue depth)
 - Sections with query failures return `null`; partial data still returned
 
 ## UI Layout
@@ -100,14 +99,14 @@ Navigation: both `/dashboard/` and `/dashboard/admin` link to each other.
 │   890 obs   41 sessions  12 learnings            │
 ├─────────────────────────────────────────────────┤
 │ SYNC HEALTH                                      │
-│ thiago-macbook   ✓ synced  2 pending  0 failed   │
-│ thiago-work      ✓ synced  0 pending  0 failed   │
+│ thiago-macbook   last sync 2m ago                │
+│ thiago-work      last sync 3h ago                │
 └─────────────────────────────────────────────────┘
 ```
 
 - Agent "last seen" badge: green <1h, yellow 1–24h, red >24h
-- Red badge on agent sync row if `queueFailed > 0`
-- Sync Health section hidden when all agents have 0 pending + 0 failed
+- Sync Health row goes yellow if last sync >1h, red if >24h
+- Sync Health section always shown (last sync time is always useful)
 - `approvalRate` shows "—" when no reviewed items yet
 
 ## Error Handling & Edge Cases
