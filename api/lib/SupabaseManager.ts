@@ -490,4 +490,110 @@ export class SupabaseManager {
     if (error) throw error;
     return data as LearningRecord;
   }
+
+  async getAgentActivity(): Promise<Array<{
+    agentId: string;
+    agentName: string;
+    observationCount: number;
+    sessionCount: number;
+    lastActivityAt: string | null;
+  }>> {
+    const { data, error } = await this.supabase
+      .from('agents')
+      .select(`
+        id, name,
+        observations(count),
+        sessions(count)
+      `)
+      .eq('status', 'active');
+
+    if (error) throw error;
+
+    const agents = await Promise.all(
+      (data || []).map(async (agent: any) => {
+        const { data: lastObs } = await this.supabase
+          .from('observations')
+          .select('created_at')
+          .eq('agent_id', agent.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        return {
+          agentId: agent.id,
+          agentName: agent.name,
+          observationCount: agent.observations?.[0]?.count || 0,
+          sessionCount: agent.sessions?.[0]?.count || 0,
+          lastActivityAt: lastObs?.created_at || null,
+        };
+      })
+    );
+
+    return agents;
+  }
+
+  async getSyncHealth(): Promise<{
+    totalAgents: number;
+    activeAgents: number;
+    totalObservations: number;
+    totalSessions: number;
+    lastSyncTime: string | null;
+  }> {
+    const [
+      { count: totalAgents },
+      { count: activeAgentsCount },
+      { count: obsCount },
+      { count: sessCount },
+    ] = await Promise.all([
+      this.supabase.from('agents').select('*', { count: 'exact', head: true }),
+      this.supabase.from('agents').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      this.supabase.from('observations').select('*', { count: 'exact', head: true }),
+      this.supabase.from('sessions').select('*', { count: 'exact', head: true }),
+    ]);
+
+    const { data: lastSync } = await this.supabase
+      .from('observations')
+      .select('synced_at')
+      .order('synced_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    return {
+      totalAgents: totalAgents || 0,
+      activeAgents: activeAgentsCount || 0,
+      totalObservations: obsCount || 0,
+      totalSessions: sessCount || 0,
+      lastSyncTime: lastSync?.synced_at || null,
+    };
+  }
+
+  async getLearningQuality(): Promise<{
+    totalLearnings: number;
+    approvedLearnings: number;
+    pendingLearnings: number;
+    rejectedLearnings: number;
+    avgConfidence: number;
+  }> {
+    const counts = await this.countLearnings();
+
+    const { data: learnings, error } = await this.supabase
+      .from('learnings')
+      .select('confidence')
+      .eq('status', 'approved')
+      .eq('invalidated', false);
+
+    if (error) throw error;
+
+    const avgConfidence = (learnings?.length ?? 0) > 0
+      ? learnings!.reduce((sum: number, l: any) => sum + (l.confidence || 0), 0) / learnings!.length
+      : 0;
+
+    return {
+      totalLearnings: counts.pending + counts.approved + counts.rejected,
+      approvedLearnings: counts.approved,
+      pendingLearnings: counts.pending,
+      rejectedLearnings: counts.rejected,
+      avgConfidence: Math.round(avgConfidence * 100) / 100,
+    };
+  }
 }
