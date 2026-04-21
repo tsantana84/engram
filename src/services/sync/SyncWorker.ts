@@ -176,12 +176,10 @@ export class SyncWorker {
       ]) {
         if (group.length === 0) continue;
         try {
-          await this.client.pushLearnings(
-            group.map((g) => g.payload!).filter(Boolean),
-            status
-          );
+          const payloads = group.map((g) => g.payload!).filter(Boolean);
+          await this.client.pushLearnings(payloads, status);
           this.queue.markSynced(group.map((g) => g.id));
-          record.items_pushed += group.length;
+          record.items_pushed += payloads.length;
         } catch (err: any) {
           this.handlePushError(err, group.map((g) => g.id));
           record.items_failed += group.length;
@@ -206,10 +204,9 @@ export class SyncWorker {
       } else if (legacyItems.length > 0) {
         this.queue.markSynced(legacyItems.map((i) => i.id));
       }
-
-      record.queue_depth_after = this.queue.countPending();
     } finally {
       record.duration_ms = Date.now() - startMs;
+      record.queue_depth_after = this.queue.countPending();
       this.sessionStore.insertTickLog(record);
     }
   }
