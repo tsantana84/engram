@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'bun:test';
 import { Database } from 'bun:sqlite';
-import { SyncQueue } from './SyncQueue.js';
+import { SyncQueue } from '../SyncQueue.js';
 
 function newDb(): Database {
   const db = new Database(':memory:');
@@ -85,5 +85,33 @@ describe('getFailedItems', () => {
 
     const failed = q.getFailedItems(10);
     expect(failed[0].retries).toBe(1);
+  });
+});
+
+describe('SyncQueue.countPending', () => {
+  it('returns 0 for empty queue', () => {
+    const db = newDb();
+    const q = new SyncQueue(db);
+    expect(q.countPending()).toBe(0);
+  });
+
+  it('counts only pending items', () => {
+    const db = newDb();
+    const q = new SyncQueue(db);
+    q.enqueue('observation', 1);
+    q.enqueue('observation', 2);
+    expect(q.countPending()).toBe(2);
+    const rows = db.prepare("SELECT id FROM sync_queue").all() as { id: number }[];
+    q.markSynced([rows[0].id]);
+    expect(q.countPending()).toBe(1);
+  });
+
+  it('returns 0 after all synced', () => {
+    const db = newDb();
+    const q = new SyncQueue(db);
+    q.enqueue('observation', 10);
+    const rows = db.prepare("SELECT id FROM sync_queue").all() as { id: number }[];
+    q.markSynced(rows.map(r => r.id));
+    expect(q.countPending()).toBe(0);
   });
 });

@@ -128,4 +128,11 @@ export class SyncQueue {
     }
     return result;
   }
+
+  countPending(): number {
+    const row = this.db.prepare(
+      `SELECT COUNT(*) as n FROM sync_queue WHERE status = 'pending'`
+    ).get() as { n: number };
+    return row.n;
+  }
 }
