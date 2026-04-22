@@ -531,8 +531,7 @@
     <span class="filter-label">Entity:</span>
     <input type="text" id="entityInput" placeholder="e.g. ViewerRoutes.ts or authentication">
     <select id="typeSelect">
-      <option value="">Any Type</option>
-      <option value="file">File</option>
+      <option value="file" selected>File</option>
       <option value="concept">Concept</option>
       <option value="observation">Observation</option>
       <option value="session">Session</option>
@@ -785,7 +784,7 @@
         setStatus('Searching...');
 
         var url = '/api/graph?entity=' + encodeURIComponent(entity);
-        if (type) url += '&type=' + encodeURIComponent(type);
+        url += '&type=' + encodeURIComponent(type);
         if (depth) url += '&depth=' + encodeURIComponent(depth);
 
         var xhr = new XMLHttpRequest();
