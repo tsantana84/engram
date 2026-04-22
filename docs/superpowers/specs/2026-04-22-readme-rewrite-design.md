@@ -147,7 +147,7 @@ npm run worker:force-restart  # restart without rebuild
 ### Test
 
 ```bash
-bun test   # 1500+ tests — all must pass before pushing
+bun test   # runs full test suite — all must pass before pushing
 ```
 
 ### Key Environment Variables
@@ -158,7 +158,7 @@ Set in `~/.engram/settings.json` (JSON format):
 {
   "CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED": "true",
   "CLAUDE_MEM_CONFIDENCE_THRESHOLD": "0.8",
-  "CLAUDE_MEM_SYNC_INTERVAL_MS": "60000"
+  "CLAUDE_MEM_SYNC_INTERVAL_MS": "30000"
 }
 ```
 
