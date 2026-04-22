@@ -389,8 +389,119 @@
         return card;
       }
 
-      /* ── Stubs (filled in later tasks) ─────────────────────── */
-      function loadPage() { /* filled in Task 4 */ }
+      /* ── Data load ──────────────────────────────────────────── */
+      var LIMIT = 50;
+
+      function buildQuery(offset) {
+        var q = '?offset=' + offset + '&limit=' + LIMIT;
+        if (state.project) q += '&project='        + encodeURIComponent(state.project);
+        if (state.source)  q += '&platformSource=' + encodeURIComponent(state.source);
+        return q;
+      }
+
+      function loadPage() {
+        if (state.loading) return;
+        state.loading = true;
+
+        if (state.abortCtrl) state.abortCtrl.abort();
+        state.abortCtrl = new AbortController();
+        var signal = state.abortCtrl.signal;
+
+        var fetches = [];
+
+        if (state.obs.hasMore) fetches.push(
+          fetch('/api/observations' + buildQuery(state.obs.offset), { signal: signal })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              var items = d.observations || [];
+              if (items.length < LIMIT) state.obs.hasMore = false;
+              state.obs.offset += items.length;
+              return items.map(function (o) { return Object.assign({}, o, { _type: 'observation' }); });
+            })
+        );
+
+        if (state.sum.hasMore) fetches.push(
+          fetch('/api/summaries' + buildQuery(state.sum.offset), { signal: signal })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              var items = d.summaries || [];
+              if (items.length < LIMIT) state.sum.hasMore = false;
+              state.sum.offset += items.length;
+              return items.map(function (s) { return Object.assign({}, s, { _type: 'summary' }); });
+            })
+        );
+
+        if (state.prm.hasMore) fetches.push(
+          fetch('/api/prompts' + buildQuery(state.prm.offset), { signal: signal })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+              var items = d.prompts || [];
+              if (items.length < LIMIT) state.prm.hasMore = false;
+              state.prm.offset += items.length;
+              return items.map(function (p) { return Object.assign({}, p, { _type: 'prompt' }); });
+            })
+        );
+
+        if (!fetches.length) {
+          state.loading = false;
+          renderFeed();
+          return;
+        }
+
+        Promise.all(fetches)
+          .then(function (results) {
+            var newItems = [];
+            results.forEach(function (r) { newItems = newItems.concat(r); });
+            state.items = state.items.concat(newItems);
+            state.items.sort(function (a, b) { return b.created_at_epoch - a.created_at_epoch; });
+            state.loading = false;
+            renderFeed();
+          })
+          .catch(function (err) {
+            if (err.name === 'AbortError') return;
+            state.loading = false;
+            renderFeed();
+          });
+      }
+
+      function clearFeed() {
+        while (feed.firstChild) feed.removeChild(feed.firstChild);
+      }
+
+      function renderFeed() {
+        if (loadingState && loadingState.parentNode === feed) {
+          feed.removeChild(loadingState);
+        }
+        clearFeed();
+
+        if (state.items.length === 0) {
+          feed.appendChild(mkText('div', 'empty-state', 'No items found.'));
+          return;
+        }
+
+        state.items.forEach(function (item) {
+          var card = renderCard(item, item._type);
+          if (card) feed.appendChild(card);
+        });
+
+        var hasMore = state.obs.hasMore || state.sum.hasMore || state.prm.hasMore;
+        if (hasMore) {
+          var row = mkEl('div', 'load-more-row');
+          var btn = mkText('button', 'load-more-btn', 'LOAD MORE');
+          btn.type = 'button';
+          btn.addEventListener('click', function () {
+            btn.disabled = true;
+            btn.textContent = 'LOADING\u2026';
+            loadPage();
+          });
+          row.appendChild(btn);
+          feed.appendChild(row);
+        } else {
+          var endRow = mkEl('div', 'load-more-row');
+          endRow.appendChild(mkText('span', null, '\u2014 END \u2014'));
+          feed.appendChild(endRow);
+        }
+      }
 
       /* ── Live indicator ─────────────────────────────────────── */
       function setLive(on) {
