@@ -59,7 +59,10 @@ export class GraphEdgeExtractor {
     const prompt = buildPrompt(input);
     try {
       const text = await this.config.llm(prompt);
-      const edges = parseEdges(text);
+      const allEdges = parseEdges(text);
+      // Only allow IDs from the actual input set
+      const validIds = new Set(input.observations.map((o) => o.id));
+      const edges = allEdges.filter((e) => validIds.has(e.from_id) && validIds.has(e.to_id));
       for (const edge of edges) {
         this.config.graph.addEdgePair(
           { type: 'observation', id: edge.from_id },
