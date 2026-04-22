@@ -89,6 +89,7 @@ export class SessionStore {
     this.widenSyncQueueForLearnings();
     this.addLastErrorColumn();
     this.createSessionBriefingsTable();
+    this.createGraphEdgesTable();
     this.createTickLogTable();
   }
 
@@ -2993,12 +2994,45 @@ export class SessionStore {
   }
 
   /**
-   * Create tick_log table (migration 33)
+   * Create graph_edges table (migration 33)
+   *
+   * Stores edges in the knowledge graph connecting typed entities (observations, learnings, sessions, etc).
+   * Supports bidirectional relationship traversal with configurable weights and sources.
+   */
+  private createGraphEdgesTable(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(33) as SchemaVersion | undefined;
+    if (applied) return;
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS graph_edges (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        from_type        TEXT NOT NULL,
+        from_id          TEXT NOT NULL,
+        to_type          TEXT NOT NULL,
+        to_id            TEXT NOT NULL,
+        relationship     TEXT NOT NULL,
+        weight           REAL DEFAULT 1.0,
+        source           TEXT NOT NULL,
+        created_at_epoch INTEGER NOT NULL
+      )
+    `);
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_graph_from ON graph_edges(from_type, from_id)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_graph_to ON graph_edges(to_type, to_id)');
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(33, new Date().toISOString());
+    logger.debug('DB', 'Migration 33 applied: graph_edges table created');
+  }
+
+  /**
+   * Create tick_log table (migration 34)
    */
   private createTickLogTable(): void {
     const applied = this.db
       .prepare('SELECT version FROM schema_versions WHERE version = ?')
-      .get(33) as SchemaVersion | undefined;
+      .get(34) as SchemaVersion | undefined;
     if (applied) return;
 
     this.db.run(`
@@ -3017,8 +3051,8 @@ export class SessionStore {
     `);
     this.db
       .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
-      .run(33, new Date().toISOString());
-    logger.debug('DB', 'Migration 33 applied: tick_log table created');
+      .run(34, new Date().toISOString());
+    logger.debug('DB', 'Migration 34 applied: tick_log table created');
   }
 
   insertTickLog(record: TickRecord): void {
