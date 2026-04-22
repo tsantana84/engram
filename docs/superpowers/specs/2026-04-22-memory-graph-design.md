@@ -48,7 +48,7 @@ No separate nodes table. Nodes are existing entities resolved by type:
 - `observation` → `observations` table by integer id
 - `file` → path string (no table; file may not exist on disk)
 - `concept` → concept name string (no table)
-- `session` → `sdk_sessions` table by session id
+- `session` → identified by `memory_session_id` UUID string (the column name on both `observations` and `sdk_sessions`). Always use the UUID, never the integer PK, for session node IDs.
 
 ### Edge directionality
 
@@ -75,7 +75,7 @@ Written in two passes to avoid transaction visibility issues:
 
 Pass 1 is atomic with the observation insert. Pass 2 runs after commit so it sees the newly written Pass 1 edges — this is what allows cross-links between observations stored in the same batch.
 
-**`db` instance:** `GraphStore` must receive the same `db` reference used by `transactions.ts` — obtained via `DatabaseManager.getDatabase()`. Do not create a separate connection.
+**`db` instance:** `GraphStore` must receive the same `db` reference used by `transactions.ts`. `SessionStore` exposes the raw `bun:sqlite` `Database` via a new method `getDb(): Database` added to `SessionStore`. `GraphStore` is constructed inside `SessionStore` with `this.db`. Do not create a separate connection.
 
 **Performance:** Steps 4–5 query `graph_edges` with indexes on `to_type + to_id`. Bounded by project scope. Acceptable for a post-transaction synchronous write.
 
@@ -131,9 +131,15 @@ class GraphStore {
   traverse(entity: { type: string; id: string }, depth: number): GraphResult
   addEdge(from: Node, to: Node, relationship: string, source: string): void
   addEdgePair(from: Node, to: Node, relationship: string, source: string): void
-  // addEdgePair wraps both inserts in db.transaction() for atomicity.
-  // When called inside an existing transaction, bun:sqlite automatically
-  // promotes to a SAVEPOINT — this is safe and expected.
+  // addEdgePair has two modes:
+  // - When called OUTSIDE a transaction (Pass 2, LLM edges): wraps both inserts
+  //   in db.transaction() for atomicity.
+  // - When called INSIDE an existing transaction (Pass 1): uses plain
+  //   db.prepare(...).run() calls only — NO db.transaction() wrapper.
+  //   bun:sqlite does NOT auto-promote to SAVEPOINT; nested db.transaction()
+  //   throws "cannot start a transaction within a transaction".
+  //   The caller's outer transaction provides atomicity.
+  // addEdgePair accepts an optional `inTransaction: boolean` flag to select mode.
 }
 ```
 
@@ -260,6 +266,7 @@ Static HTML page at `plugin/ui/graph.html`, served by `ViewerRoutes.ts` at `GET 
 | File | Action | Purpose |
 |---|---|---|
 | `src/services/sqlite/migrations/runner.ts` | Modify | Add `createGraphEdgesTable()` called from `runAllMigrations()` |
+| `src/services/sqlite/SessionStore.ts` | Modify | Add `getDb(): Database` to expose raw db reference |
 | `src/services/sqlite/graph/GraphStore.ts` | Create | Traversal logic, edge writes, `addEdgePair` |
 | `src/services/sqlite/transactions.ts` | Modify | Pass 1 rule-based edges inside existing transaction |
 | `src/services/worker/agents/ResponseProcessor.ts` | Modify | Pass 2 cross-link edges after `storeObservations()` returns |
