@@ -88,7 +88,7 @@ Wrap sensitive content in `<private>...</private>` tags. These are stripped at t
 Claude Code session
   → 5 lifecycle hooks
      (SessionStart / UserPromptSubmit / PostToolUse / Summary / SessionEnd)
-  → SQLite (~/.claude-mem/claude-mem.db)
+  → SQLite (~/.engram/claude-mem.db)
      observations, summaries, sync_queue, tick_log
   → SyncWorker (port 37777, tick-based)
   → LearningExtractor (session-end LLM distillation)
@@ -105,6 +105,7 @@ Key endpoints:
 |---|---|
 | `api/sync/push` | Receive observation/summary payloads |
 | `api/sync/learnings` | Receive learning-specific payloads |
+| `api/sync/invalidate` | Invalidate a learning |
 | `api/sync/status` | Queue status |
 | `api/search` | Unified search (observations + approved learnings) |
 | `api/timeline` | Chronological queries |
