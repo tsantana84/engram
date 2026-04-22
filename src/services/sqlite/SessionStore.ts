@@ -1561,6 +1561,20 @@ export class SessionStore {
   }
 
   /**
+   * Get observations (id, title, narrative) for a session identified by its DB row ID.
+   * Used by GraphEdgeExtractor during session-end extraction.
+   */
+  getSessionObservations(sessionDbId: number): { id: number; title: string; narrative: string }[] {
+    const session = this.getSessionById(sessionDbId);
+    if (!session || !session.memory_session_id) return [];
+    return this.db
+      .prepare<{ id: number; title: string; narrative: string }, [string]>(
+        'SELECT id, title, narrative FROM observations WHERE memory_session_id = ? ORDER BY created_at_epoch ASC'
+      )
+      .all(session.memory_session_id);
+  }
+
+  /**
    * Get a single observation by ID
    */
   getObservationById(id: number): ObservationRecord | null {

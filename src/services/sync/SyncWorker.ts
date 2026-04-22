@@ -2,6 +2,8 @@ import { SyncQueue, SyncQueueItem } from './SyncQueue.js';
 import { SyncClient, SyncPushPayload, SyncObservationPayload, SyncSessionPayload, SyncSummaryPayload } from './SyncClient.js';
 import { ConflictDetector } from './ConflictDetector.js';
 import { LearningExtractor, type SessionInput } from './LearningExtractor.js';
+import { GraphEdgeExtractor } from './GraphEdgeExtractor.js';
+import { GraphStore } from '../sqlite/graph/GraphStore.js';
 import type { LearningPayload, LearningTargetStatus } from './learning-types.js';
 import { logger } from '../../utils/logger.js';
 
@@ -53,6 +55,7 @@ export class SyncWorker {
   private paused: boolean = false;
   private timer: ReturnType<typeof setInterval> | null = null;
   private extractor: LearningExtractor | undefined;
+  private graphExtractor: GraphEdgeExtractor | null = null;
   private confidenceThreshold: number;
   private extractionEnabled: boolean;
   private extractionMaxRetries: number;
@@ -76,6 +79,14 @@ export class SyncWorker {
     this.extractionEnabled = config.extractionEnabled ?? false;
     this.extractionMaxRetries = config.extractionMaxRetries ?? 3;
     this.agentName = config.agentName;
+
+    if (this.extractionEnabled && config.llm) {
+      this.graphExtractor = new GraphEdgeExtractor({
+        enabled: true,
+        llm: config.llm,
+        graph: new GraphStore(config.sessionStore.db),
+      });
+    }
 
     this.client = new SyncClient({
       serverUrl: config.serverUrl,
@@ -158,6 +169,19 @@ export class SyncWorker {
             record.sessions_extracted++;
             record.learnings_enqueued += enqueued;
           } catch { /* extractSessionLearnings handles its own errors */ }
+
+          if (this.graphExtractor) {
+            try {
+              const observations = this.sessionStore.getSessionObservations(s.id);
+              await this.graphExtractor.extract({
+                observations: observations.map((o: { id: number; title: string; narrative: string }) => ({
+                  id: String(o.id),
+                  title: o.title || '',
+                  narrative: o.narrative || '',
+                })),
+              });
+            } catch { /* non-blocking */ }
+          }
         }
       }
 
