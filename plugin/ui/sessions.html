@@ -183,7 +183,181 @@
   </main>
 
   <script>
-    /* ALL JS — added in later tasks */
+    (function () {
+      'use strict';
+
+      /* ── State ─────────────────────────────────────────────── */
+      var state = {
+        project:   '',
+        source:    '',
+        obs: { offset: 0, hasMore: true },
+        sum: { offset: 0, hasMore: true },
+        prm: { offset: 0, hasMore: true },
+        items:     [],
+        loading:   false,
+        abortCtrl: null,
+      };
+
+      var sseRetryDelay = 1000;
+      var feed = document.getElementById('feed');
+
+      /* ── Stubs (filled in later tasks) ─────────────────────── */
+      function renderCard(data, type) { return null; }
+      function loadPage() { /* filled in Task 4 */ }
+
+      /* ── Live indicator ─────────────────────────────────────── */
+      function setLive(on) {
+        var dot  = document.getElementById('live-dot');
+        var text = document.getElementById('live-text');
+        dot.className  = on ? 'live-dot live-dot--on' : 'live-dot live-dot--off';
+        text.textContent = on ? 'LIVE' : 'OFFLINE';
+      }
+
+      /* ── Processing pill ────────────────────────────────────── */
+      function updateProcessing(isProcessing, queueDepth) {
+        var pill = document.getElementById('processing-pill');
+        if (isProcessing) {
+          pill.textContent = 'PROCESSING (' + (queueDepth || 0) + ')';
+          pill.classList.add('processing-pill--visible');
+        } else {
+          pill.classList.remove('processing-pill--visible');
+        }
+      }
+
+      /* ── Filter population ──────────────────────────────────── */
+      function populateFilters(projects, sources) {
+        function rebuild(selectEl, items, allLabel) {
+          var prevVal = selectEl.value;
+          while (selectEl.firstChild) {
+            selectEl.removeChild(selectEl.firstChild);
+          }
+          var allOpt = document.createElement('option');
+          allOpt.value = '';
+          allOpt.textContent = allLabel;
+          selectEl.appendChild(allOpt);
+          for (var i = 0; i < items.length; i++) {
+            var opt = document.createElement('option');
+            opt.value = items[i];
+            opt.textContent = items[i];
+            selectEl.appendChild(opt);
+          }
+          /* Preserve selection if the value still exists */
+          selectEl.value = prevVal;
+          if (selectEl.value !== prevVal) {
+            selectEl.value = '';
+          }
+        }
+        rebuild(document.getElementById('project-filter'), projects, 'ALL PROJECTS');
+        rebuild(document.getElementById('source-filter'),  sources,  'ALL SOURCES');
+      }
+
+      /* ── Prepend item from SSE ──────────────────────────────── */
+      function prependItem(data, type) {
+        if (state.project && data.project !== state.project) { return; }
+        if (state.source  && data.source  !== state.source)  { return; }
+
+        var card = renderCard(data, type);
+
+        /* Remove loading placeholder if still present */
+        var loadingState = document.getElementById('loading-state');
+        if (loadingState) {
+          feed.removeChild(loadingState);
+        }
+
+        if (!card) { return; }
+
+        /* Insert before first .card, or before .load-more-row, or append */
+        var firstCard = feed.querySelector('.card');
+        var loadMoreRow = feed.querySelector('.load-more-row');
+        if (firstCard) {
+          feed.insertBefore(card, firstCard);
+        } else if (loadMoreRow) {
+          feed.insertBefore(card, loadMoreRow);
+        } else {
+          feed.appendChild(card);
+        }
+      }
+
+      /* ── SSE message dispatch ───────────────────────────────── */
+      function handleSSEMessage(msg) {
+        switch (msg.type) {
+          case 'initial_load':
+            populateFilters(msg.projects || [], msg.sources || []);
+            break;
+          case 'new_observation':
+            if (msg.observation) { prependItem(msg.observation, 'observation'); }
+            break;
+          case 'new_summary':
+            if (msg.summary) { prependItem(msg.summary, 'summary'); }
+            break;
+          case 'new_prompt':
+            if (msg.prompt) { prependItem(msg.prompt, 'prompt'); }
+            break;
+          case 'processing_status':
+            updateProcessing(msg.isProcessing, msg.queueDepth);
+            break;
+          default:
+            break;
+        }
+      }
+
+      /* ── SSE connection ─────────────────────────────────────── */
+      function connectSSE() {
+        var es = new EventSource('/stream');
+
+        es.onopen = function () {
+          sseRetryDelay = 1000;
+          setLive(true);
+        };
+
+        es.onmessage = function (e) {
+          try {
+            var msg = JSON.parse(e.data);
+            handleSSEMessage(msg);
+          } catch (_) { /* ignore malformed frames */ }
+        };
+
+        es.onerror = function () {
+          es.close();
+          setLive(false);
+          setTimeout(connectSSE, sseRetryDelay);
+          sseRetryDelay = Math.min(sseRetryDelay * 2, 30000);
+        };
+      }
+
+      /* ── Reset + reload ─────────────────────────────────────── */
+      function resetAndReload() {
+        if (state.abortCtrl) { state.abortCtrl.abort(); }
+        state.obs = { offset: 0, hasMore: true };
+        state.sum = { offset: 0, hasMore: true };
+        state.prm = { offset: 0, hasMore: true };
+        state.items = [];
+
+        while (feed.firstChild) { feed.removeChild(feed.firstChild); }
+        var placeholder = document.createElement('div');
+        placeholder.className = 'empty-state';
+        placeholder.id = 'loading-state';
+        placeholder.textContent = 'Loading\u2026';
+        feed.appendChild(placeholder);
+
+        loadPage();
+      }
+
+      /* ── Filter listeners ───────────────────────────────────── */
+      document.getElementById('project-filter').addEventListener('change', function () {
+        state.project = this.value;
+        resetAndReload();
+      });
+
+      document.getElementById('source-filter').addEventListener('change', function () {
+        state.source = this.value;
+        resetAndReload();
+      });
+
+      /* ── Boot ───────────────────────────────────────────────── */
+      connectSSE();
+      loadPage();
+    })();
   </script>
   <script>
     /* Nav health check */
