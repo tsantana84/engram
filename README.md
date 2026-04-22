@@ -127,3 +127,51 @@ ConflictDetector runs server-side when a learning is approved via the dashboard.
 For full architecture detail, see `CLAUDE.md`.
 
 ## Dev Guide
+
+### Build & run
+
+```bash
+npm run build-and-sync        # build + sync to plugin dir + restart worker
+npm run worker:force-restart  # restart without rebuild
+```
+
+### Test
+
+```bash
+bun test   # runs full test suite — all must pass before pushing
+```
+
+### Key environment variables
+
+Set in `~/.engram/settings.json` (JSON format, all values are strings):
+
+```json
+{
+  "CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED": "true",
+  "CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD": "0.9",
+  "CLAUDE_MEM_SYNC_INTERVAL_MS": "30000"
+}
+```
+
+| Variable | Default | Description |
+|---|---|---|
+| `CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED` | `false` | Enable session-end LLM distillation |
+| `CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD` | `0.9` | Auto-approve threshold for learnings |
+| `CLAUDE_MEM_SYNC_INTERVAL_MS` | `30000` | Sync tick interval (ms) |
+| `CLAUDE_MEM_OPENAI_API_KEY` | — | Required when extraction is enabled (default provider: OpenAI) |
+| `CLAUDE_MEM_LEARNING_LLM_PROVIDER` | `openai` | Switch to `anthropic` + set `CLAUDE_MEM_ANTHROPIC_API_KEY` to use Claude instead |
+
+### Adding a Vercel API endpoint
+
+Add a file under `api/`. Use `SupabaseManager` for all DB access. Deploy with `vercel --prod`.
+
+Browse `api/learnings/` before writing a new endpoint — it's the dominant pattern (list, review, counts, detail, id-based routes). `api/sync/learnings.ts` is the sync-specific push path, not the CRUD pattern.
+
+See `CLAUDE.md` for full conventions. Note: `CLAUDE.md` references `~/.claude-mem/` in some places — the correct path is `~/.engram/` (as shown above).
+
+### Contributing
+
+- Branch off `main`
+- Keep all tests green (`bun test`)
+- Run `npm run build-and-sync` before pushing
+- No need to update CHANGELOG — it's auto-generated
