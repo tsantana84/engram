@@ -60,19 +60,22 @@ Edges are undirected but stored bidirectionally. When A→B is written, B→A is
 
 ### Rule-based edges (always on)
 
-Written inside `storeObservation()` in `src/services/sqlite/observations/store.ts` immediately after the observation row is inserted.
+Written in two passes to avoid transaction visibility issues:
 
-**Per observation, write:**
+**Pass 1 — inside the existing transaction** in `src/services/sqlite/transactions.ts` (`storeObservationsAndMarkComplete`), alongside the observation insert:
 
 1. `observation → file` (relationship: `co-file`) for each path in `files_read` + `files_modified`
 2. `observation → concept` (relationship: `co-concept`) for each entry in `concepts` JSON array
 3. `observation → session` (relationship: `co-session`) via `memory_session_id`
+
+**Pass 2 — after the transaction commits**, as a separate step in the same caller:
+
 4. `observation → observation` (relationship: `co-file`) for any observation in the same project that already has an edge to the same file
 5. `observation → observation` (relationship: `co-concept`) for any observation in the same project that already has an edge to the same concept
 
-Steps 4 and 5 are the critical cross-linkage — they connect observations that worked on the same code or ideas.
+Pass 1 is atomic with the observation insert. Pass 2 runs after commit so it sees the newly written Pass 1 edges — this is what allows cross-links between observations stored in the same batch.
 
-**Performance:** Steps 4–5 query `graph_edges` with indexes on `to_type + to_id`. Bounded by project scope. Acceptable for synchronous write.
+**Performance:** Steps 4–5 query `graph_edges` with indexes on `to_type + to_id`. Bounded by project scope. Acceptable for a post-transaction synchronous write.
 
 ### LLM-based edges (when extraction enabled)
 
@@ -125,11 +128,16 @@ interface GraphEdge {
 class GraphStore {
   traverse(entity: { type: string; id: string }, depth: number): GraphResult
   addEdge(from: Node, to: Node, relationship: string, source: string): void
-  addEdgePair(from: Node, to: Node, relationship: string, source: string): void // writes both directions
+  addEdgePair(from: Node, to: Node, relationship: string, source: string): void
+  // addEdgePair wraps both inserts in db.transaction() for atomicity.
+  // When called inside an existing transaction, bun:sqlite automatically
+  // promotes to a SAVEPOINT — this is safe and expected.
 }
 ```
 
 **Traversal implementation:** SQLite recursive CTE (`WITH RECURSIVE`) starting from the center node, following `graph_edges` up to `depth` hops. Depth capped at 3.
+
+Because edges are stored bidirectionally, naïve recursion revisits nodes (A→B→A→B…) and produces duplicates before the depth cap fires. The CTE must track visited nodes. Implementation approach: accumulate a `visited` text column (`from_type||':'||from_id`) and use `instr(visited, to_type||':'||to_id) = 0` to skip already-visited nodes. This works correctly for depth ≤ 3. A `TEMP TABLE` of visited keys is an acceptable alternative for larger graphs.
 
 ### API endpoint
 
@@ -168,7 +176,9 @@ Returns HTTP 400 if `entity` or `type` missing. Returns empty nodes/edges (not 4
 
 ## Section 4 — MCP Tool
 
-Added to MCP server source (`src/services/worker/mcp/`), compiled to `plugin/scripts/mcp-server.cjs` via `npm run build-and-sync`.
+Added directly to `src/servers/mcp-server.ts` — the tools array in that file, not a separate directory. The compiled output is `plugin/scripts/mcp-server.cjs` via `npm run build-and-sync`.
+
+**Wiring:** append an entry to the `tools` array in `mcp-server.ts` with `name`, `description`, `inputSchema`, and a `handler` that calls `callWorkerAPI('/api/graph', args)`. Add `'graph': '/api/graph'` to `TOOL_ENDPOINT_MAP`.
 
 **Tool definition:**
 ```
@@ -247,15 +257,15 @@ Static HTML page at `plugin/ui/graph.html`, served by `ViewerRoutes.ts` at `GET 
 
 | File | Action | Purpose |
 |---|---|---|
-| `supabase/migrations/<next>_graph_edges.sql` | Create | SQLite migration for `graph_edges` table |
-| `src/services/sqlite/graph/GraphStore.ts` | Create | Traversal logic, edge writes |
-| `src/services/sqlite/observations/store.ts` | Modify | Call rule-based edge writer after insert |
+| `src/services/sqlite/migrations/runner.ts` | Modify | Add `createGraphEdgesTable()` called from `runAllMigrations()` |
+| `src/services/sqlite/graph/GraphStore.ts` | Create | Traversal logic, edge writes, `addEdgePair` |
+| `src/services/sqlite/transactions.ts` | Modify | Pass 1 rule-based edges inside existing transaction |
+| `src/services/sqlite/observations/store.ts` | Modify | Pass 2 cross-link edges after transaction commits |
 | `src/services/sync/GraphEdgeExtractor.ts` | Create | LLM semantic edge extraction at session-end |
 | `src/services/sync/SyncWorker.ts` | Modify | Trigger `GraphEdgeExtractor` at session-end |
 | `src/services/worker/http/routes/GraphRoutes.ts` | Create | `GET /api/graph` endpoint |
-| `src/services/worker/http/WorkerServer.ts` | Modify | Register GraphRoutes |
-| `src/services/worker/mcp/tools/graph.ts` | Create | MCP `graph` tool |
-| `src/services/worker/mcp/index.ts` | Modify | Register graph tool |
+| `src/services/worker-service.ts` | Modify | Register GraphRoutes (not WorkerServer.ts) |
+| `src/servers/mcp-server.ts` | Modify | Add `graph` tool entry to tools array + TOOL_ENDPOINT_MAP |
 | `plugin/ui/graph.html` | Create | Brutalist graph UI |
 
 ---
