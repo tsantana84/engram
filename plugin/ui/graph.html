@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ENGRAM — MEMORY GRAPH</title>
+  <style>
+    :root {
+      --black: #000;
+      --white: #fff;
+      --yellow: #f5e400;
+      --red: #ff2400;
+      --green: #00b300;
+      --dim: #666;
+      --bg: #f4f4f4;
+      --border: 3px solid #000;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background: var(--bg);
+      color: var(--black);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    header {
+      background: var(--black);
+      color: var(--white);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    header h1 {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #status-line {
+      font-size: 11px;
+      color: #aaa;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    .filter-bar {
+      background: var(--white);
+      border-bottom: var(--border);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-label {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-right: 4px;
+    }
+
+    .agent-tab {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      background: var(--bg);
+      color: var(--black);
+      border: 2px solid var(--black);
+      padding: 4px 12px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .agent-tab.active {
+      background: var(--black);
+      color: var(--white);
+    }
+
+    .agent-tab:hover:not(.active) {
+      background: var(--yellow);
+    }
+
+    main {
+      padding: 20px;
+    }
+
+    .empty-state {
+      border: var(--border);
+      background: var(--white);
+      padding: 40px;
+      text-align: center;
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--dim);
+    }
+
+    .error-state {
+      border: 3px solid var(--red);
+      background: var(--white);
+      padding: 20px;
+      margin-bottom: 20px;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    .error-state-title {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--red);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border: var(--border);
+      background: var(--white);
+    }
+
+    thead {
+      background: var(--black);
+      color: var(--white);
+    }
+
+    thead th {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 8px 10px;
+      text-align: left;
+      border-right: 1px solid #333;
+      white-space: nowrap;
+    }
+
+    thead th:last-child {
+      border-right: none;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #ddd;
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody tr.hidden {
+      display: none;
+    }
+
+    tbody tr:hover td {
+      background: #fafafa;
+    }
+
+    tbody td {
+      padding: 7px 10px;
+      border-right: 1px solid #eee;
+      vertical-align: top;
+    }
+
+    tbody td:last-child {
+      border-right: none;
+    }
+
+    /* Status badge */
+    .badge {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 2px 7px;
+      display: inline-block;
+      border: 2px solid var(--black);
+    }
+
+    .badge-ok {
+      background: var(--green);
+      color: var(--white);
+      border-color: var(--green);
+    }
+
+    .badge-partial {
+      background: var(--yellow);
+      color: var(--black);
+      border-color: #c8b900;
+    }
+
+    .badge-fail {
+      background: var(--red);
+      color: var(--white);
+      border-color: var(--red);
+    }
+
+    .badge-idle {
+      background: var(--white);
+      color: var(--dim);
+      border-color: #ccc;
+    }
+
+    /* Dimmed zero values */
+    .dim {
+      color: var(--dim);
+    }
+
+    /* Red error counts */
+    .val-error {
+      color: var(--red);
+      font-weight: bold;
+    }
+
+    /* Agent name cell */
+    .agent-name {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    /* Time cell */
+    .time-cell {
+      white-space: nowrap;
+      color: #444;
+    }
+
+    /* Duration cell */
+    .duration-cell {
+      white-space: nowrap;
+      color: #444;
+    }
+
+    .numeric {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── GLOBAL NAV ── */
+    .g-nav {
+      display: flex;
+      align-items: stretch;
+      background: #000;
+      border-bottom: 3px solid #000;
+      font-family: 'Arial Black', Arial, sans-serif;
+    }
+    .g-nav-brand {
+      font-size: 1rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #fff;
+      padding: 0.9rem 1.5rem;
+      border-right: 3px solid #222;
+      white-space: nowrap;
+    }
+    .g-nav-brand span { color: #f5e400; }
+    .g-nav-links { display: flex; }
+    .g-nav-link {
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 0 1.25rem;
+      display: flex;
+      align-items: center;
+      color: #aaa;
+      text-decoration: none;
+      border-right: 2px solid #222;
+      border-bottom: 3px solid transparent;
+    }
+    .g-nav-link:hover { color: #fff; background: #111; }
+    .g-nav-link--active { color: #f5e400; background: #111; border-bottom-color: #f5e400; }
+    .g-nav-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      border-left: 2px solid #222;
+    }
+    .g-nav-status {
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 3px 9px;
+    }
+    .g-nav-status--ok  { background: #00b300; color: #fff; }
+    .g-nav-status--err { background: #ff2400; color: #fff; }
+    .g-nav-status--loading { background: #666; color: #fff; }
+
+    /* ── GRAPH-SPECIFIC ── */
+    .search-bar {
+      background: var(--white);
+      border-bottom: var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .search-bar input[type="text"] {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      border: 2px solid var(--black);
+      padding: 6px 10px;
+      background: var(--bg);
+      color: var(--black);
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .search-bar input[type="text"]:focus {
+      outline: none;
+      background: var(--white);
+      border-color: var(--yellow);
+    }
+
+    .search-bar select {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 2px solid var(--black);
+      padding: 6px 10px;
+      background: var(--bg);
+      color: var(--black);
+      cursor: pointer;
+    }
+
+    .search-bar select:focus {
+      outline: none;
+      border-color: var(--yellow);
+    }
+
+    .search-btn {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+      background: var(--yellow);
+      color: var(--black);
+      border: 2px solid var(--black);
+      padding: 6px 18px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .search-btn:hover {
+      background: var(--black);
+      color: var(--white);
+    }
+
+    .search-btn:active {
+      background: var(--yellow);
+      color: var(--black);
+    }
+
+    .center-box {
+      background: var(--black);
+      color: var(--white);
+      padding: 12px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .center-box-label {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #aaa;
+    }
+
+    .center-box-entity {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 14px;
+      font-weight: 900;
+      color: var(--yellow);
+      letter-spacing: 0.08em;
+    }
+
+    .center-box-count {
+      font-size: 11px;
+      color: #aaa;
+      margin-left: auto;
+    }
+
+    .columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .column-block {
+      border: var(--border);
+      background: var(--white);
+    }
+
+    .column-header {
+      background: var(--black);
+      color: var(--white);
+      padding: 8px 12px;
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .column-count {
+      background: var(--yellow);
+      color: var(--black);
+      font-size: 10px;
+      padding: 1px 6px;
+    }
+
+    .node-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .node-item:last-child {
+      border-bottom: none;
+    }
+
+    .node-item-id {
+      font-size: 10px;
+      color: var(--dim);
+      font-family: 'Courier New', Courier, monospace;
+      margin-bottom: 3px;
+    }
+
+    .node-item-content {
+      font-size: 12px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+
+    .node-item-meta {
+      font-size: 10px;
+      color: var(--dim);
+      margin-top: 3px;
+    }
+
+    .edges-section {
+      margin-top: 0;
+    }
+
+    .edges-section-title {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+      color: var(--dim);
+    }
+
+    .column-empty {
+      padding: 20px 12px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--dim);
+      font-family: 'Arial Black', Arial, sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+  <nav class="g-nav">
+    <div class="g-nav-brand">&#x2B21; Engram <span>Worker</span></div>
+    <div class="g-nav-links">
+      <a class="g-nav-link" href="/">Sessions</a>
+      <a class="g-nav-link" href="/admin">Admin</a>
+      <a class="g-nav-link" href="/ticks">Ticks</a>
+      <a class="g-nav-link g-nav-link--active" href="/graph">Graph</a>
+    </div>
+    <div class="g-nav-right">
+      <span class="g-nav-status g-nav-status--loading" id="g-nav-status">...</span>
+    </div>
+  </nav>
+
+  <header>
+    <h1>&#x2B21; ENGRAM / MEMORY GRAPH</h1>
+    <div class="header-right">
+      <span id="status-line">Enter an entity to search</span>
+    </div>
+  </header>
+
+  <div class="search-bar">
+    <span class="filter-label">Entity:</span>
+    <input type="text" id="entityInput" placeholder="e.g. ViewerRoutes.ts or authentication">
+    <select id="typeSelect">
+      <option value="">Any Type</option>
+      <option value="file">File</option>
+      <option value="concept">Concept</option>
+      <option value="observation">Observation</option>
+      <option value="session">Session</option>
+    </select>
+    <select id="depthSelect">
+      <option value="1">Depth 1</option>
+      <option value="2">Depth 2</option>
+      <option value="3">Depth 3</option>
+    </select>
+    <button class="search-btn" id="searchBtn" type="button">Search</button>
+  </div>
+
+  <main id="main-content">
+    <div class="empty-state" id="initial-state">Enter an entity name above and click Search to explore the memory graph.</div>
+  </main>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ── DOM helpers ──────────────────────────────────────────────────────────
+
+      function txt(str) {
+        return document.createTextNode(String(str == null ? '' : str));
+      }
+
+      function el(tag, className) {
+        var node = document.createElement(tag);
+        if (className) node.className = className;
+        return node;
+      }
+
+      function clearEl(node) {
+        while (node.firstChild) node.removeChild(node.firstChild);
+      }
+
+      function setStatus(msg) {
+        var line = document.getElementById('status-line');
+        clearEl(line);
+        line.appendChild(txt(msg));
+      }
+
+      // ── Show error ───────────────────────────────────────────────────────────
+
+      function showError(msg) {
+        var main = document.getElementById('main-content');
+        clearEl(main);
+
+        var errDiv = el('div', 'error-state');
+
+        var errTitle = el('div', 'error-state-title');
+        errTitle.appendChild(txt('Error'));
+        errDiv.appendChild(errTitle);
+
+        errDiv.appendChild(txt(msg));
+        main.appendChild(errDiv);
+      }
+
+      // ── Show empty state ─────────────────────────────────────────────────────
+
+      function showEmpty(entity) {
+        var main = document.getElementById('main-content');
+        clearEl(main);
+
+        var div = el('div', 'empty-state');
+        div.appendChild(txt('No nodes found for "' + entity + '"'));
+        main.appendChild(div);
+      }
+
+      // ── Render a single column block ─────────────────────────────────────────
+
+      function renderColumn(title, nodes) {
+        var block = el('div', 'column-block');
+
+        var header = el('div', 'column-header');
+        header.appendChild(txt(title));
+
+        var countSpan = el('span', 'column-count');
+        countSpan.appendChild(txt(String(nodes.length)));
+        header.appendChild(countSpan);
+
+        block.appendChild(header);
+
+        if (nodes.length === 0) {
+          var empty = el('div', 'column-empty');
+          empty.appendChild(txt('None'));
+          block.appendChild(empty);
+        } else {
+          nodes.forEach(function (node) {
+            var item = el('div', 'node-item');
+
+            if (node.id) {
+              var idDiv = el('div', 'node-item-id');
+              idDiv.appendChild(txt('ID: ' + node.id));
+              item.appendChild(idDiv);
+            }
+
+            var contentDiv = el('div', 'node-item-content');
+            contentDiv.appendChild(txt(node.content || node.name || node.label || ''));
+            item.appendChild(contentDiv);
+
+            if (node.type && node.type !== title.toLowerCase()) {
+              var metaDiv = el('div', 'node-item-meta');
+              metaDiv.appendChild(txt('type: ' + node.type));
+              item.appendChild(metaDiv);
+            }
+
+            if (node.score != null) {
+              var scoreDiv = el('div', 'node-item-meta');
+              scoreDiv.appendChild(txt('score: ' + Number(node.score).toFixed(3)));
+              item.appendChild(scoreDiv);
+            }
+
+            block.appendChild(item);
+          });
+        }
+
+        return block;
+      }
+
+      // ── Render LLM edges table ───────────────────────────────────────────────
+
+      function renderEdgesTable(edges) {
+        var section = el('div', 'edges-section');
+
+        var title = el('div', 'edges-section-title');
+        title.appendChild(txt('LLM Edges (' + edges.length + ')'));
+        section.appendChild(title);
+
+        var table = document.createElement('table');
+        table.setAttribute('cellspacing', '0');
+
+        var thead = document.createElement('thead');
+        var hr = document.createElement('tr');
+        ['Source', 'Relation', 'Target', 'Weight'].forEach(function (col) {
+          var th = document.createElement('th');
+          th.appendChild(txt(col));
+          hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+
+        var tbody = document.createElement('tbody');
+        edges.forEach(function (edge) {
+          var tr = document.createElement('tr');
+
+          var tdSrc = document.createElement('td');
+          tdSrc.appendChild(txt(edge.source || edge.from || ''));
+          tr.appendChild(tdSrc);
+
+          var tdRel = document.createElement('td');
+          tdRel.appendChild(txt(edge.relation || edge.type || ''));
+          tr.appendChild(tdRel);
+
+          var tdTgt = document.createElement('td');
+          tdTgt.appendChild(txt(edge.target || edge.to || ''));
+          tr.appendChild(tdTgt);
+
+          var tdWt = document.createElement('td');
+          tdWt.className = 'numeric';
+          tdWt.appendChild(txt(edge.weight != null ? Number(edge.weight).toFixed(3) : '—'));
+          tr.appendChild(tdWt);
+
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        section.appendChild(table);
+
+        return section;
+      }
+
+      // ── Render full result ───────────────────────────────────────────────────
+
+      function renderResult(data, entity) {
+        var main = document.getElementById('main-content');
+        clearEl(main);
+
+        var nodes = data.nodes || [];
+        var edges = data.edges || [];
+
+        if (nodes.length === 0) {
+          showEmpty(entity);
+          setStatus('No results for "' + entity + '"');
+          return;
+        }
+
+        // Center box
+        var centerBox = el('div', 'center-box');
+
+        var labelSpan = el('span', 'center-box-label');
+        labelSpan.appendChild(txt('Center:'));
+        centerBox.appendChild(labelSpan);
+
+        var entitySpan = el('span', 'center-box-entity');
+        entitySpan.appendChild(txt(entity));
+        centerBox.appendChild(entitySpan);
+
+        var countSpan = el('span', 'center-box-count');
+        countSpan.appendChild(txt(nodes.length + ' node' + (nodes.length === 1 ? '' : 's') + ' found'));
+        centerBox.appendChild(countSpan);
+
+        main.appendChild(centerBox);
+
+        // Split nodes by type
+        var observations = [];
+        var concepts = [];
+        var files = [];
+        var other = [];
+
+        nodes.forEach(function (node) {
+          var t = (node.type || '').toLowerCase();
+          if (t === 'observation') {
+            observations.push(node);
+          } else if (t === 'concept') {
+            concepts.push(node);
+          } else if (t === 'file') {
+            files.push(node);
+          } else {
+            other.push(node);
+          }
+        });
+
+        // 3-column grid
+        var columns = el('div', 'columns');
+        columns.appendChild(renderColumn('Observations', observations.concat(other)));
+        columns.appendChild(renderColumn('Concepts', concepts));
+        columns.appendChild(renderColumn('Files', files));
+        main.appendChild(columns);
+
+        // LLM edges (only if present)
+        if (edges.length > 0) {
+          main.appendChild(renderEdgesTable(edges));
+        }
+
+        setStatus(nodes.length + ' nodes · ' + edges.length + ' edges');
+      }
+
+      // ── XHR search ──────────────────────────────────────────────────────────
+
+      function doSearch() {
+        var entity = document.getElementById('entityInput').value.trim();
+        var type = document.getElementById('typeSelect').value;
+        var depth = document.getElementById('depthSelect').value;
+
+        if (!entity) {
+          setStatus('Enter an entity name to search');
+          return;
+        }
+
+        setStatus('Searching...');
+
+        var url = '/api/graph?entity=' + encodeURIComponent(entity);
+        if (type) url += '&type=' + encodeURIComponent(type);
+        if (depth) url += '&depth=' + encodeURIComponent(depth);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState !== 4) return;
+          if (xhr.status >= 200 && xhr.status < 300) {
+            var data;
+            try {
+              data = JSON.parse(xhr.responseText);
+            } catch (e) {
+              showError('Failed to parse response: ' + e.message);
+              setStatus('Parse error');
+              return;
+            }
+            renderResult(data, entity);
+          } else {
+            var errMsg = 'HTTP ' + xhr.status;
+            try {
+              var errData = JSON.parse(xhr.responseText);
+              if (errData.error) errMsg = errData.error;
+            } catch (e) { /* ignore */ }
+            showError(errMsg);
+            setStatus('Error: ' + errMsg);
+          }
+        };
+        xhr.send();
+      }
+
+      // ── Init ────────────────────────────────────────────────────────────────
+
+      document.getElementById('searchBtn').addEventListener('click', doSearch);
+
+      document.getElementById('entityInput').addEventListener('keydown', function (e) {
+        if (e.keyCode === 13) doSearch();
+      });
+
+    })();
+  </script>
+  <script>
+  (function(){
+    fetch('/health').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+      var el = document.getElementById('g-nav-status');
+      if(d){ el.textContent='OK'; el.className='g-nav-status g-nav-status--ok'; }
+      else { el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err'; }
+    }).catch(function(){
+      var el=document.getElementById('g-nav-status');
+      el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err';
+    });
+  })();
+  </script>
+</body>
+</html>

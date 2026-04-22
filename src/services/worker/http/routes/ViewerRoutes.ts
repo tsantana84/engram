@@ -35,6 +35,7 @@ export class ViewerRoutes extends BaseRouteHandler {
     app.get('/api/ticks', this.handleGetTicks.bind(this));
     app.get('/ticks', this.handleTicksUI.bind(this));
     app.get('/admin', this.handleAdminUI.bind(this));
+    app.get('/graph', this.handleGraphUI.bind(this));
   }
 
   /**
@@ -138,6 +139,22 @@ export class ViewerRoutes extends BaseRouteHandler {
       throw new Error('Ticks UI not found — run npm run build-and-sync');
     }
     const html = readFileSync(ticksPath, 'utf-8');
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  });
+
+  /**
+   * Serve graph UI
+   */
+  private handleGraphUI = this.wrapHandler((_req: Request, res: Response): void => {
+    const packageRoot = getPackageRoot();
+    const candidatePaths = [
+      path.join(packageRoot, 'ui', 'graph.html'),
+      path.join(packageRoot, 'plugin', 'ui', 'graph.html'),
+    ];
+    const htmlPath = candidatePaths.find((p) => existsSync(p));
+    if (!htmlPath) throw new Error('Graph UI not found — run npm run build-and-sync');
+    const html = readFileSync(htmlPath, 'utf-8');
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   });
