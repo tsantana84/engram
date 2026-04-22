@@ -50,6 +50,36 @@ npm run worker:force-restart  # restart without rebuild (use after manual settin
 
 ## Using Engram
 
+### Memory search
+
+Invoke the `mem-search` skill inside Claude Code, or use the MCP tools directly. Three-layer workflow to minimize token usage:
+
+1. **`search`** — compact index, ~50–100 tokens/result
+2. **`timeline`** — chronological context around results
+3. **`get_observations([ids])`** — full details for filtered IDs only
+
+```
+search("auth bug fix") → review index → get_observations([123, 456])
+```
+
+### Review dashboard
+
+`https://<vercel-url>/dashboard` — approve, reject, or edit pending learnings extracted from sessions. Auth: Bearer token (your agent key). The ConflictDetector runs on Approve to catch duplicates before they reach the shared store.
+
+### Local worker UI
+
+`http://localhost:37777` — three pages:
+
+| Page | URL | What it shows |
+|---|---|---|
+| Sessions | `/` | Paginated observations, summaries, prompts with SSE live updates |
+| Ticks | `/ticks` | SyncWorker tick log (IDLE/OK/PARTIAL/FAIL), last 1000 ticks, auto-refresh 60s |
+| Admin | `/admin` | Agent management, queue status, sync health |
+
+### Privacy
+
+Wrap sensitive content in `<private>...</private>` tags. These are stripped at the hook layer before anything reaches the worker or database.
+
 ## How It Works
 
 ## Dev Guide
