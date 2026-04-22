@@ -153,7 +153,8 @@ function renderCard(list, l) {
   const conf = el('span', { className: 'conf', text: `${(l.confidence * 100).toFixed(0)}%` });
   const proj = el('span', { className: 'proj', text: l.project ?? '' });
   const badge = el('span', { className: `status-badge status-${l.status ?? 'pending'}`, text: l.status ?? 'pending' });
-  meta.append(conf, proj, badge);
+  const ts = l.extracted_at ? el('span', { className: 'ts', text: new Date(l.extracted_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) }) : null;
+  meta.append(conf, proj, badge, ...(ts ? [ts] : []));
 
   card.appendChild(cb);
 

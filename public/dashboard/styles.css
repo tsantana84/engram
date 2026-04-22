@@ -177,6 +177,11 @@ main > p {
   padding: 1px 6px;
   color: #444;
 }
+.ts {
+  font-size: 11px;
+  color: var(--dim);
+  font-family: var(--font-mono);
+}
 
 .card h2 {
   font-family: var(--font-sans);
