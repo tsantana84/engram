@@ -96,7 +96,8 @@ function errorIfWorkerScriptMissing(): void {
  */
 const TOOL_ENDPOINT_MAP: Record<string, string> = {
   'search': '/api/search',
-  'timeline': '/api/timeline'
+  'timeline': '/api/timeline',
+  'graph': '/api/graph'
 };
 
 /**
@@ -544,6 +545,79 @@ NEVER fetch full details without filtering first. 10x token savings.`,
       const { name, ...rest } = args;
       if (typeof name !== 'string' || name.trim() === '') throw new Error('Missing required argument: name');
       return await callWorkerAPIPost(`/api/corpus/${encodeURIComponent(name)}/reprime`, rest);
+    }
+  },
+  {
+    name: 'graph',
+    description: 'Traverse the memory graph to find everything connected to a file, concept, or observation. Use to answer "what touched X?" or "what relates to Y?". Returns linked observations, files, concepts, and typed LLM edges (contradicts/depends-on/supersedes/confirms). Step 1: call graph(). Step 2: call get_observations([ids]) for details.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Entity to look up. File path (contains / or has extension like .ts/.js), observation ID (number only), or concept name.'
+        },
+        depth: {
+          type: 'number',
+          description: 'Traversal depth 1-3 (default 2)'
+        }
+      },
+      required: ['query'],
+      additionalProperties: false
+    },
+    handler: async (args: { query: string; depth?: number }) => {
+      const q = args.query;
+      let type: string;
+      if (/^\d+$/.test(q)) {
+        type = 'observation';
+      } else if (q.indexOf('/') !== -1 || /\.\w{1,5}$/.test(q)) {
+        type = 'file';
+      } else {
+        type = 'concept';
+      }
+      const depth = args.depth || 2;
+      const raw = await callWorkerAPI('/api/graph', { entity: q, type: type, depth: depth });
+
+      if (raw.isError) return raw;
+
+      let result: any;
+      try {
+        result = JSON.parse(raw.content[0].text);
+      } catch {
+        return raw;
+      }
+
+      if (!result || !result.nodes) return { content: [{ type: 'text' as const, text: 'No graph data found for "' + q + '"' }] };
+
+      const observations = result.nodes.filter(function(n: any) { return n.type === 'observation'; });
+      const files = result.nodes.filter(function(n: any) { return n.type === 'file'; });
+      const concepts = result.nodes.filter(function(n: any) { return n.type === 'concept'; });
+      const llmEdges = result.edges.filter(function(e: any) { return e.source === 'llm'; });
+
+      const lines: string[] = [
+        'Graph: ' + q + ' (depth ' + depth + ', ' + result.nodes.length + ' nodes)',
+        '',
+        'Observations (' + observations.length + '):',
+      ];
+      observations.slice(0, 10).forEach(function(n: any) {
+        lines.push('  #' + n.id + ' "' + (n.title || '') + '"');
+      });
+      if (observations.length > 10) lines.push('  ... and ' + (observations.length - 10) + ' more');
+      lines.push('');
+      lines.push('Concepts (' + concepts.length + '): ' + concepts.map(function(n: any) { return n.id; }).join(' · '));
+      lines.push('Files (' + files.length + '): ' + files.map(function(n: any) { return n.id; }).join(' · '));
+
+      if (llmEdges.length > 0) {
+        lines.push('', 'LLM edges:');
+        llmEdges.slice(0, 10).forEach(function(e: any) {
+          lines.push('  #' + e.from_id + ' ' + e.relationship + ' #' + e.to_id);
+        });
+      }
+      if (observations.length > 0) {
+        const ids = observations.slice(0, 5).map(function(n: any) { return n.id; }).join(', ');
+        lines.push('', 'Use get_observations([' + ids + ']) for full details.');
+      }
+      return { content: [{ type: 'text' as const, text: lines.filter(function(l: string) { return l !== ''; }).join('\n') }] };
     }
   }
 ];
