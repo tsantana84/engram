@@ -54,19 +54,24 @@ Global nav: sticky black header, `⬡ ENGRAM WORKER` brand, nav links (Sessions 
 ### SSE Event Handling
 
 Connect to `/stream` on page load. Handle:
-- `initial_load` → populate project filter, source tabs
+- `initial_load` → **overwrite** (not append) project/source filter options. Server broadcasts this to ALL connected clients, not just the new connection — so duplicate `initial_load` events are normal and must be idempotent.
 - `new_observation` → prepend observation card to feed
 - `new_summary` → prepend summary card to feed
 - `new_prompt` → prepend prompt card to feed
 - `processing_status` → update processing indicator in nav
+- Unknown event types (`session_started`, `observation_queued`, `session_completed`) → ignore silently
 
-On disconnect: display reconnecting indicator, retry with exponential backoff (1s → 2s → 4s → max 30s).
+On disconnect: display reconnecting indicator, retry with exponential backoff (1s → 2s → 4s → max 30s). Items created during disconnect gap will not backfill — user must refresh for complete history. If server returns 503 on connect (worker still initializing), treat as disconnect and retry.
 
 ### Feed
 
 Mixed timeline sorted by `created_at_epoch` desc. Observations, summaries, and prompts interleaved. Initial load fetches page 1 of each (limit=50). "LOAD MORE" button at bottom triggers next page fetch for all three, merges and re-sorts.
 
 State tracked per type: `{ offset, hasMore }`.
+
+**Note**: Pagination is independent per type (observations/summaries/prompts each have their own offset). This means the merged timeline is approximately sorted but not globally correct at page boundaries — items from different types may appear slightly out of order across page loads. This is an acceptable trade-off for implementation simplicity.
+
+**Filter changes**: Use `AbortController` to cancel any in-flight fetch requests before issuing new ones. Without this, a slow response from a previous filter state can arrive after the new filter's results and corrupt the feed.
 
 ### Cards
 
@@ -89,8 +94,8 @@ Border-left color by `type`:
 
 Type/source/project: uppercase monospace badges with `3px solid #000` borders.
 
-Facts toggle: shows `facts[]` list + concepts + files_read + files_modified.
-Narrative toggle: shows `narrative` text. Mutually exclusive with facts.
+Facts toggle: only render if `facts` parses to a non-empty array OR concepts/files_read/files_modified are non-empty. Shows `facts[]` list + concepts + files_read + files_modified.
+Narrative toggle: only render if `narrative` is non-null and non-empty string. Shows narrative text. Mutually exclusive with facts — activating one deactivates the other.
 
 **Summary card**:
 ```
@@ -157,8 +162,9 @@ Apply brutalist CSS same way — keep JS, replace visual design.
 3. Implement feed rendering (all 3 card types)
 4. Implement project/source filters
 5. Implement pagination / Load More
-6. Update `ViewerRoutes.ts` to serve `sessions.html` at `GET /`
-7. Build and sync, smoke test
+6. Update `ViewerRoutes.ts` `handleViewerUI` method — both candidate paths must change from `viewer.html` to `sessions.html`: `path.join(packageRoot, 'ui', 'sessions.html')` and `path.join(packageRoot, 'plugin', 'ui', 'sessions.html')`
+7. Delete `plugin/ui/viewer-bundle.js` (263 KB, no longer referenced) and remove `viewer.html` from `plugin/ui/` to avoid dead files being served by `express.static`
+8. Build and sync, smoke test
 
 ### Phase 2: Vercel dashboard pages
 1. Restyle `public/dashboard/index.html`
