@@ -1,4 +1,5 @@
 import type { GraphStore } from '../sqlite/graph/GraphStore.js';
+import { logger } from '../../utils/logger.js';
 
 export interface GraphEdgeInput {
   observations: { id: string; title: string; narrative: string }[];
@@ -69,7 +70,7 @@ export class GraphEdgeExtractor {
       }
       return edges;
     } catch (err) {
-      console.error('[GraphEdgeExtractor] extract error:', err);
+      logger.error('WORKER', 'GraphEdgeExtractor extract error', undefined, err);
       return [];
     }
   }
