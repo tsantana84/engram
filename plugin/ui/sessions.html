@@ -413,8 +413,8 @@
           fetch('/api/observations' + buildQuery(state.obs.offset), { signal: signal })
             .then(function (r) { return r.json(); })
             .then(function (d) {
-              var items = d.observations || [];
-              if (items.length < LIMIT) state.obs.hasMore = false;
+              var items = d.items || [];
+              if (!d.hasMore) state.obs.hasMore = false;
               state.obs.offset += items.length;
               return items.map(function (o) { return Object.assign({}, o, { _type: 'observation' }); });
             })
@@ -424,8 +424,8 @@
           fetch('/api/summaries' + buildQuery(state.sum.offset), { signal: signal })
             .then(function (r) { return r.json(); })
             .then(function (d) {
-              var items = d.summaries || [];
-              if (items.length < LIMIT) state.sum.hasMore = false;
+              var items = d.items || [];
+              if (!d.hasMore) state.sum.hasMore = false;
               state.sum.offset += items.length;
               return items.map(function (s) { return Object.assign({}, s, { _type: 'summary' }); });
             })
@@ -435,8 +435,8 @@
           fetch('/api/prompts' + buildQuery(state.prm.offset), { signal: signal })
             .then(function (r) { return r.json(); })
             .then(function (d) {
-              var items = d.prompts || [];
-              if (items.length < LIMIT) state.prm.hasMore = false;
+              var items = d.items || [];
+              if (!d.hasMore) state.prm.hasMore = false;
               state.prm.offset += items.length;
               return items.map(function (p) { return Object.assign({}, p, { _type: 'prompt' }); });
             })
@@ -458,8 +458,8 @@
             renderFeed();
           })
           .catch(function (err) {
-            if (err.name === 'AbortError') return;
             state.loading = false;
+            if (err.name === 'AbortError') return;
             renderFeed();
           });
       }
