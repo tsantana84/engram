@@ -101,6 +101,7 @@ import { CorpusRoutes } from './worker/http/routes/CorpusRoutes.js';
 import { ErrorStore } from './admin/ErrorStore.js';
 import { HealthChecker } from './admin/HealthChecker.js';
 import { AdminRoutes } from './worker/http/routes/AdminRoutes.js';
+import { GraphRoutes } from './worker/http/routes/GraphRoutes.js';
 
 // Knowledge agent services
 import { CorpusStore } from './worker/knowledge/CorpusStore.js';
@@ -366,6 +367,7 @@ export class WorkerService {
     this.server.registerRoutes(new DataRoutes(this.paginationHelper, this.dbManager, this.sessionManager, this.sseBroadcaster, this, this.startTime));
     this.server.registerRoutes(new SettingsRoutes(this.settingsManager));
     this.server.registerRoutes(new LogsRoutes());
+    this.server.registerRoutes(new GraphRoutes(this.dbManager));
     this.server.registerRoutes(new MemoryRoutes(this.dbManager, 'claude-mem'));
 
     // Amnesia Recovery Protocol routes
