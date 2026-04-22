@@ -40,3 +40,8 @@ src/ui/viewer.html
 CONTRIB_NOTES.md
 .vercel
 .worktrees/
+.env*.local
+
+# React viewer build artifacts (replaced by sessions.html)
+plugin/ui/viewer.html
+plugin/ui/viewer-bundle.js
