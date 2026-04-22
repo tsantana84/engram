@@ -204,8 +204,192 @@
       var feed = document.getElementById('feed');
       var loadingState = document.getElementById('loading-state');
 
+      /* ── Card renderer helpers ──────────────────────────────── */
+      function mkEl(tag, className) {
+        var e = document.createElement(tag);
+        if (className) e.className = className;
+        return e;
+      }
+      function mkText(tag, className, text) {
+        var e = mkEl(tag, className);
+        e.textContent = text;
+        return e;
+      }
+      function formatEpoch(epochMs) {
+        return new Date(epochMs).toLocaleString([], {
+          month: 'short', day: 'numeric', year: 'numeric',
+          hour: '2-digit', minute: '2-digit', hour12: false
+        });
+      }
+      function safeJSON(str) {
+        if (!str) return [];
+        try { var v = JSON.parse(str); return Array.isArray(v) ? v : []; }
+        catch (e) { return []; }
+      }
+      function stripRoot(fp) {
+        var markers = ['/Scripts/', '/src/', '/plugin/', '/docs/'];
+        for (var i = 0; i < markers.length; i++) {
+          var idx = fp.indexOf(markers[i]);
+          if (idx !== -1) return fp.substring(idx + 1);
+        }
+        var parts = fp.split('/');
+        return parts.length > 3 ? parts.slice(-3).join('/') : fp;
+      }
+
+      /* ── Card renderers ─────────────────────────────────────── */
+      function renderCard(data, type) {
+        if (type === 'observation') return renderObservation(data);
+        if (type === 'summary')     return renderSummary(data);
+        if (type === 'prompt')      return renderPrompt(data);
+        return null;
+      }
+
+      function renderObservation(obs) {
+        var typeMap = { discovery: 'card--discovery', bugfix: 'card--bugfix', feature: 'card--feature' };
+        var card = mkEl('div', 'card ' + (typeMap[obs.type] || 'card--default'));
+
+        var header = mkEl('div', 'card-header');
+        var badges = mkEl('div', 'card-badges');
+        var typeCls = 'badge badge--type-' + (obs.type || 'default');
+        badges.appendChild(mkText('span', typeCls, (obs.type || 'obs').toUpperCase()));
+        badges.appendChild(mkText('span', 'badge badge--source', (obs.platform_source || 'claude').toUpperCase()));
+        badges.appendChild(mkText('span', 'badge badge--project', obs.project || '—'));
+        header.appendChild(badges);
+
+        var facts    = safeJSON(obs.facts);
+        var concepts = safeJSON(obs.concepts);
+        var filesR   = safeJSON(obs.files_read).map(stripRoot);
+        var filesM   = safeJSON(obs.files_modified).map(stripRoot);
+        var hasFacts = facts.length > 0 || concepts.length > 0 || filesR.length > 0 || filesM.length > 0;
+        var hasNarr  = obs.narrative && obs.narrative.trim().length > 0;
+
+        var toggles  = mkEl('div', 'card-toggles');
+        var factsBtn = null;
+        var narrBtn  = null;
+
+        if (hasFacts) {
+          factsBtn = mkText('button', 'toggle-btn', 'FACTS');
+          factsBtn.type = 'button';
+          toggles.appendChild(factsBtn);
+        }
+        if (hasNarr) {
+          narrBtn = mkText('button', 'toggle-btn', 'NARRATIVE');
+          narrBtn.type = 'button';
+          toggles.appendChild(narrBtn);
+        }
+        header.appendChild(toggles);
+        card.appendChild(header);
+
+        card.appendChild(mkText('div', 'card-title', obs.title || 'Untitled'));
+
+        var subtitleEl  = mkText('div', 'card-subtitle', obs.subtitle || '');
+        var factsPanel  = mkEl('div', 'facts-panel');
+        var narrPanel   = mkEl('div', 'narrative-panel');
+        factsPanel.style.display = 'none';
+        narrPanel.style.display  = 'none';
+
+        if (hasFacts) {
+          if (facts.length > 0) {
+            var ul = mkEl('ul', 'facts-list');
+            facts.forEach(function (f) { ul.appendChild(mkText('li', null, String(f))); });
+            factsPanel.appendChild(ul);
+          }
+          if (concepts.length > 0) {
+            factsPanel.appendChild(mkText('div', 'concepts-row', 'Concepts: ' + concepts.join(', ')));
+          }
+          if (filesR.length > 0) {
+            var fr = mkEl('div', 'files-row');
+            fr.appendChild(mkText('span', 'files-label', 'Read: '));
+            fr.appendChild(document.createTextNode(filesR.join(', ')));
+            factsPanel.appendChild(fr);
+          }
+          if (filesM.length > 0) {
+            var fm = mkEl('div', 'files-row');
+            fm.appendChild(mkText('span', 'files-label', 'Modified: '));
+            fm.appendChild(document.createTextNode(filesM.join(', ')));
+            factsPanel.appendChild(fm);
+          }
+        }
+
+        if (hasNarr) {
+          narrPanel.appendChild(mkText('div', 'card-narrative', obs.narrative));
+        }
+
+        card.appendChild(subtitleEl);
+        card.appendChild(factsPanel);
+        card.appendChild(narrPanel);
+
+        if (factsBtn) {
+          factsBtn.addEventListener('click', function () {
+            var on = factsPanel.style.display !== 'none';
+            factsPanel.style.display  = on ? 'none' : 'block';
+            subtitleEl.style.display  = on ? ''     : 'none';
+            narrPanel.style.display   = 'none';
+            if (narrBtn) narrBtn.className = 'toggle-btn';
+            factsBtn.className = 'toggle-btn' + (on ? '' : ' toggle-btn--active');
+          });
+        }
+        if (narrBtn) {
+          narrBtn.addEventListener('click', function () {
+            var on = narrPanel.style.display !== 'none';
+            narrPanel.style.display  = on ? 'none' : 'block';
+            subtitleEl.style.display = on ? ''     : 'none';
+            factsPanel.style.display = 'none';
+            if (factsBtn) factsBtn.className = 'toggle-btn';
+            narrBtn.className = 'toggle-btn' + (on ? '' : ' toggle-btn--active');
+          });
+        }
+
+        card.appendChild(mkText('div', 'card-meta', '#' + obs.id + ' • ' + formatEpoch(obs.created_at_epoch)));
+        return card;
+      }
+
+      function renderSummary(sum) {
+        var card = mkEl('div', 'card card--summary');
+
+        var header = mkEl('div', 'card-header');
+        var badges = mkEl('div', 'card-badges');
+        badges.appendChild(mkText('span', 'badge badge--type-feature', 'SUMMARY'));
+        badges.appendChild(mkText('span', 'badge badge--project', sum.project || '—'));
+        header.appendChild(badges);
+        header.appendChild(mkText('span', 'card-meta', formatEpoch(sum.created_at_epoch)));
+        card.appendChild(header);
+
+        var sections = [
+          { key: 'request',      label: 'Request' },
+          { key: 'investigated', label: 'Investigated' },
+          { key: 'learned',      label: 'Learned' },
+          { key: 'completed',    label: 'Completed' },
+          { key: 'next_steps',   label: 'Next Steps' },
+        ];
+        sections.forEach(function (s) {
+          var val = sum[s.key];
+          if (!val || !String(val).trim()) return;
+          var row = mkEl('div', 'summary-section');
+          row.appendChild(mkText('span', 'summary-section-label', '▸ ' + s.label + ':'));
+          row.appendChild(document.createTextNode(' ' + val));
+          card.appendChild(row);
+        });
+
+        return card;
+      }
+
+      function renderPrompt(prm) {
+        var card = mkEl('div', 'card card--prompt');
+
+        var header = mkEl('div', 'card-header');
+        var badges = mkEl('div', 'card-badges');
+        badges.appendChild(mkText('span', 'badge badge--type-default', 'PROMPT'));
+        badges.appendChild(mkText('span', 'badge badge--project', prm.project || '—'));
+        badges.appendChild(mkText('span', 'badge badge--source', (prm.platform_source || 'claude').toUpperCase()));
+        header.appendChild(badges);
+        header.appendChild(mkText('span', 'card-meta', formatEpoch(prm.created_at_epoch)));
+        card.appendChild(header);
+        card.appendChild(mkText('div', 'prompt-text', prm.prompt_text || ''));
+        return card;
+      }
+
       /* ── Stubs (filled in later tasks) ─────────────────────── */
-      function renderCard(data, type) { return null; }
       function loadPage() { /* filled in Task 4 */ }
 
       /* ── Live indicator ─────────────────────────────────────── */
