@@ -82,4 +82,48 @@ Wrap sensitive content in `<private>...</private>` tags. These are stripped at t
 
 ## How It Works
 
+### Local pipeline
+
+```
+Claude Code session
+  → 5 lifecycle hooks
+     (SessionStart / UserPromptSubmit / PostToolUse / Summary / SessionEnd)
+  → SQLite (~/.claude-mem/claude-mem.db)
+     observations, summaries, sync_queue, tick_log
+  → SyncWorker (port 37777, tick-based)
+  → LearningExtractor (session-end LLM distillation)
+  → SyncQueue → Vercel API
+```
+
+### Sync & backend
+
+Vercel serverless functions receive sync payloads from each agent and write to Supabase.
+
+Key endpoints:
+
+| Endpoint | Purpose |
+|---|---|
+| `api/sync/push` | Receive observation/summary payloads |
+| `api/sync/learnings` | Receive learning-specific payloads |
+| `api/sync/status` | Queue status |
+| `api/search` | Unified search (observations + approved learnings) |
+| `api/timeline` | Chronological queries |
+| `api/agents/` | Agent key management |
+
+ConflictDetector runs server-side when a learning is approved via the dashboard. High-confidence learnings (≥ threshold) auto-approve; low-confidence learnings queue for manual review.
+
+### Key components
+
+| Component | Path | Role |
+|---|---|---|
+| Hooks | `src/hooks/*.ts` | Lifecycle capture; built to `plugin/scripts/` |
+| SyncWorker | `src/services/sync/SyncWorker.ts` | Tick loop, drains queue, orchestrates sync |
+| SyncQueue | `src/services/sync/SyncQueue.ts` | SQLite-backed write queue |
+| LearningExtractor | `src/services/sync/LearningExtractor.ts` | Session-end LLM distillation |
+| ConflictDetector | `src/services/sync/ConflictDetector.ts` | Server-side dedup on approval |
+| SupabaseManager | `api/lib/SupabaseManager.ts` | All Supabase interactions |
+| ViewerRoutes | `src/services/worker/http/routes/ViewerRoutes.ts` | Serves local HTML pages |
+
+For full architecture detail, see `CLAUDE.md`.
+
 ## Dev Guide
