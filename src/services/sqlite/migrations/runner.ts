@@ -1208,7 +1208,8 @@ export class MigrationRunner {
         relationship     TEXT NOT NULL,
         weight           REAL DEFAULT 1.0,
         source           TEXT NOT NULL,
-        created_at_epoch INTEGER NOT NULL
+        created_at_epoch INTEGER NOT NULL,
+        UNIQUE(from_type, from_id, to_type, to_id, relationship)
       )
     `);
     this.db.run('CREATE INDEX IF NOT EXISTS idx_graph_from ON graph_edges(from_type, from_id)');
