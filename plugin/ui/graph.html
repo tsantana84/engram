@@ -666,7 +666,7 @@
 
         var thead = document.createElement('thead');
         var hr = document.createElement('tr');
-        ['Source', 'Relation', 'Target', 'Weight'].forEach(function (col) {
+        ['From', 'Relationship', 'To'].forEach(function (col) {
           var th = document.createElement('th');
           th.appendChild(txt(col));
           hr.appendChild(th);
@@ -679,21 +679,16 @@
           var tr = document.createElement('tr');
 
           var tdSrc = document.createElement('td');
-          tdSrc.appendChild(txt(edge.source || edge.from || ''));
+          tdSrc.appendChild(txt(edge.from_id != null ? '#' + edge.from_id : ''));
           tr.appendChild(tdSrc);
 
           var tdRel = document.createElement('td');
-          tdRel.appendChild(txt(edge.relation || edge.type || ''));
+          tdRel.appendChild(txt(edge.relationship || ''));
           tr.appendChild(tdRel);
 
           var tdTgt = document.createElement('td');
-          tdTgt.appendChild(txt(edge.target || edge.to || ''));
+          tdTgt.appendChild(txt(edge.to_id != null ? '#' + edge.to_id : ''));
           tr.appendChild(tdTgt);
-
-          var tdWt = document.createElement('td');
-          tdWt.className = 'numeric';
-          tdWt.appendChild(txt(edge.weight != null ? Number(edge.weight).toFixed(3) : '—'));
-          tr.appendChild(tdWt);
 
           tbody.appendChild(tr);
         });
