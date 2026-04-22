@@ -80,7 +80,7 @@ export class GraphStore {
     const rows = this.db.prepare(`
       WITH RECURSIVE traverse(from_type, from_id, to_type, to_id, relationship, source, depth, visited) AS (
         SELECT from_type, from_id, to_type, to_id, relationship, source, 1,
-               from_type || ':' || from_id || '|' || to_type || ':' || to_id
+               '|' || from_type || ':' || from_id || '|' || to_type || ':' || to_id || '|'
         FROM graph_edges
         WHERE from_type = ? AND from_id = ?
 
@@ -88,11 +88,11 @@ export class GraphStore {
 
         SELECT e.from_type, e.from_id, e.to_type, e.to_id, e.relationship, e.source,
                t.depth + 1,
-               t.visited || '|' || e.to_type || ':' || e.to_id
+               t.visited || e.to_type || ':' || e.to_id || '|'
         FROM graph_edges e
         JOIN traverse t ON e.from_type = t.to_type AND e.from_id = t.to_id
         WHERE t.depth < ?
-          AND instr(t.visited, e.to_type || ':' || e.to_id) = 0
+          AND instr(t.visited, '|' || e.to_type || ':' || e.to_id || '|') = 0
       )
       SELECT DISTINCT from_type, from_id, to_type, to_id, relationship, source FROM traverse
     `).all(center.type, center.id, cap) as GraphEdge[];

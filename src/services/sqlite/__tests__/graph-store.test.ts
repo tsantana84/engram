@@ -93,6 +93,23 @@ describe('GraphStore', () => {
     expect(linked).toContain('1');
     expect(linked).toContain('2');
   });
+
+  it('traverse handles observation IDs that are substrings of each other', () => {
+    // ID '12' should not block traversal of '123'
+    graph.addEdgePair({ type: 'observation', id: '12' }, { type: 'file', id: 'src/foo.ts' }, 'co-file', 'rule');
+    graph.addEdgePair({ type: 'observation', id: '123' }, { type: 'file', id: 'src/foo.ts' }, 'co-file', 'rule');
+    const result = graph.traverse({ type: 'file', id: 'src/foo.ts' }, 2);
+    const nodeIds = result.nodes.map((n: any) => n.id);
+    expect(nodeIds).toContain('12');
+    expect(nodeIds).toContain('123');
+  });
+
+  it('addEdgePair does not create duplicate edges', () => {
+    graph.addEdgePair({ type: 'observation', id: '1' }, { type: 'file', id: 'src/foo.ts' }, 'co-file', 'rule');
+    graph.addEdgePair({ type: 'observation', id: '1' }, { type: 'file', id: 'src/foo.ts' }, 'co-file', 'rule');
+    const rows = sessionStore.db.prepare('SELECT * FROM graph_edges').all();
+    expect(rows).toHaveLength(2); // Still 2 (bidirectional), not 4
+  });
 });
 
 function createSessionWithMemoryId(store: SessionStore, memorySessionId: string): void {
