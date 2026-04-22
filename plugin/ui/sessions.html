@@ -199,7 +199,10 @@
       };
 
       var sseRetryDelay = 1000;
+      var es = null;
+      var sseTimer = null;
       var feed = document.getElementById('feed');
+      var loadingState = document.getElementById('loading-state');
 
       /* ── Stubs (filled in later tasks) ─────────────────────── */
       function renderCard(data, type) { return null; }
@@ -216,8 +219,8 @@
       /* ── Processing pill ────────────────────────────────────── */
       function updateProcessing(isProcessing, queueDepth) {
         var pill = document.getElementById('processing-pill');
-        if (isProcessing) {
-          pill.textContent = 'PROCESSING (' + (queueDepth || 0) + ')';
+        if (isProcessing || queueDepth > 0) {
+          pill.textContent = 'PROCESSING' + (queueDepth > 0 ? ' (' + queueDepth + ')' : '');
           pill.classList.add('processing-pill--visible');
         } else {
           pill.classList.remove('processing-pill--visible');
@@ -253,18 +256,16 @@
 
       /* ── Prepend item from SSE ──────────────────────────────── */
       function prependItem(data, type) {
-        if (state.project && data.project !== state.project) { return; }
-        if (state.source  && data.source  !== state.source)  { return; }
+        if (state.project && data.project !== state.project) return;
+        if (state.source && (data.platform_source || 'claude') !== state.source) return;
 
         var card = renderCard(data, type);
+        if (!card) return;
 
         /* Remove loading placeholder if still present */
-        var loadingState = document.getElementById('loading-state');
-        if (loadingState) {
+        if (loadingState && loadingState.parentNode === feed) {
           feed.removeChild(loadingState);
         }
-
-        if (!card) { return; }
 
         /* Insert before first .card, or before .load-more-row, or append */
         var firstCard = feed.querySelector('.card');
@@ -303,24 +304,26 @@
 
       /* ── SSE connection ─────────────────────────────────────── */
       function connectSSE() {
-        var es = new EventSource('/stream');
+        if (es) { es.close(); }
+        if (sseTimer) { clearTimeout(sseTimer); sseTimer = null; }
+        es = new EventSource('/stream');
 
         es.onopen = function () {
           sseRetryDelay = 1000;
           setLive(true);
         };
 
-        es.onmessage = function (e) {
-          try {
-            var msg = JSON.parse(e.data);
-            handleSSEMessage(msg);
-          } catch (_) { /* ignore malformed frames */ }
+        es.onmessage = function (ev) {
+          var msg;
+          try { msg = JSON.parse(ev.data); } catch (e) { return; }
+          handleSSEMessage(msg);
         };
 
         es.onerror = function () {
           es.close();
+          es = null;
           setLive(false);
-          setTimeout(connectSSE, sseRetryDelay);
+          sseTimer = setTimeout(connectSSE, sseRetryDelay);
           sseRetryDelay = Math.min(sseRetryDelay * 2, 30000);
         };
       }
