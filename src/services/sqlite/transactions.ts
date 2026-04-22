@@ -216,7 +216,42 @@ export function storeObservations(
         timestampIso,
         timestampEpoch
       );
-      observationIds.push(Number(result.lastInsertRowid));
+      const obsId = String(Number(result.lastInsertRowid));
+      observationIds.push(Number(obsId));
+
+      // Pass 1: write rule-based graph edges (bare run — already inside db.transaction())
+      const edgeNow = Date.now();
+      const edgeStmt = db.prepare(`
+        INSERT OR IGNORE INTO graph_edges
+          (from_type, from_id, to_type, to_id, relationship, source, created_at_epoch)
+        VALUES (?, ?, ?, ?, ?, 'rule', ?)
+      `);
+
+      // obs <-> session
+      edgeStmt.run('observation', obsId, 'session', memorySessionId, 'co-session', edgeNow);
+      edgeStmt.run('session', memorySessionId, 'observation', obsId, 'co-session', edgeNow);
+
+      // obs <-> file (files_read + files_modified)
+      const filesRead: string[] = Array.isArray(observation.files_read)
+        ? (observation.files_read as string[])
+        : JSON.parse((observation.files_read as string) || '[]');
+      const filesModified: string[] = Array.isArray(observation.files_modified)
+        ? (observation.files_modified as string[])
+        : JSON.parse((observation.files_modified as string) || '[]');
+
+      for (const file of [...filesRead, ...filesModified]) {
+        edgeStmt.run('observation', obsId, 'file', file, 'co-file', edgeNow);
+        edgeStmt.run('file', file, 'observation', obsId, 'co-file', edgeNow);
+      }
+
+      // obs <-> concept
+      const concepts: string[] = Array.isArray(observation.concepts)
+        ? (observation.concepts as string[])
+        : JSON.parse((observation.concepts as string) || '[]');
+      for (const concept of concepts) {
+        edgeStmt.run('observation', obsId, 'concept', concept, 'co-concept', edgeNow);
+        edgeStmt.run('concept', concept, 'observation', obsId, 'co-concept', edgeNow);
+      }
     }
 
     // 2. Store summary if provided

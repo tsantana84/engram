@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'bun:test';
+import { storeObservations } from '../transactions';
 import { SessionStore } from '../SessionStore';
 import { GraphStore } from '../graph/GraphStore';
 
@@ -91,5 +92,151 @@ describe('GraphStore', () => {
     const linked = graph.findLinkedObservations('file', 'src/foo.ts');
     expect(linked).toContain('1');
     expect(linked).toContain('2');
+  });
+});
+
+function createSessionWithMemoryId(store: SessionStore, memorySessionId: string): void {
+  const contentSessionId = 'content-' + memorySessionId;
+  store.createSDKSession(contentSessionId, 'test-project', 'test prompt');
+  store.db.prepare(
+    'UPDATE sdk_sessions SET memory_session_id = ? WHERE content_session_id = ?'
+  ).run(memorySessionId, contentSessionId);
+}
+
+describe('Pass 1 rule-based edges', () => {
+  let sessionStore: SessionStore;
+
+  beforeEach(() => {
+    sessionStore = new SessionStore(':memory:');
+  });
+
+  it('writes obs->file edges for files_modified', () => {
+    const sessionId = 'test-session-' + Date.now();
+    createSessionWithMemoryId(sessionStore, sessionId);
+
+    storeObservations(
+      sessionStore.db,
+      sessionId,
+      'test-project',
+      [{
+        type: 'implementation',
+        title: 'Test Observation',
+        subtitle: null,
+        facts: [],
+        narrative: 'Did some work',
+        concepts: [],
+        files_read: [],
+        files_modified: ['src/foo.ts', 'src/bar.ts'],
+      }],
+      null
+    );
+
+    const rows = sessionStore.db
+      .prepare("SELECT * FROM graph_edges WHERE to_type = 'file'")
+      .all() as any[];
+
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    const toIds = rows.map((r: any) => r.to_id);
+    expect(toIds).toContain('src/foo.ts');
+    expect(toIds).toContain('src/bar.ts');
+    expect(rows.every((r: any) => r.from_type === 'observation')).toBe(true);
+  });
+
+  it('writes obs->session edges', () => {
+    const sessionId = 'test-session-' + Date.now();
+    createSessionWithMemoryId(sessionStore, sessionId);
+
+    storeObservations(
+      sessionStore.db,
+      sessionId,
+      'test-project',
+      [{
+        type: 'implementation',
+        title: 'Test Observation',
+        subtitle: null,
+        facts: [],
+        narrative: 'Did some work',
+        concepts: [],
+        files_read: [],
+        files_modified: [],
+      }],
+      null
+    );
+
+    const rows = sessionStore.db
+      .prepare("SELECT * FROM graph_edges WHERE to_type = 'session' AND to_id = ?")
+      .all(sessionId) as any[];
+
+    expect(rows.length).toBeGreaterThanOrEqual(1);
+    expect(rows[0].from_type).toBe('observation');
+    expect(rows[0].relationship).toBe('co-session');
+  });
+
+  it('writes obs->concept edges', () => {
+    const sessionId = 'test-session-' + Date.now();
+    createSessionWithMemoryId(sessionStore, sessionId);
+
+    storeObservations(
+      sessionStore.db,
+      sessionId,
+      'test-project',
+      [{
+        type: 'implementation',
+        title: 'Test Observation',
+        subtitle: null,
+        facts: [],
+        narrative: 'Did some work',
+        concepts: ['graph', 'sqlite'],
+        files_read: [],
+        files_modified: [],
+      }],
+      null
+    );
+
+    const rows = sessionStore.db
+      .prepare("SELECT * FROM graph_edges WHERE to_type = 'concept'")
+      .all() as any[];
+
+    expect(rows.length).toBeGreaterThanOrEqual(2);
+    const toIds = rows.map((r: any) => r.to_id);
+    expect(toIds).toContain('graph');
+    expect(toIds).toContain('sqlite');
+  });
+
+  it('writes reverse edges (file->obs, concept->obs, session->obs)', () => {
+    const sessionId = 'test-session-' + Date.now();
+    createSessionWithMemoryId(sessionStore, sessionId);
+
+    storeObservations(
+      sessionStore.db,
+      sessionId,
+      'test-project',
+      [{
+        type: 'implementation',
+        title: 'Test Observation',
+        subtitle: null,
+        facts: [],
+        narrative: 'Did some work',
+        concepts: ['graph'],
+        files_read: ['src/foo.ts'],
+        files_modified: [],
+      }],
+      null
+    );
+
+    const fileToObs = sessionStore.db
+      .prepare("SELECT * FROM graph_edges WHERE from_type = 'file' AND from_id = 'src/foo.ts' AND to_type = 'observation'")
+      .all() as any[];
+    expect(fileToObs.length).toBe(1);
+
+    const conceptToObs = sessionStore.db
+      .prepare("SELECT * FROM graph_edges WHERE from_type = 'concept' AND from_id = 'graph' AND to_type = 'observation'")
+      .all() as any[];
+    expect(conceptToObs.length).toBe(1);
+
+    const sessionToObs = sessionStore.db
+      .prepare("SELECT * FROM graph_edges WHERE from_type = 'session' AND from_id = ? AND to_type = 'observation'")
+      .all(sessionId) as any[];
+    expect(sessionToObs.length).toBe(1);
   });
 });
