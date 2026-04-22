@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ENGRAM — SESSIONS</title>
+  <style>
+    /* === DESIGN TOKENS === */
+    :root {
+      --black: #000; --white: #fff; --yellow: #f5e400;
+      --red: #ff2400; --green: #00b300; --dim: #666;
+      --bg: #f4f4f4; --border: 3px solid #000;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background: var(--bg); color: var(--black);
+      font-size: 13px; line-height: 1.4;
+    }
+
+    /* === GLOBAL NAV === */
+    .g-nav { display: flex; align-items: stretch; background: #000; border-bottom: 3px solid #000; font-family: 'Arial Black', Arial, sans-serif; }
+    .g-nav-brand { font-size: 1rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.15em; color: #fff; padding: 0.9rem 1.5rem; border-right: 3px solid #222; white-space: nowrap; }
+    .g-nav-brand span { color: #f5e400; }
+    .g-nav-links { display: flex; }
+    .g-nav-link { font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.12em; padding: 0 1.25rem; display: flex; align-items: center; color: #aaa; text-decoration: none; border-right: 2px solid #222; border-bottom: 3px solid transparent; }
+    .g-nav-link:hover { color: #fff; background: #111; }
+    .g-nav-link--active { color: #f5e400; background: #111; border-bottom-color: #f5e400; }
+    .g-nav-right { margin-left: auto; display: flex; align-items: center; padding: 0 1rem; border-left: 2px solid #222; }
+    .g-nav-status { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; padding: 3px 9px; }
+    .g-nav-status--ok  { background: #00b300; color: #fff; }
+    .g-nav-status--err { background: #ff2400; color: #fff; }
+    .g-nav-status--loading { background: #666; color: #fff; }
+
+    /* === CONTROL BAR === */
+    .control-bar {
+      background: var(--white);
+      border-bottom: var(--border);
+      padding: 8px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 52px;
+      z-index: 90;
+    }
+    .control-label {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 10px; font-weight: 900;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    .control-select {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 12px;
+      border: 2px solid var(--black);
+      background: var(--white);
+      padding: 3px 6px;
+      cursor: pointer;
+    }
+    .live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--dim); margin-right: 4px; vertical-align: middle; }
+    .live-dot--on  { background: var(--green); }
+    .live-dot--off { background: var(--red); }
+    .processing-pill {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 10px; font-weight: 900; text-transform: uppercase;
+      background: var(--yellow); color: var(--black);
+      border: 2px solid var(--black); padding: 2px 8px;
+      display: none;
+    }
+    .processing-pill--visible { display: inline-block; }
+
+    /* === FEED === */
+    .feed { max-width: 900px; margin: 0 auto; padding: 16px 20px; }
+
+    /* === CARDS === */
+    .card {
+      background: var(--white); border: var(--border);
+      border-left-width: 5px; margin-bottom: 12px; padding: 12px 14px;
+    }
+    .card--discovery { border-left-color: var(--yellow); }
+    .card--bugfix    { border-left-color: var(--red); }
+    .card--feature   { border-left-color: var(--green); }
+    .card--default   { border-left-color: #333; }
+    .card--summary   { border-left-color: var(--green); }
+    .card--prompt    { border-left-color: #333; }
+
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 6px; gap: 8px; }
+    .card-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+    .badge {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 9px; font-weight: 900; text-transform: uppercase;
+      letter-spacing: 0.08em; border: 2px solid var(--black);
+      padding: 1px 5px; white-space: nowrap;
+    }
+    .badge--type-discovery { background: var(--yellow); }
+    .badge--type-bugfix    { background: var(--red); color: var(--white); }
+    .badge--type-feature   { background: var(--green); color: var(--white); }
+    .badge--type-default   { background: #eee; }
+    .badge--source  { background: #eee; }
+    .badge--project { background: var(--black); color: var(--white); }
+
+    .card-toggles { display: flex; gap: 4px; flex-shrink: 0; }
+    .toggle-btn {
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 9px; font-weight: 900; text-transform: uppercase;
+      letter-spacing: 0.06em; border: 2px solid var(--black);
+      background: var(--white); padding: 2px 6px; cursor: pointer;
+    }
+    .toggle-btn--active { background: var(--black); color: var(--white); }
+
+    .card-title { font-family: 'Arial Black', Arial, sans-serif; font-size: 13px; font-weight: 900; margin-bottom: 4px; line-height: 1.3; }
+    .card-subtitle { color: #333; margin-bottom: 6px; font-size: 12px; }
+    .card-narrative { color: #333; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
+
+    .facts-list { margin: 6px 0 6px 14px; }
+    .facts-list li { font-size: 12px; margin-bottom: 2px; }
+    .concepts-row, .files-row { margin-top: 4px; font-size: 11px; color: var(--dim); }
+    .files-label { font-weight: bold; }
+
+    .summary-section { margin-bottom: 4px; font-size: 12px; }
+    .summary-section-label { font-family: 'Arial Black', Arial, sans-serif; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 4px; }
+
+    .prompt-text {
+      font-family: 'Courier New', Courier, monospace; font-size: 12px;
+      background: #f0f0f0; border: 1px solid #ccc; padding: 8px;
+      margin-top: 6px; white-space: pre-wrap; word-break: break-word;
+    }
+
+    .card-meta { border-top: 1px solid #ddd; margin-top: 8px; padding-top: 6px; font-size: 11px; color: var(--dim); }
+
+    /* === LOAD MORE === */
+    .load-more-row { text-align: center; padding: 16px 0; }
+    .load-more-btn {
+      font-family: 'Arial Black', Arial, sans-serif; font-size: 11px;
+      font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;
+      background: var(--black); color: var(--white);
+      border: var(--border); padding: 8px 24px; cursor: pointer;
+    }
+    .load-more-btn:hover { background: #333; }
+    .load-more-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* === EMPTY / STATUS === */
+    .empty-state {
+      text-align: center; padding: 48px 20px; color: var(--dim);
+      font-family: 'Arial Black', Arial, sans-serif;
+      font-size: 12px; font-weight: 900;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+  </style>
+</head>
+<body>
+  <nav class="g-nav">
+    <div class="g-nav-brand">⬡ Engram <span>Worker</span></div>
+    <div class="g-nav-links">
+      <a class="g-nav-link g-nav-link--active" href="/">Sessions</a>
+      <a class="g-nav-link" href="/admin">Admin</a>
+      <a class="g-nav-link" href="/ticks">Ticks</a>
+    </div>
+    <div class="g-nav-right">
+      <span class="g-nav-status g-nav-status--loading" id="g-nav-status">…</span>
+    </div>
+  </nav>
+
+  <div class="control-bar">
+    <span class="control-label">Project</span>
+    <select class="control-select" id="project-filter">
+      <option value="">ALL PROJECTS</option>
+    </select>
+    <span class="control-label">Source</span>
+    <select class="control-select" id="source-filter">
+      <option value="">ALL SOURCES</option>
+    </select>
+    <span id="live-indicator">
+      <span class="live-dot" id="live-dot"></span>
+      <span id="live-text">CONNECTING</span>
+    </span>
+    <span class="processing-pill" id="processing-pill">PROCESSING</span>
+  </div>
+
+  <main class="feed" id="feed">
+    <div class="empty-state" id="loading-state">Connecting…</div>
+  </main>
+
+  <script>
+    /* ALL JS — added in later tasks */
+  </script>
+  <script>
+    /* Nav health check */
+    (function(){
+      fetch('/health').then(function(r){ return r.ok ? r.json() : null; }).then(function(d){
+        var el = document.getElementById('g-nav-status');
+        if(d){ el.textContent='OK'; el.className='g-nav-status g-nav-status--ok'; }
+        else { el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err'; }
+      }).catch(function(){
+        var el=document.getElementById('g-nav-status');
+        el.textContent='DOWN'; el.className='g-nav-status g-nav-status--err';
+      });
+    })();
+  </script>
+</body>
+</html>
