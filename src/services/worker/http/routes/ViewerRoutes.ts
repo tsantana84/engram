@@ -50,16 +50,16 @@ export class ViewerRoutes extends BaseRouteHandler {
   private handleViewerUI = this.wrapHandler((req: Request, res: Response): void => {
     const packageRoot = getPackageRoot();
 
-    // Try cache structure first (ui/viewer.html), then marketplace structure (plugin/ui/viewer.html)
+    // Try cache structure first (ui/sessions.html), then marketplace structure (plugin/ui/sessions.html)
     const viewerPaths = [
-      path.join(packageRoot, 'ui', 'viewer.html'),
-      path.join(packageRoot, 'plugin', 'ui', 'viewer.html')
+      path.join(packageRoot, 'ui', 'sessions.html'),
+      path.join(packageRoot, 'plugin', 'ui', 'sessions.html')
     ];
 
     const viewerPath = viewerPaths.find(p => existsSync(p));
 
     if (!viewerPath) {
-      throw new Error('Viewer UI not found at any expected location');
+      throw new Error('Sessions UI not found at any expected location');
     }
 
     const html = readFileSync(viewerPath, 'utf-8');
