@@ -15,6 +15,39 @@ Engram is the team's shared AI memory system. It runs as a background worker on 
 
 ## Install
 
+### Prerequisites
+
+- [Bun](https://bun.sh) (auto-installed if missing)
+- Node.js ≥ 18
+- Agent key — request from Thiago
+
+### Install the plugin
+
+```bash
+claude plugin install https://github.com/tsantana84/engram
+```
+
+> Requires GitHub access to the private `tsantana84/engram` repo.
+
+The setup wizard runs automatically on install. When prompted:
+- Enter your agent key
+- Enter a machine name (e.g. `thiago-macbook` — identifies this device in shared memory)
+
+### Verify it's running
+
+```bash
+curl http://localhost:37777/api/health
+```
+
+A JSON response means the worker is up and syncing.
+
+### Day-to-day
+
+```bash
+npm run build-and-sync        # rebuild + sync plugin to install dir + restart worker
+npm run worker:force-restart  # restart without rebuild (use after manual settings change)
+```
+
 ## Using Engram
 
 ## How It Works
