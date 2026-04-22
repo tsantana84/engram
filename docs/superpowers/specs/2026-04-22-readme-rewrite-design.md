@@ -115,7 +115,7 @@ Claude Code session
 
 ### Sync & Backend
 
-Vercel serverless functions receive sync payloads from each agent and write to Supabase. Key endpoints: `api/sync/push`, `api/sync/status`, `api/search`, `api/timeline`, `api/agents/`.
+Vercel serverless functions receive sync payloads from each agent and write to Supabase. Key endpoints: `api/sync/push`, `api/sync/learnings` (learning-specific payloads), `api/sync/status`, `api/search`, `api/timeline`, `api/agents/`.
 
 ConflictDetector runs server-side when a learning is approved via the dashboard. High-confidence learnings (≥ threshold) auto-approve; low-confidence learnings queue for manual review.
 
@@ -157,7 +157,7 @@ Set in `~/.engram/settings.json` (JSON format):
 ```json
 {
   "CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED": "true",
-  "CLAUDE_MEM_CONFIDENCE_THRESHOLD": "0.8",
+  "CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD": "0.9",
   "CLAUDE_MEM_SYNC_INTERVAL_MS": "30000"
 }
 ```
@@ -165,7 +165,7 @@ Set in `~/.engram/settings.json` (JSON format):
 | Variable | Default | Description |
 |---|---|---|
 | `CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED` | `false` | Enable session-end LLM distillation |
-| `CLAUDE_MEM_CONFIDENCE_THRESHOLD` | `0.8` | Auto-approve threshold for learnings |
+| `CLAUDE_MEM_LEARNING_CONFIDENCE_THRESHOLD` | `0.9` | Auto-approve threshold for learnings |
 | `CLAUDE_MEM_SYNC_INTERVAL_MS` | `30000` | Sync tick interval in milliseconds |
 
 ### Adding a Vercel API Endpoint
