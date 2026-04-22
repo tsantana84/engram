@@ -240,3 +240,15 @@ describe('Pass 1 rule-based edges', () => {
     expect(sessionToObs.length).toBe(1);
   });
 });
+
+describe('Pass 2 cross-link logic', () => {
+  it('findLinkedObservations returns IDs sharing a file', () => {
+    const ss = new SessionStore(':memory:');
+    const g = new GraphStore(ss.db);
+    g.addEdgePair({ type: 'observation', id: '1' }, { type: 'file', id: 'src/foo.ts' }, 'co-file', 'rule');
+    g.addEdgePair({ type: 'observation', id: '2' }, { type: 'file', id: 'src/foo.ts' }, 'co-file', 'rule');
+    const linked = g.findLinkedObservations('file', 'src/foo.ts');
+    expect(linked).toContain('1');
+    expect(linked).toContain('2');
+  });
+});

@@ -24,6 +24,7 @@ import type { SessionManager } from '../SessionManager.js';
 import type { WorkerRef, StorageResult } from './types.js';
 import { broadcastObservation, broadcastSummary } from './ObservationBroadcaster.js';
 import { cleanupProcessedMessages } from './SessionCleanupHelper.js';
+import { GraphStore } from '../../sqlite/graph/GraphStore.js';
 
 /**
  * Process agent response text (parse XML, save to database, sync to Chroma, broadcast SSE)
@@ -125,6 +126,51 @@ export async function processAgentResponse(
     sessionId: session.sessionDbId,
     memorySessionId: session.memorySessionId
   });
+
+  // Pass 2: cross-link observations sharing files/concepts (post-transaction)
+  try {
+    const graphStore = new GraphStore(sessionStore.db);
+    for (const obsId of result.observationIds) {
+      const obsIdStr = String(obsId);
+      // Files this observation is linked to
+      const fileEdges = sessionStore.db
+        .prepare("SELECT to_id FROM graph_edges WHERE from_type='observation' AND from_id=? AND to_type='file'")
+        .all(obsIdStr) as { to_id: string }[];
+      for (const { to_id: file } of fileEdges) {
+        const linked = graphStore.findLinkedObservations('file', file);
+        for (const existingId of linked) {
+          if (existingId !== obsIdStr) {
+            graphStore.addEdgePair(
+              { type: 'observation', id: obsIdStr },
+              { type: 'observation', id: existingId },
+              'co-file',
+              'rule'
+            );
+          }
+        }
+      }
+      // Concepts this observation is linked to
+      const conceptEdges = sessionStore.db
+        .prepare("SELECT to_id FROM graph_edges WHERE from_type='observation' AND from_id=? AND to_type='concept'")
+        .all(obsIdStr) as { to_id: string }[];
+      for (const { to_id: concept } of conceptEdges) {
+        const linked = graphStore.findLinkedObservations('concept', concept);
+        for (const existingId of linked) {
+          if (existingId !== obsIdStr) {
+            graphStore.addEdgePair(
+              { type: 'observation', id: obsIdStr },
+              { type: 'observation', id: existingId },
+              'co-concept',
+              'rule'
+            );
+          }
+        }
+      }
+    }
+  } catch (err) {
+    // Cross-link failure must not break observation storage
+    logger.warn('GRAPH', `Pass 2 cross-link failed: ${err}`);
+  }
 
   // CLAIM-CONFIRM: Now that storage succeeded, confirm all processing messages (delete from queue)
   // This is the critical step that prevents message loss on generator crash
