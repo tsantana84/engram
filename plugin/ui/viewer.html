@@ -3038,7 +3038,44 @@
 </head>
 
 <body>
+<style>
+.g-nav{display:flex;align-items:stretch;background:#000;border-bottom:3px solid #000;font-family:'Arial Black',Arial,sans-serif}
+.g-nav-brand{font-size:1rem;font-weight:900;text-transform:uppercase;letter-spacing:.15em;color:#fff;padding:.9rem 1.5rem;border-right:3px solid #222;white-space:nowrap}
+.g-nav-brand span{color:#f5e400}
+.g-nav-links{display:flex}
+.g-nav-link{font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;padding:0 1.25rem;display:flex;align-items:center;color:#aaa;text-decoration:none;border-right:2px solid #222;border-bottom:3px solid transparent}
+.g-nav-link:hover{color:#fff;background:#111}
+.g-nav-link--active{color:#f5e400;background:#111;border-bottom-color:#f5e400}
+.g-nav-right{margin-left:auto;display:flex;align-items:center;padding:0 1rem;border-left:2px solid #222}
+.g-nav-status{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px}
+.g-nav-status--ok{background:#00b300;color:#fff}
+.g-nav-status--err{background:#ff2400;color:#fff}
+.g-nav-status--loading{background:#666;color:#fff}
+</style>
+<nav class="g-nav">
+  <div class="g-nav-brand">⬡ Engram <span>Worker</span></div>
+  <div class="g-nav-links">
+    <a class="g-nav-link g-nav-link--active" href="/">Sessions</a>
+    <a class="g-nav-link" href="/admin">Admin</a>
+    <a class="g-nav-link" href="/ticks">Ticks</a>
+  </div>
+  <div class="g-nav-right">
+    <span class="g-nav-status g-nav-status--loading" id="g-nav-status">…</span>
+  </div>
+</nav>
   <div id="root"></div>
+<script>
+(function(){
+  fetch('/health').then(function(r){return r.ok?r.json():null}).then(function(d){
+    var e=document.getElementById('g-nav-status');
+    if(d){e.textContent='OK';e.className='g-nav-status g-nav-status--ok';}
+    else{e.textContent='DOWN';e.className='g-nav-status g-nav-status--err';}
+  }).catch(function(){
+    var e=document.getElementById('g-nav-status');
+    e.textContent='DOWN';e.className='g-nav-status g-nav-status--err';
+  });
+})();
+</script>
   <script src="viewer-bundle.js"></script>
 </body>
 
