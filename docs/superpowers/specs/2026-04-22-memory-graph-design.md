@@ -68,12 +68,14 @@ Written in two passes to avoid transaction visibility issues:
 2. `observation → concept` (relationship: `co-concept`) for each entry in `concepts` JSON array
 3. `observation → session` (relationship: `co-session`) via `memory_session_id`
 
-**Pass 2 — after the transaction commits**, as a separate step in the same caller:
+**Pass 2 — after the transaction commits**, in `src/services/worker/agents/ResponseProcessor.ts`, immediately after the `storeObservations()` call returns (using the returned `observationIds`):
 
 4. `observation → observation` (relationship: `co-file`) for any observation in the same project that already has an edge to the same file
 5. `observation → observation` (relationship: `co-concept`) for any observation in the same project that already has an edge to the same concept
 
 Pass 1 is atomic with the observation insert. Pass 2 runs after commit so it sees the newly written Pass 1 edges — this is what allows cross-links between observations stored in the same batch.
+
+**`db` instance:** `GraphStore` must receive the same `db` reference used by `transactions.ts` — obtained via `DatabaseManager.getDatabase()`. Do not create a separate connection.
 
 **Performance:** Steps 4–5 query `graph_edges` with indexes on `to_type + to_id`. Bounded by project scope. Acceptable for a post-transaction synchronous write.
 
@@ -260,7 +262,7 @@ Static HTML page at `plugin/ui/graph.html`, served by `ViewerRoutes.ts` at `GET 
 | `src/services/sqlite/migrations/runner.ts` | Modify | Add `createGraphEdgesTable()` called from `runAllMigrations()` |
 | `src/services/sqlite/graph/GraphStore.ts` | Create | Traversal logic, edge writes, `addEdgePair` |
 | `src/services/sqlite/transactions.ts` | Modify | Pass 1 rule-based edges inside existing transaction |
-| `src/services/sqlite/observations/store.ts` | Modify | Pass 2 cross-link edges after transaction commits |
+| `src/services/worker/agents/ResponseProcessor.ts` | Modify | Pass 2 cross-link edges after `storeObservations()` returns |
 | `src/services/sync/GraphEdgeExtractor.ts` | Create | LLM semantic edge extraction at session-end |
 | `src/services/sync/SyncWorker.ts` | Modify | Trigger `GraphEdgeExtractor` at session-end |
 | `src/services/worker/http/routes/GraphRoutes.ts` | Create | `GET /api/graph` endpoint |
