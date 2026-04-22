@@ -50,7 +50,7 @@ Followed by a **"What you get"** bullet list:
 ```bash
 claude plugin install https://github.com/tsantana84/engram
 ```
-Setup wizard runs automatically. Prompts for agent key and machine name (e.g. `thiago-macbook`).
+Requires GitHub access to the private `tsantana84/engram` repo. Setup wizard runs automatically. Prompts for agent key and machine name (e.g. `thiago-macbook`).
 
 **Verify**
 ```bash
@@ -147,22 +147,30 @@ npm run worker:force-restart  # restart without rebuild
 ### Test
 
 ```bash
-npm test   # 1500+ tests — all must pass before pushing
+bun test   # 1500+ tests — all must pass before pushing
 ```
 
 ### Key Environment Variables
 
-Set in `~/.engram/settings.json`:
+Set in `~/.engram/settings.json` (JSON format):
+
+```json
+{
+  "CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED": "true",
+  "CLAUDE_MEM_CONFIDENCE_THRESHOLD": "0.8",
+  "CLAUDE_MEM_SYNC_INTERVAL_MS": "60000"
+}
+```
 
 | Variable | Default | Description |
 |---|---|---|
 | `CLAUDE_MEM_LEARNING_EXTRACTION_ENABLED` | `false` | Enable session-end LLM distillation |
 | `CLAUDE_MEM_CONFIDENCE_THRESHOLD` | `0.8` | Auto-approve threshold for learnings |
-| `CLAUDE_MEM_SYNC_INTERVAL_MS` | `60000` | Sync tick interval in milliseconds |
+| `CLAUDE_MEM_SYNC_INTERVAL_MS` | `30000` | Sync tick interval in milliseconds |
 
 ### Adding a Vercel API Endpoint
 
-Add a file under `api/`. Use `SupabaseManager` for all DB access. Deploy with `vercel --prod`. See `CLAUDE.md` for full conventions and existing endpoint patterns.
+Add a file under `api/`. Use `SupabaseManager` for all DB access. Deploy with `vercel --prod`. Before writing a new endpoint, browse `api/learnings/` — it's the dominant pattern in the codebase (list, review, counts, detail, id-based routes). See `CLAUDE.md` for full conventions.
 
 ### Contributing
 
