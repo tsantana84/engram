@@ -3,7 +3,7 @@
 ## Feature Pipeline
 
 ### P1 — Structured Correction Journal
-First-class failure recording. When agent makes a mistake and gets corrected, store a typed correction: `tried`, `wrong_because`, `fix`, `trigger_context`. Retrieval-weight bonus so corrections surface with priority. Corrections auto-included in session prewarm when goal matches trigger context. Mistakes are more compressible than successes — this compounds.
+When the user explicitly corrects the agent mid-session, capture a typed correction record: `{tried, wrong_because, fix, trigger_context}`. Corrections receive a 2× retrieval weight bonus and are auto-injected into session prewarm when the session goal matches `trigger_context`. Detection: keyword heuristic gate at UserPromptSubmit, LLM extraction only when gate fires.
 
 ### P1 — Goal-Aware Session Prewarm
 SessionStart composes a ~500-token context block from 5 sources: project conventions, 3 most recent sessions, skills matching the session goal, corrections whose trigger context matches, hot-file list. Agent gets institutional memory loaded before doing anything — no tool call required. Currently SessionStart fires but doesn't compose against the goal.
