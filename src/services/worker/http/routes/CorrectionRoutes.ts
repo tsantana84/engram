@@ -51,7 +51,7 @@ export class CorrectionRoutes extends BaseRouteHandler {
         memorySessionId,
         targetProject,
         {
-          type: 'discovery',
+          type: 'correction',
           title: `Correction: ${tried.slice(0, 60)}`,
           subtitle: `Fix: ${fix.slice(0, 60)}`,
           facts: [wrong_because],
