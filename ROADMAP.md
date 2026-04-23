@@ -5,8 +5,8 @@
 ### P1 — Structured Correction Journal
 When the user explicitly corrects the agent mid-session, capture a typed correction record: `{tried, wrong_because, fix, trigger_context}`. Corrections receive a 2× retrieval weight bonus and are auto-injected into session prewarm when the session goal matches `trigger_context`. Detection: keyword heuristic gate at UserPromptSubmit, LLM extraction only when gate fires.
 
-### P1 — Goal-Aware Session Prewarm
-SessionStart composes a ~500-token context block from 5 sources: project conventions, 3 most recent sessions, skills matching the session goal, corrections whose trigger context matches, hot-file list. Agent gets institutional memory loaded before doing anything — no tool call required. Currently SessionStart fires but doesn't compose against the goal.
+### P1 — Goal-Aware Session Prewarm ✅
+Compact ~500-token directive briefing from 3 sources (last session next_steps/completed, corrections, past decisions) injected at SessionStart (static template, <50ms) and UserPromptSubmit (LLM-composed, goal-aware). Format: imperative directives ("Watch out:", "Decisions made:") not history log. Supersedes old corrections-only prewarm.
 
 ### P1 — Proactive Pre-Task Briefing
 Scan file/task context at `UserPromptSubmit` → surface 3 most relevant past learnings automatically. No search command needed; injected before every prompt.
