@@ -22,7 +22,7 @@ The existing observation timeline is preserved below the briefing for mem-search
 | Source | Table/Field | Cap |
 |---|---|---|
 | Last session summary | `session_summaries` — most recent for project | 150 tokens |
-| Open todos | `session_briefings.open_todos` — most recent | 100 tokens |
+| Open todos / next steps | `session_summaries.next_steps` — most recent for project | 100 tokens |
 | Recent corrections | `corrections` WHERE project = ? ORDER BY created_at DESC LIMIT 3 | 100 tokens |
 | Past decisions | `observations` WHERE type = 'decision' ORDER BY created_at DESC LIMIT 5 | 150 tokens |
 
@@ -78,15 +78,23 @@ const briefing = buildSessionBriefing(db, project);
 return briefing + output; // prepend briefing to timeline
 ```
 
-### Modified: `src/services/worker/http/routes/SessionRoutes.ts`
+### Modified: `src/cli/handlers/session-init.ts`
 
-In `handleSessionInitByClaudeId`, after existing session-init logic:
+The CLI-side hook handler (not the HTTP route) is the correct injection site. It builds a `HookResult` with `hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: string }` — this is how Claude Code receives injected text prepended to the user prompt.
+
+After the existing HTTP call to `/api/sessions/init` and semantic search, add:
+
 ```typescript
 const briefing = await buildPromptBriefing(db, project, userPrompt, llm);
-// Return briefing in hook response so it is injected before the prompt
+if (briefing) {
+  hookResult.hookSpecificOutput.additionalContext =
+    briefing + '\n\n' + (hookResult.hookSpecificOutput.additionalContext ?? '');
+}
 ```
 
-Check how existing hook responses are structured in session-init to confirm the return format for context injection.
+LLM wiring: read `SettingsDefaultsManager.loadFromFile(USER_SETTINGS_PATH)` (already done in this handler) then call `buildLearningLlmClosure(settings)` — same pattern as correction extraction.
+
+Token truncation: use character proxy — cap at 2000 chars (~500 tokens at 4 chars/token) before returning from `buildPromptBriefing`.
 
 ## Error Handling
 
