@@ -1,5 +1,9 @@
 import { logger } from '../../utils/logger.js';
 
+function stripFences(s: string): string {
+  return s.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+}
+
 export interface CorrectionExtractorConfig {
   enabled: boolean;
   llm: (prompt: string) => Promise<string>;
@@ -40,7 +44,7 @@ export class CorrectionExtractor {
 
     try {
       const raw = await this.config.llm(EXTRACTION_PROMPT(context));
-      const trimmed = raw.trim();
+      const trimmed = stripFences(raw.trim());
       if (trimmed === 'null' || trimmed === '') return null;
 
       const parsed = JSON.parse(trimmed) as Partial<CorrectionRecord>;
