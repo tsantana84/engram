@@ -95,6 +95,7 @@ import { SearchRoutes } from './worker/http/routes/SearchRoutes.js';
 import { SettingsRoutes } from './worker/http/routes/SettingsRoutes.js';
 import { LogsRoutes } from './worker/http/routes/LogsRoutes.js';
 import { MemoryRoutes } from './worker/http/routes/MemoryRoutes.js';
+import { CorrectionRoutes } from './worker/http/routes/CorrectionRoutes.js';
 import { CorpusRoutes } from './worker/http/routes/CorpusRoutes.js';
 
 // Admin observability
@@ -369,6 +370,7 @@ export class WorkerService {
     this.server.registerRoutes(new LogsRoutes());
     this.server.registerRoutes(new GraphRoutes(this.dbManager));
     this.server.registerRoutes(new MemoryRoutes(this.dbManager, 'claude-mem'));
+    this.server.registerRoutes(new CorrectionRoutes(this.dbManager));
 
     // Amnesia Recovery Protocol routes
     this.server.app.post('/api/briefings/generate', async (req, res) => {
