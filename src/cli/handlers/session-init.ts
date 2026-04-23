@@ -13,6 +13,9 @@ import { isProjectExcluded } from '../../utils/project-filter.js';
 import { SettingsDefaultsManager } from '../../shared/SettingsDefaultsManager.js';
 import { USER_SETTINGS_PATH } from '../../shared/paths.js';
 import { normalizePlatformSource } from '../../shared/platform-source.js';
+import { buildPromptBriefing } from '../../services/context/BriefingComposer.js';
+import { buildLearningLlmClosure } from '../../services/worker-service.js';
+import { SessionStore } from '../../services/sqlite/SessionStore.js';
 
 export const sessionInitHandler: EventHandler = {
   async execute(input: NormalizedHookInput): Promise<HookResult> {
@@ -159,15 +162,33 @@ export const sessionInitHandler: EventHandler = {
       sessionId: sessionDbId
     });
 
-    // Return with semantic context if available
-    if (additionalContext) {
+    // Build goal-aware briefing from past sessions/corrections/decisions (best-effort)
+    let prewarmBriefing = '';
+    try {
+      const learningModel = settings.CLAUDE_MEM_LEARNING_LLM_MODEL ?? 'claude-haiku-4-5-20251001';
+      const learningProvider = (settings.CLAUDE_MEM_LEARNING_LLM_PROVIDER ?? 'anthropic') as 'anthropic' | 'openai';
+      const learningApiKey = settings.CLAUDE_MEM_ANTHROPIC_API_KEY ?? settings.CLAUDE_MEM_OPENAI_API_KEY;
+      const llm = buildLearningLlmClosure(learningModel, learningProvider, learningApiKey);
+      const db = new SessionStore();
+      try {
+        prewarmBriefing = await buildPromptBriefing(db, project, prompt, llm);
+      } finally {
+        db.close();
+      }
+    } catch (err) {
+      // Silently skip — prewarm is best-effort
+    }
+
+    const finalContext = [prewarmBriefing, additionalContext].filter(Boolean).join('\n\n');
+
+    if (finalContext) {
       return {
         continue: true,
         suppressOutput: true,
         hookSpecificOutput: {
           hookEventName: 'UserPromptSubmit',
-          additionalContext
-        }
+          additionalContext: finalContext,
+        },
       };
     }
 
