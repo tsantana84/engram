@@ -44,7 +44,8 @@
       "description": "Investigative finding or determination",
       "emoji": "⚖️",
       "work_emoji": "⚖️"
-    }
+    },
+    "correction"
   ],
   "observation_concepts": [
     {
@@ -90,28 +91,23 @@
     "output_format_header": "OUTPUT FORMAT\n-------------\nOutput observations using this XML structure:",
     "format_examples": "**Entity Format Examples:**\nWhen recording people, ALWAYS use: \"Full Name <email@address.com>\"\n\n<observation>\n  <type>entity</type>\n  <title>John Smith <john.smith@example.com> identified as sender</title>\n  <facts>\n    <fact>John Smith <john.smith@example.com> sent 15 emails to Jane Doe <jane@corp.com></fact>\n    <fact>Email address john.smith@example.com registered to Acme Corp</fact>\n  </facts>\n  <narrative>John Smith <john.smith@example.com> appears frequently in the email chain...</narrative>\n</observation>",
     "footer": "IMPORTANT! DO NOT do any work right now other than generating this OBSERVATIONS from tool use messages - and remember that you are a memory agent designed to summarize a DIFFERENT investigation session, not this one.\n\nNever reference yourself or your own actions. Do not output anything other than the observation content formatted in the XML structure above. All other output is ignored by the system, and the system has been designed to be smart about token usage. Please spend your tokens wisely on useful observations.\n\nRemember that we record these observations to help track investigation progress and keep important findings at the forefront! Thank you for your help!",
-
     "xml_title_placeholder": "[**title**: Short title of the entity/event/finding]",
     "xml_subtitle_placeholder": "[**subtitle**: Brief explanation (max 24 words)]",
     "xml_fact_placeholder": "[Concise, self-contained statement using Full Name <email@address.com> format]",
     "xml_narrative_placeholder": "[**narrative**: Full context: What was discovered, how it connects, why it matters]",
     "xml_concept_placeholder": "[knowledge-type-category]",
     "xml_file_placeholder": "[path/to/email/file]",
-
     "xml_summary_request_placeholder": "[Short title capturing the investigation request AND what was discovered]",
     "xml_summary_investigated_placeholder": "[What entities/emails/evidence have been examined?]",
     "xml_summary_learned_placeholder": "[What have you learned about the case?]",
     "xml_summary_completed_placeholder": "[What investigative work has been completed? What findings emerged?]",
     "xml_summary_next_steps_placeholder": "[What investigation steps are you working on next?]",
     "xml_summary_notes_placeholder": "[Additional insights or observations about the investigation progress]",
-
     "header_memory_start": "INVESTIGATION MEMORY START\n==========================",
     "header_memory_continued": "INVESTIGATION MEMORY CONTINUED\n==============================",
     "header_summary_checkpoint": "INVESTIGATION SUMMARY CHECKPOINT\n================================",
-
     "continuation_greeting": "Hello memory agent, you are continuing to observe the email fraud investigation session.",
     "continuation_instruction": "IMPORTANT: Continue generating observations from tool use messages using the XML structure below.",
-
     "summary_instruction": "Write progress notes of what was discovered, what entities were identified, and what investigation steps are next. This is a checkpoint to capture investigation progress so far. The session is ongoing - you may receive more tool executions after this summary. Write \"next_steps\" as the current trajectory of investigation (what's actively being examined or coming up next), not as post-session future work. Always write at least a minimal summary explaining current investigation progress, even if work is still in early stages.",
     "summary_context_label": "Claude's Full Investigation Response:",
     "summary_format_instruction": "Respond in this XML format:",

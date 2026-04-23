@@ -40,7 +40,7 @@ search(query="authentication", limit=20, project="my-project")
 
 - `query` (string) - Search term
 - `limit` (number) - Max results, default 20, max 100
-- `project` (string) - Project name filter
+- `project` (string) - Project name filter. **Always pass `project=<basename(cwd)>` by default** — omit only when the user explicitly asks for cross-project results.
 - `type` (string, optional) - "observations", "sessions", or "prompts"
 - `obs_type` (string, optional) - Comma-separated: bugfix, feature, decision, discovery, change
 - `dateStart` (string, optional) - YYYY-MM-DD or epoch ms
@@ -70,7 +70,7 @@ timeline(query="authentication", depth_before=3, depth_after=3, project="my-proj
 - `query` (string, optional) - Find anchor automatically if anchor not provided
 - `depth_before` (number, optional) - Items before anchor, default 5, max 20
 - `depth_after` (number, optional) - Items after anchor, default 5, max 20
-- `project` (string) - Project name filter
+- `project` (string) - Project name filter. **Always pass `project=<basename(cwd)>` by default** — omit only when the user explicitly asks for cross-project results.
 
 ### Step 3: Fetch - Get Full Details ONLY for Filtered IDs
 

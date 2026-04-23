@@ -66,7 +66,7 @@ export function parseObservations(text: string, correlationId?: string): ParsedO
         logger.error('PARSER', `Invalid observation type: ${type}, using "${fallbackType}"`, { correlationId });
       }
     } else {
-      logger.error('PARSER', `Observation missing type field, using "${fallbackType}"`, { correlationId });
+      logger.warn('PARSER', `Observation missing type field, using "${fallbackType}"`, { correlationId });
     }
 
     // All other fields are optional - save whatever we have

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0d1117; --surface: #161b22; --surface2: #21262d;
+    --border: #30363d; --accent: #58a6ff; --accent2: #bc8cff;
+    --accent3: #3fb950; --accent4: #d29922; --text: #e6edf3;
+    --text-muted: #8b949e; --red: #f85149;
+  }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; padding: 2rem; }
+  .eyebrow { font-size: .75rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: .75rem; }
+  h2 { font-size: 2rem; font-weight: 700; margin-bottom: .5rem; }
+  h3 { font-size: 1rem; font-weight: 600; color: var(--accent); margin-bottom: .5rem; }
+  .lead { font-size: 1rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  th { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; }
+  td { padding: .4rem .6rem; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: .75rem; }
+  .card-label { font-size: .82rem; font-weight: 600; color: var(--accent); margin-bottom: .25rem; }
+  .card-body { font-size: .82rem; color: var(--text-muted); }
+  code { font-family: monospace; font-size: .85em; color: var(--accent4); }
+  .callout { display: flex; gap: 1rem; padding: 1rem 1.25rem; border-radius: 8px; background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.25); }
+  .callout-icon { font-size: 1rem; flex-shrink: 0; }
+  .callout-text { font-size: .88rem; color: var(--text-muted); }
+  .nav-bar { background: rgba(13,17,23,.95); border-bottom: 1px solid var(--border); padding: .5rem 2rem; font-size: .8rem; color: var(--text-muted); font-family: monospace; margin: -2rem -2rem 2rem; display: flex; justify-content: space-between; }
+  .nav-logo { color: var(--accent3); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="nav-bar">
+  <span class="nav-logo">$ engram</span>
+  <span>Limits &amp; scaling</span>
+  <span>6 / 7</span>
+</div>
+
+<div class="eyebrow">Scaling</div>
+<h2>Limits &amp; scaling</h2>
+<p class="lead">Two separate limits — storage and context injection. They hit at very different scales.</p>
+
+<div class="grid-2">
+  <div>
+    <h3>Storage — not your bottleneck</h3>
+    <table>
+      <thead><tr><th>Layer</th><th>Limit</th></tr></thead>
+      <tbody>
+        <tr><td>SQLite (local)</td><td>Billions of rows. Practically unlimited.</td></tr>
+        <tr><td>Supabase free tier</td><td>500MB ≈ ~250k observations</td></tr>
+        <tr><td>Supabase paid</td><td>Scales to TB</td></tr>
+        <tr><td>Chroma (vector)</td><td>Memory-bound. Slow rebuild at 50k+ obs</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div>
+    <h3>Context injection — the real limit</h3>
+    <div class="card">
+      <div class="card-label">How it works</div>
+      <div class="card-body">Every session start, engram injects past observations into Claude's context window. That window is finite.</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Current scale</div>
+      <div class="card-body">50 observations ≈ 16K tokens injected. At that rate, 300–400 obs consumes a 100K context window entirely.</div>
+    </div>
+    <div class="card">
+      <div class="card-label">The knob</div>
+      <code>CLAUDE_MEM_OBSERVATION_LIMIT</code>
+      <div class="card-body" style="margin-top:.25rem">in <code>~/.engram/settings.json</code> — tune as corpus grows</div>
+    </div>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="callout-icon">ℹ️</div>
+  <div class="callout-text">Compression (session summaries) already stretches the injection budget. Storage will never be the problem — context window is the binding constraint.</div>
+</div>
+</body>
+</html>

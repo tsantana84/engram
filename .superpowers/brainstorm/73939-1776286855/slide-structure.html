@@ -1,0 +1,56 @@
+<h2>Proposed slide structure — 30 min</h2>
+<p class="subtitle">Architecture-first approach. Click a section to flag concerns.</p>
+
+<div style="display:flex;flex-direction:column;gap:12px;max-width:720px;margin:0 auto">
+
+  <div class="option" data-choice="s1" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#4f46e5;min-width:40px;text-align:center;font-size:13px;padding:8px 4px">1<br><span style="font-size:10px;opacity:.7">3m</span></div>
+    <div class="content">
+      <h3>What is engram?</h3>
+      <p>One slide. Fork of claude-mem + multi-agent sync. Feature diff table vs upstream. No pitch — just facts. Sets vocabulary for the rest.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="s2" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#4f46e5;min-width:40px;text-align:center;font-size:13px;padding:8px 4px">2<br><span style="font-size:10px;opacity:.7">8m</span></div>
+    <div class="content">
+      <h3>Full data flow diagram</h3>
+      <p>Hook → Worker (port 37777) → SQLite → sync_queue → SyncWorker → ConflictDetector → Vercel API → Supabase. Every arrow labeled. This is the anchor — everything else refers back to it.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="s3" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#4f46e5;min-width:40px;text-align:center;font-size:13px;padding:8px 4px">3<br><span style="font-size:10px;opacity:.7">7m</span></div>
+    <div class="content">
+      <h3>ConflictDetector deep-dive</h3>
+      <p>The memory quality problem: stale observations pollute the shared brain. Four actions: ADD / UPDATE / INVALIDATE / NOOP. LLM-based classification. Provenance columns: git_branch, invalidated_at, validation_status. What gets filtered from context injection.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="s4" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#4f46e5;min-width:40px;text-align:center;font-size:13px;padding:8px 4px">4<br><span style="font-size:10px;opacity:.7">7m</span></div>
+    <div class="content">
+      <h3>Live demo</h3>
+      <p>Install on one machine (2 commands + /login). Show worker logs during a prompt. Open viewer at 127.0.0.1:37777. Show sync_queue flush. Optionally: trigger a conflict detection hit.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="s5" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#4f46e5;min-width:40px;text-align:center;font-size:13px;padding:8px 4px">5<br><span style="font-size:10px;opacity:.7">3m</span></div>
+    <div class="content">
+      <h3>Dev workflow + contributing</h3>
+      <p>build-and-sync, worker scripts, test suite. Key files to know (SessionStore.ts, SyncWorker.ts, ConflictDetector.ts). Divergence points when pulling from upstream. Contact for API keys.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="s6" onclick="toggleSelect(this)">
+    <div class="letter" style="background:#4f46e5;min-width:40px;text-align:center;font-size:13px;padding:8px 4px">6<br><span style="font-size:10px;opacity:.7">2m</span></div>
+    <div class="content">
+      <h3>Q&A</h3>
+      <p>Open floor. Backup: pre-written FAQ slides (privacy/private tags, what if Supabase is down, migrating from claude-mem).</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:24px">Click any section that feels wrong — wrong order, too much, too little, missing something.</p>

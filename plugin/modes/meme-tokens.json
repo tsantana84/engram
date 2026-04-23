@@ -44,7 +44,8 @@
       "description": "Observation about sorting behavior, signal accuracy, false positives, filter gaps, or ranking quality",
       "emoji": "⚙️",
       "work_emoji": "🔧"
-    }
+    },
+    "correction"
   ],
   "observation_concepts": [
     {
@@ -95,28 +96,23 @@
     "output_format_header": "OUTPUT FORMAT\n-------------\nOutput observations using this XML structure:",
     "format_examples": "**Token Observation Examples:**\n\n<observation>\n  <type>pump-detected</type>\n  <title>SIMULAT Reaches RISING at 36 U/m With +45.5% 3m Gain</title>\n  <subtitle>6-day-old token building sustained momentum over 5 consecutive checks since discovery at 6 U/m</subtitle>\n  <facts>\n    <fact>SIMULAT reached 36 U/m RISING signal tier at 10:33 PM</fact>\n    <fact>SIMULAT price gains: +15.3% 1m, +33.9% 2m, +45.5% 3m</fact>\n    <fact>SIMULAT buy pressure $4.8K on $4K pool (1.2:1 pressure-to-pool ratio)</fact>\n    <fact>SIMULAT first detected at 6 U/m FLAT, promoted through WATCH to RISING over 4 minutes</fact>\n  </facts>\n  <narrative>SIMULAT demonstrated the ideal early-detection pattern for the activity-first algorithm. First appearing at 6 U/m with +15% 1m gain, it steadily built activity through WATCH to RISING over 4 minutes. The 1.2:1 buy-pressure-to-pool ratio suggests concentrated buying interest. This token was surfaced 4 minutes before its biggest price move.</narrative>\n  <concepts><concept>early-detection</concept><concept>sustained-momentum</concept></concepts>\n  <files></files>\n</observation>",
     "footer": "IMPORTANT! DO NOT do any work right now other than generating OBSERVATIONS from the token monitoring data.\n\nNever reference yourself or your own actions. Focus on what is happening in the market. Include specific numbers — U/m, gains, buy pressure, pool size — in every observation. Token observations without specific metrics are useless.\n\nThese observations help us understand which tokens pump, how the algorithm detects them, and what patterns emerge over time. Thank you!",
-
     "xml_title_placeholder": "[Token Symbol + Key Metric Change, e.g. 'MEMEMAN Hits 58 U/m STRONG With +82% 3m Gain']",
     "xml_subtitle_placeholder": "[One sentence with timing and context (max 24 words)]",
     "xml_fact_placeholder": "[Token symbol + specific metric: U/m value, signal tier, gain %, buy pressure $, pool size $]",
     "xml_narrative_placeholder": "[**narrative**: What happened, how fast, what the metrics say about the move, and what it means for the algorithm's detection quality]",
     "xml_concept_placeholder": "[early-detection | lifecycle | false-signal | whale-activity | repeat-pumper | dead-cat-bounce | sustained-momentum]",
     "xml_file_placeholder": "",
-
     "xml_summary_request_placeholder": "[Short title: time range + key market events, e.g. '10:18-10:48 PM — MEMEMAN triple pump, SIMULAT +85% slow build']",
     "xml_summary_investigated_placeholder": "[What tokens were tracked? How many checks performed? Total updates processed?]",
     "xml_summary_learned_placeholder": "[What patterns emerged? Which token archetypes appeared? How did the algorithm perform?]",
     "xml_summary_completed_placeholder": "[How long monitored? Key pumps detected? Algorithm changes deployed?]",
     "xml_summary_next_steps_placeholder": "[What to watch for next? Any algorithm improvements identified?]",
     "xml_summary_notes_placeholder": "[Market conditions, unusual patterns, algorithm edge cases observed]",
-
     "header_memory_start": "TOKEN MONITORING START\n=======================",
     "header_memory_continued": "TOKEN MONITORING CONTINUED\n===========================",
     "header_summary_checkpoint": "MARKET SUMMARY CHECKPOINT\n===========================",
-
     "continuation_greeting": "Hello memory agent, you are continuing to observe live meme token trading activity.",
     "continuation_instruction": "IMPORTANT: Continue generating observations from token monitoring data using the XML structure below. Focus on NEW pumps, dumps, signal changes, and market shifts since your last observation.",
-
     "summary_instruction": "Write a market summary covering: tokens that pumped, tokens that dumped, market conditions (hot vs lull periods), algorithm performance, and any patterns observed. Include specific metrics for the most notable tokens. This is a checkpoint — the monitoring session is ongoing.",
     "summary_context_label": "Token Monitoring Data:",
     "summary_format_instruction": "Respond in this XML format:",

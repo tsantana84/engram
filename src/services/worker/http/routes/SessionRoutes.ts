@@ -187,11 +187,13 @@ export class SessionRoutes extends BaseRouteHandler {
     session.currentProvider = provider;
     session.lastGeneratorActivity = Date.now();
 
+    let generatorFailed = false;
     session.generatorPromise = agent.startSession(session, this.workerService)
       .catch(error => {
         // Only log non-abort errors
         if (session.abortController.signal.aborted) return;
-        
+
+        generatorFailed = true;
         logger.error('SESSION', `Generator failed`, {
           sessionId: session.sessionDbId,
           provider: provider,
@@ -227,8 +229,10 @@ export class SessionRoutes extends BaseRouteHandler {
 
         if (wasAborted) {
           logger.info('SESSION', `Generator aborted`, { sessionId: sessionDbId });
-        } else {
+        } else if (generatorFailed) {
           logger.error('SESSION', `Generator exited unexpectedly`, { sessionId: sessionDbId });
+        } else {
+          logger.info('SESSION', `Generator completed`, { sessionId: sessionDbId });
         }
 
         session.generatorPromise = null;

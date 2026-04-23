@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ENGRAM — TICK LOG MOCKUP</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black: #000;
+  --white: #fff;
+  --yellow: #f5e400;
+  --red: #ff2400;
+  --green: #00b300;
+  --border: 3px solid #000;
+  --font-mono: 'Courier New', Courier, monospace;
+  --font-sans: 'Arial Black', Arial, sans-serif;
+}
+body {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--white);
+  color: var(--black);
+  min-height: 100vh;
+}
+header {
+  border-bottom: var(--border);
+  padding: 1.25rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  background: var(--black);
+  color: var(--white);
+}
+header h1 {
+  font-family: var(--font-sans);
+  font-size: 1.2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+nav {
+  display: flex;
+  gap: 0;
+  border-bottom: var(--border);
+}
+.tab {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.6rem 1.4rem;
+  border-right: var(--border);
+  cursor: pointer;
+  background: var(--white);
+  color: #999;
+  text-decoration: none;
+  display: block;
+}
+.tab.active {
+  background: var(--black);
+  color: var(--yellow);
+}
+.content { padding: 2rem; }
+.section-title {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-bottom: var(--border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+/* agent filter bar */
+.agent-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1.5rem;
+  border: var(--border);
+  width: fit-content;
+}
+.agent-btn {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  padding: 0.35rem 0.8rem;
+  border-right: 2px solid var(--black);
+  cursor: pointer;
+  background: var(--white);
+  color: var(--black);
+}
+.agent-btn:last-child { border-right: none; }
+.agent-btn.active { background: var(--black); color: var(--yellow); }
+
+/* tick log */
+.tick-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.tick-table th {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: left;
+  padding: 0.4rem 0.75rem;
+  background: var(--black);
+  color: var(--yellow);
+  border: 2px solid var(--black);
+  white-space: nowrap;
+}
+.tick-table td {
+  padding: 0.4rem 0.75rem;
+  border: 2px solid #e0e0e0;
+  vertical-align: top;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.tick-table tr:hover td { background: #fafafa; }
+.tick-table tr.has-error td { border-left: 4px solid var(--red); }
+.tick-table tr.all-ok td:first-child { border-left: 4px solid var(--green); }
+.tick-table tr.partial td:first-child { border-left: 4px solid var(--yellow); }
+
+.badge {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 900;
+  padding: 1px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.badge-ok { background: var(--green); color: var(--white); }
+.badge-fail { background: var(--red); color: var(--white); }
+.badge-idle { background: #eee; color: #666; }
+.badge-partial { background: var(--yellow); color: var(--black); }
+
+.num { font-weight: bold; }
+.num-zero { color: #bbb; }
+.num-pos { color: var(--black); }
+.num-err { color: var(--red); font-weight: bold; }
+
+.ts { color: #555; font-size: 11px; }
+.dur { color: #777; font-size: 11px; }
+
+.agent-tag {
+  font-family: var(--font-sans);
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1.5px solid var(--black);
+  padding: 1px 5px;
+}
+
+/* error detail row */
+.error-detail {
+  background: #fff5f5;
+  font-size: 11px;
+  color: var(--red);
+  border-left: 4px solid var(--red) !important;
+}
+.error-detail td {
+  padding: 0.3rem 0.75rem;
+  border-color: #ffcccc !important;
+  font-family: var(--font-mono);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⬡ Engram / Admin</h1>
+  <div style="display:flex;gap:0.5rem;align-items:center">
+    <span style="font-family:var(--font-sans);font-size:10px;font-weight:900;text-transform:uppercase;color:#aaa;letter-spacing:0.1em">Auto-refresh: 60s</span>
+    <button style="font-family:var(--font-sans);font-size:11px;font-weight:900;text-transform:uppercase;padding:0.45rem 0.9rem;border:2px solid #555;background:transparent;color:#fff;cursor:pointer">↻ Refresh</button>
+  </div>
+</header>
+
+<nav>
+  <a class="tab" href="#">Overview</a>
+  <a class="tab active" href="#">Tick Log</a>
+  <a class="tab" href="#">Agents</a>
+  <a class="tab" href="../">← Learnings</a>
+</nav>
+
+<div class="content">
+  <div class="section-title">Sync Tick History — Last 50 ticks across all agents</div>
+
+  <div class="agent-bar">
+    <div class="agent-btn active">All</div>
+    <div class="agent-btn">thiago</div>
+    <div class="agent-btn">macbook-work</div>
+    <div class="agent-btn">ortzi-dev</div>
+    <div class="agent-btn">computer</div>
+  </div>
+
+  <table class="tick-table">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Agent</th>
+        <th>Status</th>
+        <th>Duration</th>
+        <th>Sessions Extracted</th>
+        <th>Learnings Pushed</th>
+        <th>Failed</th>
+        <th>Queue After</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- all-ok tick -->
+      <tr class="all-ok">
+        <td class="ts">21:42:20</td>
+        <td><span class="agent-tag">thiago</span></td>
+        <td><span class="badge badge-ok">OK</span></td>
+        <td class="dur">142ms</td>
+        <td class="num num-pos">2</td>
+        <td class="num num-pos">7</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+      </tr>
+
+      <!-- idle tick (empty queue) -->
+      <tr>
+        <td class="ts">21:41:20</td>
+        <td><span class="agent-tag">thiago</span></td>
+        <td><span class="badge badge-idle">IDLE</span></td>
+        <td class="dur">3ms</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+      </tr>
+
+      <!-- macbook-work ok -->
+      <tr class="all-ok">
+        <td class="ts">21:41:10</td>
+        <td><span class="agent-tag">macbook-work</span></td>
+        <td><span class="badge badge-ok">OK</span></td>
+        <td class="dur">88ms</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-pos">3</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+      </tr>
+
+      <!-- partial tick with errors -->
+      <tr class="partial">
+        <td class="ts">21:40:20</td>
+        <td><span class="agent-tag">thiago</span></td>
+        <td><span class="badge badge-partial">PARTIAL</span></td>
+        <td class="dur">2341ms</td>
+        <td class="num num-pos">1</td>
+        <td class="num num-pos">4</td>
+        <td class="num num-err">2</td>
+        <td class="num num-err">2</td>
+      </tr>
+      <!-- error detail inline -->
+      <tr class="error-detail">
+        <td colspan="8">✗ learning #382: pushLearnings failed (500) — OPENAI_API_KEY not configured<br>✗ learning #383: pushLearnings failed (500) — OPENAI_API_KEY not configured</td>
+      </tr>
+
+      <!-- all fail tick -->
+      <tr class="has-error">
+        <td class="ts">21:39:20</td>
+        <td><span class="agent-tag">thiago</span></td>
+        <td><span class="badge badge-fail">FAIL</span></td>
+        <td class="dur">5012ms</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-err">5</td>
+        <td class="num num-err">182</td>
+      </tr>
+      <tr class="error-detail">
+        <td colspan="8">✗ RLS policy violation: new row violates row-level security policy for table "learnings" (5 items)</td>
+      </tr>
+
+      <tr>
+        <td class="ts">21:38:20</td>
+        <td><span class="agent-tag">ortzi-dev</span></td>
+        <td><span class="badge badge-idle">IDLE</span></td>
+        <td class="dur">2ms</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+      </tr>
+
+      <tr class="all-ok">
+        <td class="ts">21:38:10</td>
+        <td><span class="agent-tag">macbook-work</span></td>
+        <td><span class="badge badge-ok">OK</span></td>
+        <td class="dur">112ms</td>
+        <td class="num num-pos">1</td>
+        <td class="num num-pos">2</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+      </tr>
+
+      <tr>
+        <td class="ts">21:37:20</td>
+        <td><span class="agent-tag">thiago</span></td>
+        <td><span class="badge badge-idle">IDLE</span></td>
+        <td class="dur">2ms</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+        <td class="num num-zero">0</td>
+      </tr>
+
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

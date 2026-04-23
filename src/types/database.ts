@@ -66,7 +66,7 @@ export interface ObservationRecord {
   memory_session_id: string;
   project: string;
   text: string | null;
-  type: 'decision' | 'bugfix' | 'feature' | 'refactor' | 'discovery' | 'change';
+  type: 'decision' | 'bugfix' | 'feature' | 'refactor' | 'discovery' | 'change' | 'correction';
   created_at: string;
   created_at_epoch: number;
   title?: string;

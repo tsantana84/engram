@@ -80,5 +80,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const response: LearningPushResponse = { results };
+  await db.touchAgentSync(auth.agentId).catch(() => {});
   res.status(200).json(response);
 }

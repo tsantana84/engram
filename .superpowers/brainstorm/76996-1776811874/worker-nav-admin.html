@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ENGRAM — Worker UI Mockup</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --black: #000; --white: #fff; --yellow: #f5e400;
+  --red: #ff2400; --green: #00b300;
+  --border: 3px solid #000;
+  --mono: 'Courier New', Courier, monospace;
+  --sans: 'Arial Black', Arial, sans-serif;
+}
+body { font-family: var(--mono); font-size: 14px; background: var(--white); color: var(--black); }
+
+/* ── GLOBAL NAV (shared across all pages) ── */
+.global-nav {
+  border-bottom: var(--border);
+  background: var(--black);
+  display: flex;
+  align-items: stretch;
+}
+.nav-brand {
+  font-family: var(--sans);
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--white);
+  padding: 1rem 1.5rem;
+  border-right: var(--border);
+  white-space: nowrap;
+}
+.nav-brand span { color: var(--yellow); }
+.nav-links { display: flex; }
+.nav-link {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0 1.25rem;
+  display: flex;
+  align-items: center;
+  color: #aaa;
+  text-decoration: none;
+  border-right: 2px solid #222;
+  cursor: pointer;
+}
+.nav-link:hover { color: var(--white); background: #111; }
+.nav-link.active { color: var(--yellow); background: #111; border-bottom: 3px solid var(--yellow); }
+.nav-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  gap: 0.75rem;
+  border-left: 2px solid #222;
+}
+.nav-status {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+}
+.nav-status-ok { background: var(--green); color: var(--white); }
+.nav-status-err { background: var(--red); color: var(--white); }
+
+/* ── PAGE HEADER ── */
+.page-header {
+  padding: 1.5rem 2rem;
+  border-bottom: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.page-title {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #555;
+}
+.page-meta { font-size: 11px; color: #888; }
+
+/* ── MAIN CONTENT ── */
+main { padding: 2rem; display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; }
+
+/* ── PANEL ── */
+.panel {
+  border: var(--border);
+  margin: -1px 0 0 -1px;
+  padding: 1.25rem;
+}
+.panel-title {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-bottom: 2px solid var(--black);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+.panel-full { grid-column: 1 / -1; }
+
+/* ── HEALTH ROW ── */
+.health-row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.badge {
+  font-family: var(--sans); font-size: 10px; font-weight: 900;
+  padding: 2px 8px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.badge-ok { background: var(--green); color: var(--white); }
+.badge-err { background: var(--red); color: var(--white); }
+.badge-gray { background: #ccc; color: #333; }
+.uptime { font-size: 13px; font-weight: bold; }
+.version { font-size: 11px; color: #777; }
+
+/* ── STAT ROW ── */
+.stat-row { display: flex; gap: 2rem; margin-bottom: 0.75rem; }
+.stat { display: flex; flex-direction: column; }
+.stat-val { font-family: var(--sans); font-size: 1.5rem; font-weight: 900; }
+.stat-val-zero { color: #ccc; }
+.stat-val-err { color: var(--red); }
+.stat-label { font-family: var(--sans); font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: #888; }
+
+/* ── FAILED ITEMS ── */
+.failed-list { margin-top: 0.75rem; }
+.failed-item {
+  border-left: 3px solid var(--red);
+  padding: 0.35rem 0.6rem;
+  margin-bottom: 0.25rem;
+  font-size: 11px;
+  background: #fff5f5;
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+.failed-type { font-family: var(--sans); font-size: 9px; font-weight: 900; text-transform: uppercase; background: var(--red); color: var(--white); padding: 1px 5px; white-space: nowrap; }
+.failed-err { color: #555; }
+.failed-retries { color: #aaa; font-size: 10px; margin-left: auto; white-space: nowrap; }
+
+/* ── EXTRACTION ── */
+.extraction-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.extraction-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+.ext-stat { border: 2px solid var(--black); padding: 0.5rem; text-align: center; }
+.ext-val { font-family: var(--sans); font-size: 1.2rem; font-weight: 900; }
+.ext-lbl { font-family: var(--sans); font-size: 8px; text-transform: uppercase; letter-spacing: 0.08em; color: #888; }
+
+/* ── ERROR LOG ── */
+.error-log { font-size: 11px; }
+.error-entry {
+  display: grid;
+  grid-template-columns: 48px 48px 80px 1fr;
+  gap: 0.4rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid #eee;
+  align-items: baseline;
+}
+.err-time { color: #888; }
+.err-level { font-family: var(--sans); font-size: 9px; font-weight: 900; padding: 1px 5px; text-transform: uppercase; }
+.level-error { background: var(--red); color: var(--white); }
+.level-warn { background: var(--yellow); color: var(--black); }
+.err-ctx { font-weight: bold; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+.err-msg { color: #333; word-break: break-word; }
+</style>
+</head>
+<body>
+
+<!-- GLOBAL NAV — same on every page -->
+<nav class="global-nav">
+  <div class="nav-brand">⬡ Engram <span>Worker</span></div>
+  <div class="nav-links">
+    <a class="nav-link" href="#">Sessions</a>
+    <a class="nav-link active" href="#">Admin</a>
+    <a class="nav-link" href="#">Ticks</a>
+  </div>
+  <div class="nav-right">
+    <span class="nav-status nav-status-ok">Worker OK</span>
+    <span class="nav-status nav-status-ok">v12.1.0</span>
+  </div>
+</nav>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <span class="page-title">Admin — System Status</span>
+  <span class="page-meta">Updated 4s ago · auto-refreshes every 10s</span>
+</div>
+
+<!-- CONTENT GRID -->
+<main>
+
+  <!-- System Health -->
+  <div class="panel">
+    <div class="panel-title">System Health</div>
+    <div class="health-row">
+      <span class="uptime">3h 12m up</span>
+      <span class="badge badge-ok">Chroma ✓</span>
+      <span class="badge badge-ok">Sync Server ✓</span>
+      <span class="version">v12.1.0</span>
+    </div>
+  </div>
+
+  <!-- Sync Queue -->
+  <div class="panel">
+    <div class="panel-title">Sync Queue</div>
+    <div class="stat-row">
+      <div class="stat">
+        <span class="stat-val stat-val-zero">0</span>
+        <span class="stat-label">Pending</span>
+      </div>
+      <div class="stat">
+        <span class="stat-val stat-val-err">3</span>
+        <span class="stat-label">Failed</span>
+      </div>
+    </div>
+    <div class="failed-list">
+      <div class="failed-item">
+        <span class="failed-type">Learning</span>
+        <span class="failed-err">pushLearnings failed (500)</span>
+        <span class="failed-retries">5 retries</span>
+      </div>
+      <div class="failed-item">
+        <span class="failed-type">Learning</span>
+        <span class="failed-err">RLS policy violation</span>
+        <span class="failed-retries">3 retries</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Learning Extraction -->
+  <div class="panel">
+    <div class="panel-title">Learning Extraction</div>
+    <div class="extraction-row">
+      <span class="badge badge-ok">Enabled</span>
+      <span>threshold 0.8 · last run 2m ago</span>
+    </div>
+    <div class="extraction-stats">
+      <div class="ext-stat"><div class="ext-val">24</div><div class="ext-lbl">Processed</div></div>
+      <div class="ext-stat"><div class="ext-val">7</div><div class="ext-lbl">Extracted</div></div>
+      <div class="ext-stat"><div class="ext-val">14</div><div class="ext-lbl">Skipped</div></div>
+      <div class="ext-stat"><div class="ext-val ext-val-err" style="color:var(--red)">3</div><div class="ext-lbl">Failed</div></div>
+    </div>
+  </div>
+
+  <!-- Errors (full width) -->
+  <div class="panel panel-full">
+    <div class="panel-title">Recent Errors</div>
+    <div class="error-log">
+      <div class="error-entry">
+        <span class="err-time">21:42</span>
+        <span class="err-level level-error">ERROR</span>
+        <span class="err-ctx">SYNC</span>
+        <span class="err-msg">pushLearnings failed (500): OPENAI_API_KEY not configured</span>
+      </div>
+      <div class="error-entry">
+        <span class="err-time">21:41</span>
+        <span class="err-level level-warn">WARN</span>
+        <span class="err-ctx">PARSER</span>
+        <span class="err-msg">Summary response contained &lt;observation&gt; tags instead of &lt;summary&gt;</span>
+      </div>
+      <div class="error-entry">
+        <span class="err-time">21:38</span>
+        <span class="err-level level-error">ERROR</span>
+        <span class="err-ctx">DB</span>
+        <span class="err-msg">RLS policy violation on learnings table</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+</body>
+</html>
