@@ -15,6 +15,8 @@ import { SDKAgent } from '../../SDKAgent.js';
 import { GeminiAgent, isGeminiSelected, isGeminiAvailable } from '../../GeminiAgent.js';
 import { OpenRouterAgent, isOpenRouterSelected, isOpenRouterAvailable } from '../../OpenRouterAgent.js';
 import type { WorkerService } from '../../../worker-service.js';
+import { buildLearningLlmClosure } from '../../../worker-service.js';
+import { CorrectionExtractor } from '../../../sync/CorrectionExtractor.js';
 import { BaseRouteHandler } from '../BaseRouteHandler.js';
 import { SessionEventBroadcaster } from '../../events/SessionEventBroadcaster.js';
 import { SessionCompletionHandler } from '../../session/SessionCompletionHandler.js';
@@ -24,6 +26,8 @@ import { USER_SETTINGS_PATH } from '../../../../shared/paths.js';
 import { getProcessBySession, ensureProcessExit } from '../../ProcessRegistry.js';
 import { getProjectName } from '../../../../utils/project-name.js';
 import { normalizePlatformSource } from '../../../../shared/platform-source.js';
+
+const CORRECTION_GATE = /\b(wrong|incorrect|stop doing|that's not right|don't do that|that was wrong|you shouldn't)\b/i;
 
 export class SessionRoutes extends BaseRouteHandler {
   private completionHandler: SessionCompletionHandler;
@@ -822,6 +826,53 @@ export class SessionRoutes extends BaseRouteHandler {
       promptNumber,
       contextInjected
     });
+
+    // Correction detection: heuristic gate, async extraction (non-blocking)
+    const userMessage: string = prompt ?? '';
+    if (userMessage && CORRECTION_GATE.test(userMessage)) {
+      setImmediate(async () => {
+        try {
+          const settings = SettingsDefaultsManager.loadFromFile(USER_SETTINGS_PATH);
+          const model = settings.CLAUDE_MEM_LEARNING_LLM_MODEL ?? 'gpt-4o-mini';
+          const provider = (settings.CLAUDE_MEM_LEARNING_LLM_PROVIDER ?? 'openai') as 'anthropic' | 'openai';
+          const apiKey = settings.CLAUDE_MEM_OPENAI_API_KEY || settings.CLAUDE_MEM_ANTHROPIC_API_KEY || undefined;
+
+          const llm = buildLearningLlmClosure(model, provider, apiKey);
+          const extractor = new CorrectionExtractor({ enabled: true, llm, model, maxTokens: 2048 });
+
+          // Build context from transcript tail + user message
+          let transcriptTail = '';
+          const transcriptPath: string = req.body.transcript_path ?? '';
+          if (transcriptPath) {
+            const { readFileSync, existsSync } = await import('fs');
+            if (existsSync(transcriptPath)) {
+              transcriptTail = readFileSync(transcriptPath, 'utf-8').slice(-6000);
+            }
+          }
+          const context = `${transcriptTail}\n\nUser correction: ${userMessage}`;
+
+          const record = await extractor.extract(context);
+          if (!record) return;
+
+          const port = getWorkerPort();
+          await fetch(`http://localhost:${port}/api/corrections`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tried: record.tried,
+              wrong_because: record.wrong_because,
+              fix: record.fix,
+              trigger_context: record.trigger_context,
+              session_id: contentSessionId,
+              project,
+            }),
+          });
+          logger.debug('CORRECTION', 'Gate fired and correction stored', { trigger_context: record.trigger_context });
+        } catch (err) {
+          logger.debug('CORRECTION', 'Gate fire failed', {}, err as Error);
+        }
+      });
+    }
 
     res.json({
       sessionDbId,
