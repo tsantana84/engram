@@ -91,6 +91,7 @@ export class SessionStore {
     this.createSessionBriefingsTable();
     this.createGraphEdgesTable();
     this.createTickLogTable();
+    this.createCorrectionsTable();
   }
 
   /**
@@ -3068,6 +3069,36 @@ export class SessionStore {
       .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
       .run(34, new Date().toISOString());
     logger.debug('DB', 'Migration 34 applied: tick_log table created');
+  }
+
+  /**
+   * Create corrections table (migration 35)
+   */
+  private createCorrectionsTable(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(35) as SchemaVersion | undefined;
+    if (applied) return;
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS corrections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tried TEXT NOT NULL,
+        wrong_because TEXT NOT NULL,
+        fix TEXT NOT NULL,
+        trigger_context TEXT NOT NULL,
+        weight_multiplier REAL NOT NULL DEFAULT 2.0,
+        session_id TEXT,
+        project TEXT,
+        created_at INTEGER NOT NULL
+      )
+    `);
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_corrections_trigger ON corrections(trigger_context)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_corrections_project ON corrections(project)');
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(35, new Date().toISOString());
+    logger.debug('DB', 'Migration 35 applied: corrections table created');
   }
 
   insertTickLog(record: TickRecord): void {

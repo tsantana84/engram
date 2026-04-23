@@ -44,6 +44,8 @@ export class MigrationRunner {
     this.addLastErrorColumn();
     this.createSessionBriefingsTable();
     this.createGraphEdgesTable();
+    this.createTickLogTable();
+    this.createCorrectionsTable();
   }
 
   /**
@@ -1218,5 +1220,61 @@ export class MigrationRunner {
       .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
       .run(33, new Date().toISOString());
     logger.debug('DB', 'Migration 33 applied: graph_edges table created');
+  }
+
+  private createTickLogTable(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(34) as SchemaVersion | undefined;
+    if (applied) return;
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS tick_log (
+        id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticked_at           INTEGER NOT NULL DEFAULT (unixepoch()),
+        agent_name          TEXT    NOT NULL DEFAULT '',
+        duration_ms         INTEGER NOT NULL,
+        sessions_extracted  INTEGER NOT NULL DEFAULT 0,
+        learnings_enqueued  INTEGER NOT NULL DEFAULT 0,
+        items_pushed        INTEGER NOT NULL DEFAULT 0,
+        items_failed        INTEGER NOT NULL DEFAULT 0,
+        queue_depth_after   INTEGER NOT NULL DEFAULT 0,
+        errors              TEXT
+      )
+    `);
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(34, new Date().toISOString());
+    logger.debug('DB', 'Migration 34 applied: tick_log table created');
+  }
+
+  /**
+   * Create corrections table (migration 35)
+   */
+  private createCorrectionsTable(): void {
+    const applied = this.db
+      .prepare('SELECT version FROM schema_versions WHERE version = ?')
+      .get(35) as SchemaVersion | undefined;
+    if (applied) return;
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS corrections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tried TEXT NOT NULL,
+        wrong_because TEXT NOT NULL,
+        fix TEXT NOT NULL,
+        trigger_context TEXT NOT NULL,
+        weight_multiplier REAL NOT NULL DEFAULT 2.0,
+        session_id TEXT,
+        project TEXT,
+        created_at INTEGER NOT NULL
+      )
+    `);
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_corrections_trigger ON corrections(trigger_context)');
+    this.db.run('CREATE INDEX IF NOT EXISTS idx_corrections_project ON corrections(project)');
+    this.db
+      .prepare('INSERT OR IGNORE INTO schema_versions (version, applied_at) VALUES (?, ?)')
+      .run(35, new Date().toISOString());
+    logger.debug('DB', 'Migration 35 applied: corrections table created');
   }
 }
