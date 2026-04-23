@@ -33,6 +33,29 @@ import {
 import type { TimelineData } from './search/index.js';
 import type { SyncClient } from '../sync/SyncClient.js';
 
+/**
+ * Halves the Chroma distance for correction-type observations so they
+ * surface above equal-relevance non-correction results (lower = higher rank).
+ */
+function applyCorrectWeight(
+  ids: number[],
+  distances: number[],
+  db: import('bun:sqlite').Database
+): number[] {
+  if (ids.length === 0) return distances;
+  try {
+    const placeholders = ids.map(() => '?').join(',');
+    const rows = db.prepare(
+      `SELECT id FROM observations WHERE type = 'correction' AND id IN (${placeholders})`
+    ).all(...ids) as { id: number }[];
+    if (rows.length === 0) return distances;
+    const correctionIds = new Set(rows.map(r => r.id));
+    return distances.map((d, i) => correctionIds.has(ids[i]) ? d / 2.0 : d);
+  } catch {
+    return distances; // fail safe — return original distances
+  }
+}
+
 export class SearchManager {
   private orchestrator: SearchOrchestrator;
   private timelineBuilder: TimelineBuilder;
@@ -185,6 +208,12 @@ export class SearchManager {
 
       // Step 1: Chroma semantic search with optional type + project filter
       const chromaResults = await this.queryChroma(query, 100, whereFilter);
+      // Apply correction weight boost (halve distance = double relevance for corrections)
+      chromaResults.distances = applyCorrectWeight(
+        chromaResults.ids,
+        chromaResults.distances,
+        this.sessionStore.db
+      );
       chromaSucceeded = true; // Chroma didn't throw error
       logger.debug('SEARCH', 'ChromaDB returned semantic matches', { matchCount: chromaResults.ids.length });
 
