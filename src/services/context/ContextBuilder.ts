@@ -31,50 +31,7 @@ import { shouldShowSummary, renderSummaryFields } from './sections/SummaryRender
 import { renderPreviouslySection, renderFooter } from './sections/FooterRenderer.js';
 import { renderAgentEmptyState } from './formatters/AgentFormatter.js';
 import { renderHumanEmptyState } from './formatters/HumanFormatter.js';
-
-// Corrections prewarm helpers
-
-interface CorrectionPrewarm {
-  tried: string;
-  wrong_because: string;
-  fix: string;
-  trigger_context: string;
-}
-
-function queryCorrections(db: SessionStore, project: string): CorrectionPrewarm[] {
-  try {
-    return db.db.prepare(`
-      SELECT tried, wrong_because, fix, trigger_context
-      FROM corrections
-      WHERE project = ? AND trigger_context != ''
-      ORDER BY weight_multiplier DESC, created_at DESC
-      LIMIT 10
-    `).all(project) as CorrectionPrewarm[];
-  } catch {
-    return [];
-  }
-}
-
-function scoreCorrections(corrections: CorrectionPrewarm[], goal: string): CorrectionPrewarm[] {
-  if (!goal || corrections.length === 0) return corrections.slice(0, 3);
-  const goalWords = new Set(goal.toLowerCase().split(/\W+/).filter(w => w.length > 3));
-  return corrections
-    .map(c => ({
-      correction: c,
-      score: c.trigger_context.toLowerCase().split(/\W+/).filter(w => goalWords.has(w)).length,
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
-    .map(x => x.correction);
-}
-
-function renderCorrectionsBlock(corrections: CorrectionPrewarm[]): string {
-  if (corrections.length === 0) return '';
-  const lines = corrections.map(c =>
-    `- Tried: ${c.tried}. Wrong because: ${c.wrong_because}. Fix: ${c.fix}.\n  [Context: ${c.trigger_context}]`
-  );
-  return `\n## PAST CORRECTIONS (high priority)\n${lines.join('\n')}\n`;
-}
+import { buildSessionBriefing } from './BriefingComposer.js';
 
 // Version marker path for native module error handling
 const VERSION_MARKER_PATH = path.join(
@@ -192,6 +149,9 @@ export async function generateContext(
   }
 
   try {
+    // Build session briefing (goal-aware prewarm)
+    const briefing = buildSessionBriefing(db, project);
+
     // Query data for all projects (supports worktree: parent + worktree combined)
     const observations = projects.length > 1
       ? queryObservationsMulti(db, projects, config, platformSource)
@@ -205,12 +165,6 @@ export async function generateContext(
       return renderEmptyState(project, forHuman);
     }
 
-    // Corrections prewarm: query project-scoped corrections, score against session goal
-    const allCorrections = queryCorrections(db, project);
-    const correctionGoal = observations[0]?.title ?? '';
-    const prewarmCorrections = scoreCorrections(allCorrections, correctionGoal);
-    const correctionsBlock = renderCorrectionsBlock(prewarmCorrections);
-
     // Build and return context
     const output = buildContextOutput(
       project,
@@ -222,7 +176,7 @@ export async function generateContext(
       forHuman
     );
 
-    return correctionsBlock + output;
+    return briefing ? briefing + '\n\n' + output : output;
   } finally {
     db.close();
   }
