@@ -45,7 +45,13 @@
       "emoji": "⚖️",
       "work_emoji": "⚖️"
     },
-    "correction"
+    {
+      "id": "correction",
+      "label": "Correction",
+      "description": "Mistake made and corrected by user",
+      "emoji": "🔴",
+      "work_emoji": "🔴"
+    }
   ],
   "observation_concepts": [
     {
